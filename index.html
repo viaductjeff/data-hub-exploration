@@ -429,6 +429,13 @@
   .proto-step-card { padding: 0; }
   .step-card__header { display: flex; align-items: center; gap: var(--vds-button-gap); padding: var(--vds-card-pad-v) var(--vds-card-pad-h); border-bottom: 1px solid var(--vds-gray-100); }
   .step-card__index { flex: none; color: var(--vds-gray-400); }
+  .step-card__drag-handle { display: flex; align-items: center; flex: none; color: var(--vds-gray-400); cursor: grab; }
+  .step-card__drag-handle:active { cursor: grabbing; }
+  .proto-step-card.is-dragging { opacity: 0.4; }
+  .proto-step-card.is-drop-target { outline: 2px solid var(--vds-info); outline-offset: 2px; }
+  /* The step name sits in a .field, which carries a bottom margin by default —
+     zero it so the header row lines up on its centre. */
+  .step-card__header .field { margin-bottom: 0; }
   .step-card__name-field { flex: 1; min-width: 0; }
   .step-card__reorder { display: flex; flex: none; }
   .step-card__body { display: flex; flex-direction: column; gap: 20px; padding: var(--vds-card-pad-h); }
@@ -445,9 +452,16 @@
   .action-list { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
   .action-row { display: flex; align-items: flex-start; gap: var(--vds-button-gap); }
   .action-row .field { flex: none; margin-bottom: 0; }
+  /* Pinned near the top selects so it stays put when a prompt textarea makes the row tall. */
+  .action-row__drag-handle { display: flex; align-items: center; flex: none; margin-top: 9px; color: var(--vds-gray-400); cursor: grab; }
+  .action-row__drag-handle:active { cursor: grabbing; }
+  .action-row.is-dragging { opacity: 0.4; }
+  .action-row.is-drop-target { outline: 2px solid var(--vds-info); outline-offset: 2px; }
   .action-row__type { width: 208px; }
   .action-row__ref { width: 260px; }
-  .action-row__prompt { flex: 1 1 320px; min-width: 240px; }
+  /* Fills whatever the type select, handle and delete button leave, so the
+     textarea spans the card without pushing the row past its edge. */
+  .action-row .action-row__prompt { flex: 1 1 auto; min-width: 0; }
   .action-row__prompt textarea { width: 100%; resize: vertical; }
   .auto-empty-steps { display: flex; flex-direction: column; align-items: center; gap: var(--vds-form-gap); padding: 40px 0; }
 
@@ -661,6 +675,7 @@ function Icon({ name, size = 19 }){
     image:(<><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.7"/><path d="m21 15-5-5-9 9"/></>),
     check:(<path d="m5 13 4 4L19 7"/>),
     arrowLeft:(<><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></>),
+    grip:(<g fill="currentColor" stroke="none"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></g>),
     arrowUp:(<><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></>),
     arrowDown:(<><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></>),
     arrowRight:(<><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>),
@@ -8384,12 +8399,29 @@ function AutomationEditor({ automation, sources, pipelines, onCancel, onSave }){
       ? { ...st, actions: st.actions.map(a => a.id === actId ? { ...a, ...patch } : a) } : st) }));
   const addStep = () => setDraft(d => ({ ...d, steps:[...d.steps, newAutomationStep()] }));
   const removeStep = (stepId) => setDraft(d => ({ ...d, steps:d.steps.filter(st => st.id !== stepId) }));
-  const moveStep = (i, dir) => setDraft(d => {
-    const next = d.steps.slice(), j = i + dir;
-    if (j < 0 || j >= next.length) return d;
-    [next[i], next[j]] = [next[j], next[i]];
-    return { ...d, steps: next };
-  });
+
+  /* Drag reordering. A card or row is only draggable while the pointer is down on
+     its own handle, so dragging anywhere else (e.g. selecting text in a prompt)
+     does nothing. Action drags stopPropagation so they never move the step. */
+  const [armed, setArmed] = useState(null);        // id of the card/row a handle armed
+  const [dragStep, setDragStep] = useState(null);
+  const [dragAct, setDragAct] = useState(null);    // { stepId, actionId }
+  const [dropTarget, setDropTarget] = useState(null);
+  React.useEffect(() => {
+    const up = () => setArmed(null);
+    document.addEventListener("mouseup", up);
+    return () => document.removeEventListener("mouseup", up);
+  }, []);
+  const reorder = (list, fromId, toId) => {
+    const from = list.findIndex(x => x.id === fromId), to = list.findIndex(x => x.id === toId);
+    if (from === -1 || to === -1 || from === to) return list;
+    const next = list.slice();
+    next.splice(to, 0, next.splice(from, 1)[0]);
+    return next;
+  };
+  const dropStep = (targetId) => setDraft(d => ({ ...d, steps: reorder(d.steps, dragStep, targetId) }));
+  const dropAction = (stepId, targetId) => setDraft(d => ({ ...d,
+    steps: d.steps.map(st => st.id === stepId ? { ...st, actions: reorder(st.actions, dragAct && dragAct.actionId, targetId) } : st) }));
   const addAction = (stepId) => setDraft(d => ({ ...d,
     steps:d.steps.map(st => st.id === stepId ? { ...st, actions:[...st.actions, newAutomationAction("prompt")] } : st) }));
   const removeAction = (stepId, actId) => setDraft(d => ({ ...d,
@@ -8423,18 +8455,22 @@ function AutomationEditor({ automation, sources, pipelines, onCancel, onSave }){
             const isFirst = i === 0;
             const tType = isFirst ? (step.trigger.type === "after_previous" ? "schedule" : step.trigger.type) : "after_previous";
             return (
-              <div className="vds-card proto-step-card" key={step.id}>
+              <div className={"vds-card proto-step-card"
+                    + (dragStep === step.id ? " is-dragging" : "")
+                    + (dropTarget === step.id ? " is-drop-target" : "")}
+                key={step.id} draggable={armed === step.id}
+                onDragStart={(e)=>{ setDragStep(step.id); e.dataTransfer.effectAllowed = "move"; }}
+                onDragEnd={()=>{ setDragStep(null); setDropTarget(null); setArmed(null); }}
+                onDragOver={(e)=>{ if (dragStep && dragStep !== step.id){ e.preventDefault(); setDropTarget(step.id); } }}
+                onDragLeave={()=>setDropTarget(t => t === step.id ? null : t)}
+                onDrop={(e)=>{ e.preventDefault(); setDropTarget(null); if (dragStep && dragStep !== step.id) dropStep(step.id); }}>
                 <div className="step-card__header">
+                  <span className="step-card__drag-handle" title="Drag to reorder"
+                    onMouseDown={()=>setArmed(step.id)}><Icon name="grip" size={20} /></span>
                   <span className="vds-b2 step-card__index">{i + 1}</span>
                   <div className="field step-card__name-field">
                     <input className="vds-input vds-input--sm" placeholder="Step name" value={step.name}
                       onChange={(e)=>patchStep(step.id, { name:e.target.value })} aria-label={"Step " + (i+1) + " name"} />
-                  </div>
-                  <div className="step-card__reorder">
-                    <button className="vds-icon-btn vds-icon-btn--sm" title="Move up" aria-label="Move step up"
-                      disabled={i === 0} onClick={()=>moveStep(i, -1)}><Icon name="arrowUp" size={16} /></button>
-                    <button className="vds-icon-btn vds-icon-btn--sm" title="Move down" aria-label="Move step down"
-                      disabled={i === draft.steps.length - 1} onClick={()=>moveStep(i, 1)}><Icon name="arrowDown" size={16} /></button>
                   </div>
                   <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" title="Delete step" aria-label="Delete step"
                     onClick={()=>removeStep(step.id)}><Icon name="trash" size={16} /></button>
@@ -8526,7 +8562,18 @@ function AutomationEditor({ automation, sources, pipelines, onCancel, onSave }){
                     <h6 style={{margin:"0 0 8px"}}>Actions</h6>
                     <div className="action-list">
                       {step.actions.map(act => (
-                        <div className="action-row" key={act.id}>
+                        <div className={"action-row"
+                              + (dragAct && dragAct.actionId === act.id ? " is-dragging" : "")
+                              + (dropTarget === act.id ? " is-drop-target" : "")}
+                          key={act.id} draggable={armed === act.id}
+                          onDragStart={(e)=>{ e.stopPropagation(); setDragAct({ stepId:step.id, actionId:act.id }); e.dataTransfer.effectAllowed = "move"; }}
+                          onDragEnd={(e)=>{ e.stopPropagation(); setDragAct(null); setDropTarget(null); setArmed(null); }}
+                          onDragOver={(e)=>{ if (dragAct && dragAct.stepId === step.id && dragAct.actionId !== act.id){ e.preventDefault(); e.stopPropagation(); setDropTarget(act.id); } }}
+                          onDragLeave={(e)=>{ e.stopPropagation(); setDropTarget(t => t === act.id ? null : t); }}
+                          onDrop={(e)=>{ e.preventDefault(); e.stopPropagation(); setDropTarget(null);
+                            if (dragAct && dragAct.stepId === step.id && dragAct.actionId !== act.id) dropAction(step.id, act.id); }}>
+                          <span className="action-row__drag-handle" title="Drag to reorder"
+                            onMouseDown={(e)=>{ e.stopPropagation(); setArmed(act.id); }}><Icon name="grip" size={18} /></span>
                           <div className="field action-row__type">
                             <select className="vds-select" value={act.type} aria-label="Action type"
                               onChange={(e)=>patchAction(step.id, act.id, { type:e.target.value, refName:"" })}>
