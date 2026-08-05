@@ -419,12 +419,24 @@
   .trel-pair-row > .vds-select { flex: 1; }
 
   /* ---------- automation editor ---------- */
-  .auto-editor-header { display: flex; align-items: center; justify-content: space-between; gap: var(--vds-dialog-gap); padding-bottom: 10px; margin-bottom: var(--vds-dialog-gap); border-bottom: 1px solid var(--vds-gray-100); }
-  .auto-title-input { flex: 1; min-width: 0; padding: 2px 8px; border: 1px solid var(--vds-border-input); border-radius: 4px; background: var(--vds-surface-default); font: 400 36px/47px var(--vds-font-serif); color: var(--vds-text-primary); }
+  /* The title row stays put while the steps scroll. The negative side margins let
+     its background cover .vds-content's 32px gutters, so nothing shows through. */
+  /* top:-20px cancels .vds-content's 20px padding-top so the row pins flush to the
+     scrollport instead of leaving a gap content can show through; the padding-top
+     puts the visual spacing back. */
+  .auto-editor-header { position: sticky; top: -20px; z-index: 3; background: var(--vds-surface-muted);
+    display: flex; align-items: flex-start; justify-content: space-between; gap: var(--vds-dialog-gap);
+    margin: 0 -32px var(--vds-dialog-gap); padding: 20px 32px 10px;
+    border-bottom: 1px solid var(--vds-gray-100); }
+  .auto-title-field { flex: 1; min-width: 0; }
+  .auto-title-input.err { border-color: var(--vds-error-dark); }
+  /* Section heading with its explanatory note sitting beside it on the baseline. */
+  .auto-section-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--vds-button-gap); margin-bottom: 12px; }
+  .auto-title-input { width: 100%; padding: 2px 8px; border: 1px solid var(--vds-border-input); border-radius: 4px; background: var(--vds-surface-default); font: 400 36px/47px var(--vds-font-serif); color: var(--vds-text-primary); }
   .auto-title-input::placeholder { color: var(--vds-text-placeholder); }
   .auto-title-input:hover { border-color: var(--vds-border-input-hover); }
   .auto-title-input:focus { border-color: var(--vds-border-input-focus); outline: none; }
-  .auto-editor-actions { display: flex; gap: var(--vds-button-gap); flex: none; }
+  .auto-editor-actions { display: flex; gap: var(--vds-button-gap); flex: none; margin-top: 6px; }
   .step-list { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); }
   .proto-step-card { padding: 0; }
   .step-card__header { display: flex; align-items: center; gap: var(--vds-button-gap); padding: var(--vds-card-pad-v) var(--vds-card-pad-h); border-bottom: 1px solid var(--vds-gray-100); }
@@ -8385,8 +8397,13 @@ function RunDetailsPage({ row, onBack, onOpenConfigurator }){
 /* ---------------- Automation editor ----------------
    Only the first step picks a trigger; later steps run after the one before
    them, so all they show is the optional delay. */
-function AutomationEditor({ automation, sources, pipelines, onCancel, onSave }){
+function AutomationEditor({ automation, automations = [], sources, pipelines, onCancel, onSave }){
   const [draft, setDraft] = useState(automation);
+  /* Uniqueness is checked on blur, against every other automation's name. */
+  const [nameTaken, setNameTaken] = useState(false);
+  const nameIsTaken = (v) => automations.some(a => a.id !== automation.id
+    && (a.name || "").trim().toLowerCase() === v.trim().toLowerCase());
+  const canSave = !!draft.name.trim() && !nameTaken;
   const tableNames = (sources || []).filter(s => s.configured !== false).map(s => s.name);
   const pipeNames = (pipelines || []).map(p => p.name);
 
@@ -8435,15 +8452,25 @@ function AutomationEditor({ automation, sources, pipelines, onCancel, onSave }){
         <span>{draft.name || "Automation"}</span>
       </nav>
       <div className="auto-editor-header">
-        <input className="auto-title-input" placeholder="Unnamed automation" value={draft.name}
-          onChange={(e)=>setDraft(d => ({ ...d, name:e.target.value }))} aria-label="Automation name" />
+        <div className="auto-title-field">
+          <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder="Name your automation. Must be unique."
+            value={draft.name} aria-label="Automation name" aria-invalid={nameTaken || undefined}
+            onChange={(e)=>{ setNameTaken(false); setDraft(d => ({ ...d, name:e.target.value })); }}
+            onBlur={(e)=>setNameTaken(nameIsTaken(e.target.value))} />
+          {nameTaken && <div className="vds-helper-text vds-helper-text--error">This name is already used. Names must be unique.</div>}
+        </div>
         <div className="auto-editor-actions">
           <button className="vds-btn" onClick={onCancel}>Cancel</button>
-          <button className="vds-btn vds-btn--primary" onClick={()=>onSave(draft)}>Save automation</button>
+          <button className="vds-btn vds-btn--primary" disabled={!canSave}
+            title={canSave ? undefined : "Enter a unique name to save"}
+            onClick={()=>onSave(draft)}>Save automation</button>
         </div>
       </div>
 
-      <h5 style={{marginBottom:12}}>Steps</h5>
+      <div className="auto-section-head">
+        <h5>Steps</h5>
+        <span className="vds-b3 proto-muted">Performed in the order specified. Drag to change.</span>
+      </div>
       {draft.steps.length === 0 ? (
         <div className="vds-card auto-empty-steps">
           <span className="vds-b2 proto-muted">This automation has no steps yet.</span>
@@ -8467,9 +8494,9 @@ function AutomationEditor({ automation, sources, pipelines, onCancel, onSave }){
                 <div className="step-card__header">
                   <span className="step-card__drag-handle" title="Drag to reorder"
                     onMouseDown={()=>setArmed(step.id)}><Icon name="grip" size={20} /></span>
-                  <span className="vds-b2 step-card__index">{i + 1}</span>
+                  <span className="vds-b2 step-card__index">Step {i + 1}</span>
                   <div className="field step-card__name-field">
-                    <input className="vds-input vds-input--sm" placeholder="Step name" value={step.name}
+                    <input className="vds-input vds-input--sm" placeholder="Step name (optional)" value={step.name}
                       onChange={(e)=>patchStep(step.id, { name:e.target.value })} aria-label={"Step " + (i+1) + " name"} />
                   </div>
                   <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" title="Delete step" aria-label="Delete step"
@@ -8559,7 +8586,11 @@ function AutomationEditor({ automation, sources, pipelines, onCancel, onSave }){
                   </div>
 
                   <div>
-                    <h6 style={{margin:"0 0 8px"}}>Actions</h6>
+                    <div className="auto-section-head" style={{marginBottom:8}}>
+                      <h6>Actions</h6>
+                      <span className="vds-b3 proto-muted vds-dotted-underline"
+                        title="You may reorder these for your convenience and ease of understanding, but they are all performed at the same time, in no specific order.">performed all at the same time</span>
+                    </div>
                     <div className="action-list">
                       {step.actions.map(act => (
                         <div className={"action-row"
@@ -9043,7 +9074,7 @@ function App(){
       </div>
     );
     page = editingAuto
-      ? <AutomationEditor automation={editingAuto} sources={sources} pipelines={pipelines}
+      ? <AutomationEditor automation={editingAuto} automations={automations} sources={sources} pipelines={pipelines}
           onCancel={() => setEditingAutoId(null)}
           onSave={(a) => { upsertAutomation(a); setEditingAutoId(null); }} />
       : autoTab === "history"
