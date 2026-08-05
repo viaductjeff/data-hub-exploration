@@ -898,14 +898,14 @@ const HUB_PAGE = {
     emptyTitle:"No connectors configured", emptyBody:"Connect an external system to automatically create and sync data tables into Viaduct.", cta:"Create your first connector" },
   datapipelines:{ key:"datapipelines", title:"Data transformations", icon:"workflow",
     sub:"Move, shape, and act on data from your sources, automatically.",
-    noun:"data pipelines", filter:"Filter pipelines...", hidden:"Show disabled pipelines",
+    noun:"data transformations", filter:"Filter data transformations...", hidden:"Show disabled data transformations",
     cols:["Name","Type","Source","Status","Last run","Actions"],
-    emptyTitle:"No pipelines built", emptyBody:"A pipeline reads from a source, transforms the records, and writes the result into Viaduct.", cta:"Create your first pipeline" },
+    emptyTitle:"No data transformations built", emptyBody:"A data transformation reads from a source, transforms the records, and writes the result into Viaduct.", cta:"Create your first data transformation" },
   schedules:{ key:"schedules", title:"Schedules", icon:"clock",
-    sub:"See when your connectors, directives and pipelines run, based on your configured",
+    sub:"See when your connectors, directives and data transformations run, based on your configured",
     noun:"schedules", filter:"Filter schedules...", hidden:"Show paused schedules",
     cols:["Name","Source","Type","Schedule","Next scheduled run","Actions"],
-    emptyTitle:"No schedules yet", emptyBody:"Schedules are defined by connectors and pipelines. Create a connector or pipeline with a schedule and it will appear here so you can see when it next runs.", cta:"Create a connector" },
+    emptyTitle:"No schedules yet", emptyBody:"Schedules are defined by connectors and data transformations. Create a connector or data transformation with a schedule and it will appear here so you can see when it next runs.", cta:"Create a connector" },
   directives:{ key:"directives", title:"Directives", icon:"terminal",
     sub:"Rules that tell Viaduct how to clean, map, and route incoming records.",
     noun:"directives", filter:"Filter directives...", hidden:"Show archived directives",
@@ -1853,7 +1853,7 @@ function scheduleFromConnector(inst, dataSourceIds, nameLookup){
 }
 function scheduleFromPipeline(pipe){
   const sc = pipe.schedule || { frequency:"Daily", timeOfDay:"02:00", dayOfWeek:"Monday" };
-  return { id:"sch_" + Math.random().toString(36).slice(2,10), pipelineId:pipe.id, name:pipe.name, source:pipe.name, type:pipe.typeLabel || "Pipeline",
+  return { id:"sch_" + Math.random().toString(36).slice(2,10), pipelineId:pipe.id, name:pipe.name, source:pipe.name, type:pipe.typeLabel || "Data transformation",
     frequency:sc.frequency, timeOfDay:sc.timeOfDay, dayOfWeek:sc.dayOfWeek, intervalMinutes:sc.intervalMinutes, scheduleText:syncSummary(sc), nextRun:computeNextRun(sc) };
 }
 // ---- simulated sync: generate plausible rows for a connector data ----
@@ -6767,9 +6767,9 @@ function xfStepSQL(step, fromRel, sources){
   return "";
 }
 function pipelineOutputSource(pname, description, colsTyped, pipeId){
-  const src = { name: pname, type:"Table", description: description || ("Output of the " + pname + " transformation pipeline."), cols: colsTyped.map(c => [c.name, c.type]) };
-  const rec = connectorDataSourceRecord("Pipeline", src);
-  return { ...rec, origin:"Pipeline", fromConnector:false, fromPipeline:true, pipelineId:pipeId, status:"Not built yet", lastSynced:"Not built yet" };
+  const src = { name: pname, type:"Table", description: description || ("Output of the " + pname + " data transformation."), cols: colsTyped.map(c => [c.name, c.type]) };
+  const rec = connectorDataSourceRecord("Data transformation", src);
+  return { ...rec, origin:"Data transformation", fromConnector:false, fromPipeline:true, pipelineId:pipeId, status:"Not built yet", lastSynced:"Not built yet" };
 }
 // Execute the transformation steps against the sample rows in the data (SQL simulated in JS).
 function xfToNum(v){ const n = parseFloat(v); return isNaN(n) ? null : n; }
@@ -7347,10 +7347,10 @@ function TransformBuilder({ sources, inputId, setInputId, steps, setSteps, outpu
 
   return (
     <>
-      <div className="vds-alert vds-alert--info proto-note proto-plain-note" style={{marginBottom:16}}>This pipeline reshapes records through SQL transformations — join, union, aggregate, and clean data from one or more sources. Build the steps below; the preview updates live as you go. No code required — the platform compiles your steps to SQL underneath (toggle <b>Show SQL</b> to see it).</div>
+      <div className="vds-alert vds-alert--info proto-note proto-plain-note" style={{marginBottom:16}}>This data transformation reshapes records through SQL transformations — join, union, aggregate, and clean data from one or more sources. Build the steps below; the preview updates live as you go. No code required — the platform compiles your steps to SQL underneath (toggle <b>Show SQL</b> to see it).</div>
 
       <div className="vds-h4 proto-section-title">Input</div>
-      <div className="vds-b2 proto-muted proto-section-note">The data table this pipeline reads from — a preview appears immediately below, identical to the raw table the connector produces.</div>
+      <div className="vds-b2 proto-muted proto-section-note">The data table this data transformation reads from — a preview appears immediately below, identical to the raw table the connector produces.</div>
       <DataSourcePicker sources={sources} valueId={inputId} onChange={setInputId} />
 
       <div className="vds-h4 proto-section-title" style={{display:"flex", alignItems:"center"}}>Transformations
@@ -7397,7 +7397,7 @@ function TransformBuilder({ sources, inputId, setInputId, steps, setSteps, outpu
       </>)}
 
       <div className="vds-h4 proto-section-title">Output</div>
-      <div className="vds-b2 proto-muted proto-section-note">Where the transformed result is written. Legal modes are computed from how this pipeline changes row count (grain) — not a hand-maintained list.</div>
+      <div className="vds-b2 proto-muted proto-section-note">Where the transformed result is written. Legal modes are computed from how this data transformation changes row count (grain) — not a hand-maintained list.</div>
       <div className="xf-outmode-row">
         <button className={"xf-outmode" + (outputMode === "new" ? " on" : "")} onClick={() => setOutputMode("new")}>
           <Icon name="database" size={16} /><span>New table</span>
@@ -7405,7 +7405,7 @@ function TransformBuilder({ sources, inputId, setInputId, steps, setSteps, outpu
         <button className={"xf-outmode" + (outputMode === "addcol" ? " on" : "") + (!canAddCol ? " disabled" : "")} disabled={!canAddCol} title={!canAddCol ? grainReason : undefined} onClick={() => canAddCol && setOutputMode("addcol")}>
           <Icon name="plus" size={16} /><span>Add column to existing</span>
         </button>
-        <button className={"xf-outmode" + (outputMode === "expand" ? " on" : "") + (!canExpand ? " disabled" : "")} disabled={!canExpand} title={!canExpand ? "Only available when this pipeline stacks rows via Union / append." : undefined} onClick={() => canExpand && setOutputMode("expand")}>
+        <button className={"xf-outmode" + (outputMode === "expand" ? " on" : "") + (!canExpand ? " disabled" : "")} disabled={!canExpand} title={!canExpand ? "Only available when this data transformation stacks rows via Union / append." : undefined} onClick={() => canExpand && setOutputMode("expand")}>
           <Icon name="layers" size={16} /><span>Expand existing with rows</span>
         </button>
       </div>
@@ -7423,7 +7423,7 @@ function TransformBuilder({ sources, inputId, setInputId, steps, setSteps, outpu
         <div className="form-grid">
           <div className="field">
             <label className="vds-label">Target table</label>
-            <input className="vds-input locked" value={input.name} readOnly title="Grain preserved — writes back to the pipeline's input" />
+            <input className="vds-input locked" value={input.name} readOnly title="Grain preserved — writes back to the data transformation's input" />
             <div className="vds-helper-text">Grain preserved (one output row per input row, same key) — {newCols.length ? ("adds " + newCols.map(c=>"\""+c+"\"").join(", ")) : "adds the new column(s)"} to {input.name} without touching its existing rows or columns. If {input.name} is connector-synced, the connector's own columns keep syncing untouched.</div>
           </div>
         </div>
@@ -7523,7 +7523,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
   });
   const setIssueUse = (name, use) => setColUses(prev => ({ ...prev, [name]: use }));
 
-  const choose = (id) => { setTypeId(id); setName(uniqueName(id === "embed" ? "Embedding Pipeline" : id === "directive" ? "Directive Pipeline" : id === "smart" ? "Smart Groups Pipeline" : id === "issue" ? "TPMS Issue Detection" : id === "transform" ? "Data Transformation Pipeline" : "New Pipeline", existingNames)); setDesc(""); setSourceId(null); setSteps([]); setOutputMode("new"); setOutName(""); setOutTargetId(null); setEmbedCols([]); setOutputCol(id === "smart" ? "smart_groups" : "vector_embedding"); setInId(null); setDirOutName(""); setDirectiveId(""); setDirSched(id === "issue" ? { frequency:"By Minute", intervalMinutes:10, timeOfDay:"02:00", dayOfWeek:"Monday" } : { frequency:"Daily", timeOfDay:"02:00", dayOfWeek:"Monday", intervalMinutes:10 }); setAssetSourceId(null); setEventKey(""); setAssetKey(""); setEventWindow("30"); setEventFilter(""); setColUses({}); setStep(2); };
+  const choose = (id) => { setTypeId(id); setName(uniqueName(id === "embed" ? "Embedding transformation" : id === "directive" ? "Directive transformation" : id === "smart" ? "Smart Groups transformation" : id === "issue" ? "TPMS Issue Detection" : id === "transform" ? "Basic transformation" : "New data transformation", existingNames)); setDesc(""); setSourceId(null); setSteps([]); setOutputMode("new"); setOutName(""); setOutTargetId(null); setEmbedCols([]); setOutputCol(id === "smart" ? "smart_groups" : "vector_embedding"); setInId(null); setDirOutName(""); setDirectiveId(""); setDirSched(id === "issue" ? { frequency:"By Minute", intervalMinutes:10, timeOfDay:"02:00", dayOfWeek:"Monday" } : { frequency:"Daily", timeOfDay:"02:00", dayOfWeek:"Monday", intervalMinutes:10 }); setAssetSourceId(null); setEventKey(""); setAssetKey(""); setEventWindow("30"); setEventFilter(""); setColUses({}); setStep(2); };
 
   const xfInputSrc = sources.find(s => s.id === sourceId);
   const xfFieldCollision = isXf && (steps || []).some((st, i) => (st.typeId === "calc" || st.typeId === "cond") && st.params && st.params.field && availableColsTyped(xfInputSrc, steps, i, sources).map(c => c.name).includes(st.params.field));
@@ -7607,10 +7607,10 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
       plural: existingOut ? existingOut.plural : (editing ? editInstance.output && editInstance.output.plural : undefined),
       // A pipeline output never auto-publishes — it defaults to unpublished, and the user opts in here.
       published: existingOut ? existingOut.published === true : false,
-      description: (existingOut && existingOut.description) || desc || ("Output of the " + (name || "transform") + " transformation pipeline."),
+      description: (existingOut && existingOut.description) || desc || ("Output of the " + (name || "transform") + " data transformation."),
       columns: cols,
       relations: (existingOut && existingOut.relations) || { outgoing:[], incoming:[] },
-      parsed: { fileName: "Pipeline · " + (name || "transform"), columns: exec.columns, typeByCol: exec.typeByCol, rows: exec.rows },
+      parsed: { fileName: "Data transformation · " + (name || "transform"), columns: exec.columns, typeByCol: exec.typeByCol, rows: exec.rows },
     });
     setStep(3);
   };
@@ -7633,7 +7633,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         : (editing && editInstance.outputSourceIds && editInstance.outputSourceIds[0]) || "ds_pending";
       const otherPipelines = pipelines.filter(p => !editing || p.id !== editInstance.id);
       if (detectCycle(prospectiveOutId, xfInputIds, otherPipelines)){
-        setCycleError("This would create a cycle — the output eventually feeds back into one of this pipeline's own inputs (A→B→A). Choose a different input or output.");
+        setCycleError("This would create a cycle — the output eventually feeds back into one of this data transformation's own inputs (A→B→A). Choose a different input or output.");
         return;
       }
       setCycleError("");
@@ -7694,12 +7694,12 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
       const outSrcId = (cfg && cfg.id) || (editing && editInstance.outputSourceIds && editInstance.outputSourceIds[0]) || (outDraft && outDraft.id) || ("ds_" + Math.random().toString(36).slice(2,10));
       const outSrcName = cfg ? cfg.name : connSlug(outName);
       const outSrc = {
-        id: outSrcId, name: outSrcName, origin: "Pipeline", type: cfg ? cfg.type : "Table",
+        id: outSrcId, name: outSrcName, origin: "Data transformation", type: cfg ? cfg.type : "Table",
         status: exec.rows.length ? "Ready" : "Waiting for data",
         records: exec.rows.length.toLocaleString("en-US"), recordCount: exec.rows.length,
         lastSynced: exec.rows.length ? "Just now" : "Not run yet",
         singular: cfg ? cfg.singular : undefined, plural: cfg ? cfg.plural : undefined,
-        description: cfg && cfg.description ? cfg.description : ("Transformed from " + (chosenSource ? chosenSource.name : "input") + " via " + (name || "pipeline") + "."),
+        description: cfg && cfg.description ? cfg.description : ("Transformed from " + (chosenSource ? chosenSource.name : "input") + " via " + (name || "data transformation") + "."),
         published: cfg ? cfg.published === true : false, fromPipeline: true, configured: true, pipelineId: pipeId,
         columns: cfg ? cfg.columns : buildColConfig(exec.columns, exec.typeByCol),
         parsed: { fileName: outSrcName, columns: exec.columns, typeByCol: exec.typeByCol, rows: exec.rows },
@@ -7738,11 +7738,11 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
       }
       const outSrcId = (editing && editInstance.outputSourceIds && editInstance.outputSourceIds[0] && editInstance.outputSourceIds[0] !== sourceId) ? editInstance.outputSourceIds[0] : ("ds_" + Math.random().toString(36).slice(2,10));
       const outSrc = {
-        id: outSrcId, name: connSlug(dirOutName), origin: "Pipeline", type: "Table",
+        id: outSrcId, name: connSlug(dirOutName), origin: "Data transformation", type: "Table",
         status: patch.recordCount ? "Ready" : "Waiting for data",
         records: patch.records || "0", recordCount: patch.recordCount || 0,
         lastSynced: patch.recordCount ? "Just now" : "Not run yet",
-        description: (isSmart ? "Smart groups from " : "Embeddings from ") + (chosenSource ? chosenSource.name : "input") + " via " + (name || "pipeline") + ".",
+        description: (isSmart ? "Smart groups from " : "Embeddings from ") + (chosenSource ? chosenSource.name : "input") + " via " + (name || "data transformation") + ".",
         published: true, fromPipeline: true, configured: true, pipelineId: pipeId,
         columns: patch.columns, parsed: { ...(patch.parsed || {}), fileName: connSlug(dirOutName) },
         relations: { outgoing:[], incoming:[] },
@@ -7770,9 +7770,9 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
       }
       const outSrcId = (editing && editInstance.outputSourceIds && editInstance.outputSourceIds[0] && editInstance.outputSourceIds[0] !== inId) ? editInstance.outputSourceIds[0] : ("ds_" + Math.random().toString(36).slice(2,10));
       const outSrc = {
-        id: outSrcId, name: connSlug(dirOutName), origin: "Pipeline", type: "Table",
+        id: outSrcId, name: connSlug(dirOutName), origin: "Data transformation", type: "Table",
         status: "Waiting for data", records: "0", recordCount: 0, lastSynced: "Not run yet",
-        description: "Written by the " + (dir ? dir.name : "directive") + " directive via " + (name || "directive pipeline") + ".",
+        description: "Written by the " + (dir ? dir.name : "directive") + " directive via " + (name || "data transformation") + ".",
         published: true, fromPipeline: true, configured: true, pipelineId: pipeId,
         columns: [], parsed: { fileName: connSlug(dirOutName), columns: [], typeByCol: {}, rows: [] }, relations: { outgoing:[], incoming:[] },
       };
@@ -7802,7 +7802,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
   if (step === 1){
     return (
       <div className="vds-content">
-        <PageHead title="New pipeline" sub="Choose the type of pipeline to create." onCancel={onCancel} />
+        <PageHead title="New data transformation" sub="Choose the type of data transformation to create." onCancel={onCancel} />
         <Stepper current={1} steps={PIPELINE_STEPS} />
         <div className="origin-grid">
           {PIPELINE_TYPES.map(t => (
@@ -7823,7 +7823,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
     return <ConfigureSource source={outDraft}
       stepper={<Stepper current={3} steps={PIPELINE_STEPS_XF_NEW} />}
       title="Configure output data table"
-      sub={"Set the columns, types, and primary key for the data table this pipeline creates — this is the only place the schema can be configured. The transformations were run on the sample data — " + outDraft.parsed.rows.length + " rows produced."}
+      sub={"Set the columns, types, and primary key for the data table this data transformation creates — this is the only place the schema can be configured. The transformations were run on the sample data — " + outDraft.parsed.rows.length + " rows produced."}
       submitLabel="Continue"
       lockName={true}
       onCancel={() => setStep(2)}
@@ -7833,10 +7833,10 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
   if (step === scheduleStepN){
     return (
       <div className="vds-content">
-        <PageHead title={(editing ? "Edit " : "New ") + type.label} sub={"Pipeline · " + type.label} onCancel={onCancel} />
+        <PageHead title={(editing ? "Edit " : "New ") + type.label} sub={"Data transformation · " + type.label} onCancel={onCancel} />
         <Stepper current={scheduleStepN} steps={pipeSteps} />
         <div className="vds-h4 proto-section-title">Schedule</div>
-        <div className="vds-b2 proto-muted proto-section-note">{isDir ? "How often this directive runs in the agent harness." : isXf ? "How this pipeline reruns — plus a manual Run now, always available from the Schedules page." : "How often this pipeline runs."}</div>
+        <div className="vds-b2 proto-muted proto-section-note">{isDir ? "How often this directive runs in the agent harness." : isXf ? "How this data transformation reruns — plus a manual Run now, always available from the Schedules page." : "How often this data transformation runs."}</div>
         {isXf && (
           <div className="xf-outmode-row">
             <button className={"xf-outmode" + (triggerMode === "input" ? " on" : "")} onClick={() => setTriggerMode("input")}><Icon name="broadcast" size={16} /><span>On input update</span></button>
@@ -7884,7 +7884,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         {cycleError && <div className="vds-alert vds-alert--error proto-note">{cycleError}</div>}
         <div className="wiz-footer">
           <button className="vds-btn" onClick={()=>setStep(isXfNew ? 3 : 2)}><Icon name="arrowLeft" size={17} />Back</button>
-          <button className="vds-btn vds-btn--primary" onClick={commit}><Icon name="check" size={17} />{editing ? "Save changes" : "Create pipeline"}</button>
+          <button className="vds-btn vds-btn--primary" onClick={commit}><Icon name="check" size={17} />{editing ? "Save changes" : "Create data transformation"}</button>
         </div>
       </div>
     );
@@ -7892,21 +7892,21 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
 
   return (
     <div className="vds-content">
-      <PageHead title={(editing ? "Edit " : "New ") + type.label} sub={"Pipeline · " + type.label} onCancel={onCancel} />
+      <PageHead title={(editing ? "Edit " : "New ") + type.label} sub={"Data transformation · " + type.label} onCancel={onCancel} />
       <Stepper current={2} steps={pipeSteps} />
 
       <div className="form-grid">
         <div className="field">
-          <label className="vds-label">Pipeline name</label>
+          <label className="vds-label">Data transformation name</label>
           <input className={"vds-input" + (name.trim() && nameTaken(name) ? " err" : "")} placeholder={"e.g. " + (isXf ? "normalize_work_orders" : isEmbed ? "work_order_embeddings" : isDir ? "nightly_triage" : typeId === "smart" ? "high_risk_vehicles" : "tpms_issues")} value={name} onChange={(e)=>setName(e.target.value)} />
           {name.trim() && nameTaken(name)
-            ? <div className="vds-helper-text vds-helper-text--error">A pipeline named "{name.trim()}" already exists. Choose a different name.</div>
-            : <div className="vds-helper-text">A label for this pipeline.</div>}
+            ? <div className="vds-helper-text vds-helper-text--error">A data transformation named "{name.trim()}" already exists. Choose a different name.</div>
+            : <div className="vds-helper-text">A label for this data transformation.</div>}
         </div>
 
         <div className="field">
           <label className="vds-label">Description <span className="opt">(optional)</span></label>
-          <textarea className="vds-textarea" style={{height:"auto", minHeight:88, padding:"12px 14px", lineHeight:1.5}} rows={3} placeholder="What this pipeline does…" value={desc} onChange={(e)=>setDesc(e.target.value)} />
+          <textarea className="vds-textarea" style={{height:"auto", minHeight:88, padding:"12px 14px", lineHeight:1.5}} rows={3} placeholder="What this data transformation does…" value={desc} onChange={(e)=>setDesc(e.target.value)} />
         </div>
       </div>
 
@@ -8092,14 +8092,14 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         const eventSources = sources.filter(s => (s.type || "").toLowerCase() === "event");
         if (eventSources.length === 0){
           return (<>
-            <div className="vds-alert vds-alert--info proto-note proto-plain-note" style={{marginBottom:14}}>This pipeline reads TPMS sensor values from a data table and creates Issues for sensor values demonstrating various leak behaviors. Issues are shown elsewhere in the app (out of scope for this prototype).</div>
+            <div className="vds-alert vds-alert--info proto-note proto-plain-note" style={{marginBottom:14}}>This data transformation reads TPMS sensor values from a data table and creates Issues for sensor values demonstrating various leak behaviors. Issues are shown elsewhere in the app (out of scope for this prototype).</div>
             <div className="vds-h4 proto-section-title">Input data table</div>
-            <div className="vds-alert vds-alert--info proto-note proto-plain-note" style={{marginTop:12}}>TPMS Issue Detection requires <b>event-type</b> data table. None are available yet — create one first, then set up this pipeline.</div>
+            <div className="vds-alert vds-alert--info proto-note proto-plain-note" style={{marginTop:12}}>TPMS Issue Detection requires <b>event-type</b> data table. None are available yet — create one first, then set up this data transformation.</div>
           </>);
         }
         const cols = chosenSource ? definedCols(chosenSource) : [];
         return (<>
-          <div className="vds-alert vds-alert--info proto-note proto-plain-note" style={{marginBottom:16}}>This pipeline reads TPMS sensor values from a data table and creates Issues for sensor values demonstrating various leak behaviors. Issues are shown elsewhere in the app (out of scope for this prototype).</div>
+          <div className="vds-alert vds-alert--info proto-note proto-plain-note" style={{marginBottom:16}}>This data transformation reads TPMS sensor values from a data table and creates Issues for sensor values demonstrating various leak behaviors. Issues are shown elsewhere in the app (out of scope for this prototype).</div>
 
           <div className="vds-h4 proto-section-title">Input data table</div>
           <div className="vds-b2 proto-muted proto-section-note">Only event-type data tables can be used for TPMS Issue Detection.</div>
@@ -8134,9 +8134,9 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         </>);
       })() : (<>
         <div className="vds-h4 proto-section-title">Applies to data table</div>
-        <div className="vds-b2 proto-muted proto-section-note">The data table this pipeline analyzes.</div>
+        <div className="vds-b2 proto-muted proto-section-note">The data table this data transformation analyzes.</div>
         <DataSourcePicker sources={sources} valueId={sourceId} onChange={setSourceId} />
-        <div className="vds-alert vds-alert--info proto-note proto-plain-note" style={{marginTop:22}}>The full {type.label} builder will be built next. For now this creates the pipeline so it appears in the list.</div>
+        <div className="vds-alert vds-alert--info proto-note proto-plain-note" style={{marginTop:22}}>The full {type.label} builder will be built next. For now this creates the data transformation so it appears in the list.</div>
       </>)}
 
       <div className="wiz-footer">
@@ -8194,7 +8194,7 @@ function fmtDuration(startedTs, finishedTs){
 function histRowType(sched, pipelines){
   if (sched.connectorId) return "connection";
   const pipe = sched.pipelineId ? pipelines.find(p => p.id === sched.pipelineId) : null;
-  return (pipe && pipe.typeId === "directive") ? "directive" : "data pipeline";
+  return (pipe && pipe.typeId === "directive") ? "directive" : "data transformation";
 }
 // Flatten schedule-level runs into one row per data for connector runs (a single connector
 // sync covers several tables), and one row per run for pipeline/directive runs.
@@ -8261,7 +8261,7 @@ function genArgoLogs(row){
   }
   return lines;
 }
-const RUNH_TYPES = ["connection","data pipeline","directive"];
+const RUNH_TYPES = ["connection","data transformation","directive"];
 function RunDetailsPage({ row, onBack, onOpenConfigurator }){
   const meta = runStatusMeta(row.run.status);
   const logs = genArgoLogs(row);
@@ -8350,10 +8350,10 @@ function RunHistory({ cfg, schedules, runs, connectors, pipelines, sources, tabB
           <div className="empty">
             <div className="empty-tile"><Icon name="clock" size={30} /></div>
             <h2>No schedules yet</h2>
-            <p>Schedules created by connectors and pipelines will show their run history here.</p>
+            <p>Schedules created by connectors and data transformations will show their run history here.</p>
           </div>
         ) : (<>
-          <div className="vds-b2 proto-muted proto-section-note" style={{marginTop:0}}>Every data table, pipeline, and directive that has run on the platform, one row per run. A connector run shows up here once per data table it syncs.</div>
+          <div className="vds-b2 proto-muted proto-section-note" style={{marginTop:0}}>Every data table, data transformation, and directive that has run on the platform, one row per run. A connector run shows up here once per data table it syncs.</div>
           <div className="runh-toolbar">
             <div className="vds-table-toolbar__count"><b>{rows.length}</b> runs</div>
             <div className="runh-filters">
