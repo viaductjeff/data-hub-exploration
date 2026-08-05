@@ -433,15 +433,15 @@
   .step-card__drag-handle:active { cursor: grabbing; }
   .proto-step-card.is-dragging { opacity: 0.4; }
   .proto-step-card.is-drop-target { outline: 2px solid var(--vds-info); outline-offset: 2px; }
-  /* The step name sits in a .field, which carries a bottom margin by default —
-     zero it so the header row lines up on its centre. */
-  .step-card__header .field { margin-bottom: 0; }
+  /* Every horizontal row in the editor puts controls in a .field, which carries a
+     bottom margin by default — zero it so each row lines up on its centre. */
+  :is(.step-card__header, .action-row, .trigger-fields-row, .schedule-entry, .trigger-after-previous) .field { margin-bottom: 0; }
   .step-card__name-field { flex: 1; min-width: 0; }
   .step-card__reorder { display: flex; flex: none; }
   .step-card__body { display: flex; flex-direction: column; gap: 20px; padding: var(--vds-card-pad-h); }
   .trigger-choice-row { display: flex; flex-wrap: wrap; gap: var(--vds-main-gap); }
   .trigger-fields-row { display: flex; flex-wrap: wrap; gap: var(--vds-form-gap); }
-  .trigger-fields-row .field { min-width: 180px; margin-bottom: 0; }
+  .trigger-fields-row .field { min-width: 180px; }
   .trigger-after-previous { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-form-gap); }
   .trigger-delay-value { width: 64px; }
   .trigger-delay-unit { width: 110px; }
@@ -451,7 +451,7 @@
   .schedule-entry__time { width: 120px; }
   .action-list { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
   .action-row { display: flex; align-items: flex-start; gap: var(--vds-button-gap); }
-  .action-row .field { flex: none; margin-bottom: 0; }
+  .action-row .field { flex: none; }
   /* Pinned near the top selects so it stays put when a prompt textarea makes the row tall. */
   .action-row__drag-handle { display: flex; align-items: center; flex: none; margin-top: 9px; color: var(--vds-gray-400); cursor: grab; }
   .action-row__drag-handle:active { cursor: grabbing; }
