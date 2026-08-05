@@ -418,7 +418,40 @@
   .trel-pair-row { align-items: center; margin-bottom: var(--vds-button-gap); }
   .trel-pair-row > .vds-select { flex: 1; }
 
-  /* ---------- schedules: run history ---------- */
+  /* ---------- automation editor ---------- */
+  .auto-editor-header { display: flex; align-items: center; justify-content: space-between; gap: var(--vds-dialog-gap); padding-bottom: 10px; margin-bottom: var(--vds-dialog-gap); border-bottom: 1px solid var(--vds-gray-100); }
+  .auto-title-input { flex: 1; min-width: 0; padding: 2px 8px; border: 1px solid var(--vds-border-input); border-radius: 4px; background: var(--vds-surface-default); font: 400 36px/47px var(--vds-font-serif); color: var(--vds-text-primary); }
+  .auto-title-input::placeholder { color: var(--vds-text-placeholder); }
+  .auto-title-input:hover { border-color: var(--vds-border-input-hover); }
+  .auto-title-input:focus { border-color: var(--vds-border-input-focus); outline: none; }
+  .auto-editor-actions { display: flex; gap: var(--vds-button-gap); flex: none; }
+  .step-list { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); }
+  .proto-step-card { padding: 0; }
+  .step-card__header { display: flex; align-items: center; gap: var(--vds-button-gap); padding: var(--vds-card-pad-v) var(--vds-card-pad-h); border-bottom: 1px solid var(--vds-gray-100); }
+  .step-card__index { flex: none; color: var(--vds-gray-400); }
+  .step-card__name-field { flex: 1; min-width: 0; }
+  .step-card__reorder { display: flex; flex: none; }
+  .step-card__body { display: flex; flex-direction: column; gap: 20px; padding: var(--vds-card-pad-h); }
+  .trigger-choice-row { display: flex; flex-wrap: wrap; gap: var(--vds-main-gap); }
+  .trigger-fields-row { display: flex; flex-wrap: wrap; gap: var(--vds-form-gap); }
+  .trigger-fields-row .field { min-width: 180px; margin-bottom: 0; }
+  .trigger-after-previous { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-form-gap); }
+  .trigger-delay-value { width: 64px; }
+  .trigger-delay-unit { width: 110px; }
+  .schedule-list { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
+  .schedule-entry { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-dialog-gap); }
+  .schedule-entry__days { display: flex; gap: 4px; }
+  .schedule-entry__time { width: 120px; }
+  .action-list { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
+  .action-row { display: flex; align-items: flex-start; gap: var(--vds-button-gap); }
+  .action-row .field { flex: none; margin-bottom: 0; }
+  .action-row__type { width: 208px; }
+  .action-row__ref { width: 260px; }
+  .action-row__prompt { flex: 1 1 320px; min-width: 240px; }
+  .action-row__prompt textarea { width: 100%; resize: vertical; }
+  .auto-empty-steps { display: flex; flex-direction: column; align-items: center; gap: var(--vds-form-gap); padding: 40px 0; }
+
+  /* ---------- automations: run history ---------- */
   .hist-legend { display: flex; align-items: center; gap: 20px; margin: var(--vds-button-gap) 0 var(--vds-dialog-gap); color: var(--vds-text-secondary); font-size: 12px; }
   .hist-legend .lg { display: inline-flex; align-items: center; gap: var(--vds-button-gap); }
   .hist-grid { display: grid; min-width: max-content; }
@@ -613,6 +646,7 @@ function Icon({ name, size = 19 }){
     plug:(<><path d="M12 22v-5"/><path d="M9 8V3"/><path d="M15 8V3"/><path d="M7 8h10v4.5a5 5 0 0 1-5 5 5 5 0 0 1-5-5z"/></>),
     workflow:(<><rect x="3" y="4" width="6" height="6" rx="1.4"/><rect x="15" y="14" width="6" height="6" rx="1.4"/><path d="M9 7h5a3 3 0 0 1 3 3v4"/></>),
     clock:(<><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></>),
+    bolt:(<path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12z"/>),
     terminal:(<><rect x="3" y="4.5" width="18" height="15" rx="2"/><path d="m7.5 9.5 3 2.5-3 2.5"/><path d="M12.5 15h4"/></>),
     gift:(<><rect x="3.5" y="8.5" width="17" height="4" rx="1"/><path d="M12 8.5V21"/><path d="M5.5 12.5V20a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-7.5"/><path d="M12 8.5S10.8 4 8.2 4a2.2 2.2 0 0 0 0 4.5H12z"/><path d="M12 8.5S13.2 4 15.8 4a2.2 2.2 0 0 1 0 4.5H12z"/></>),
     logout:(<><path d="M9 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9.5"/></>),
@@ -627,6 +661,8 @@ function Icon({ name, size = 19 }){
     image:(<><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.7"/><path d="m21 15-5-5-9 9"/></>),
     check:(<path d="m5 13 4 4L19 7"/>),
     arrowLeft:(<><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></>),
+    arrowUp:(<><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></>),
+    arrowDown:(<><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></>),
     arrowRight:(<><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>),
     broadcast:(<><circle cx="12" cy="12" r="1.8"/><path d="M8 8a5.5 5.5 0 0 0 0 8M16 8a5.5 5.5 0 0 1 0 8"/><path d="M5.3 5.3a9 9 0 0 0 0 13.4M18.7 5.3a9 9 0 0 1 0 13.4"/></>),
     pencil:(<><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></>),
@@ -901,11 +937,11 @@ const HUB_PAGE = {
     noun:"data transformations", filter:"Filter data transformations...", hidden:"Show disabled data transformations",
     cols:["Name","Type","Source","Status","Last run","Actions"],
     emptyTitle:"No data transformations built", emptyBody:"A data transformation reads from a source, transforms the records, and writes the result into Viaduct.", cta:"Create your first data transformation" },
-  schedules:{ key:"schedules", title:"Schedules", icon:"clock",
-    sub:"See when your connectors, directives and data transformations run, based on your configured",
-    noun:"schedules", filter:"Filter schedules...", hidden:"Show paused schedules",
-    cols:["Name","Source","Type","Schedule","Next scheduled run","Actions"],
-    emptyTitle:"No schedules yet", emptyBody:"Schedules are defined by connectors and data transformations. Create a connector or data transformation with a schedule and it will appear here so you can see when it next runs.", cta:"Create a connector" },
+  automations:{ key:"automations", title:"Automations", icon:"bolt",
+    sub:"Run your connectors, directives and data transformations on a trigger you define.",
+    noun:"automations", filter:"Filter automations...", hidden:"Show paused automations",
+    cols:["Name","Steps","Trigger","Last run","Last run by","Created","Creator","Actions"],
+    emptyTitle:"No automations yet", emptyBody:"An automation runs a sequence of steps on a trigger. Build one here, or automate a connector or data transformation from its wizard and it will appear in this list.", cta:"New automation" },
   directives:{ key:"directives", title:"Directives", icon:"terminal",
     sub:"Rules that tell Viaduct how to clean, map, and route incoming records.",
     noun:"directives", filter:"Filter directives...", hidden:"Show archived directives",
@@ -930,7 +966,7 @@ const NAV = [
     { id:"datasources", label:"Data Tables", icon:"database", isNew:true },
     { id:"dataconnectors", label:"Connections", icon:"plug", isNew:true },
     { id:"datapipelines", label:"Data Transformations", icon:"workflow", isNew:true },
-    { id:"schedules", label:"Schedules", icon:"clock", isNew:true },
+    { id:"automations", label:"Automations", icon:"bolt", isNew:true },
     { id:"directives", label:"Directives", icon:"terminal" },
   ]},
   { type:"section", key:"admin", label:"Admin", items:[
@@ -1167,20 +1203,18 @@ function ConnectDataButton({ onPick, compact, connectors = [], label = "Connect 
   );
 }
 
-function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNow, onConfigure, onConnectData, onUpdateSchedule, lookupSource, records=[], tabsNode, allConnectors=[] }){
+function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNow, onConfigure, onConnectData, lookupSource, records=[], tabsNode, allConnectors=[] }){
   const isDS = cfg.key === "datasources";
   const isConn = cfg.key === "dataconnectors";
-  const isSched = cfg.key === "schedules";
+  const isAuto = cfg.key === "automations";
   const isPipe = cfg.key === "datapipelines";
-  const tmpl = isConn ? "1.3fr 1fr 1.4fr 1.1fr 1.1fr 0.9fr" : (isSched ? "1.3fr 1.1fr 0.8fr 1.2fr 1.3fr 1fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`));
+  const tmpl = isConn ? "1.3fr 1fr 1.4fr 1.1fr 1.1fr 0.9fr" : (isAuto ? "1.6fr 0.6fr 1.4fr 1fr 1fr 1fr 1fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`));
   const fire = onNew || (() => {});
   const open = onOpen || (() => {});
   const upd = onUpdate || (() => {});
   const del = onDelete || (() => {});
   const openSrc = onOpenSource || (() => {});
   const runNow = onRunNow || (() => {});
-  const [editingSchedId, setEditingSchedId] = useState(null);
-  const [schedDraft, setSchedDraft] = useState(null);
   const cfgSrc = onConfigure || (() => {});
   const getSrc = lookupSource || (() => null);
   const [query, setQuery] = useState("");
@@ -1227,46 +1261,20 @@ function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNo
         </div>
         {hasRows && !noMatches && (
           <div className="tbody">
-            {filtered.map((r) => isSched ? (
+            {filtered.map((r) => isAuto ? (
               <div className="trow" style={{gridTemplateColumns:tmpl}} key={r.id}>
-                <div className="td td-name">
-                  {r.dataSourceId
-                    ? <button className="proto-name-link" onClick={()=>onOpenSource && onOpenSource(r.dataSourceId)}>{r.name}</button>
-                    : <button className="proto-name-link" onClick={()=>open(r.id)}>{r.name}</button>}
-                </div>
-                <div className="td">{r.source || "—"}</div>
-                <div className="td">{r.type}</div>
-                {editingSchedId === r.id ? (
-                  <div className="td" style={{gridColumn:"4 / 6"}}>
-                    <div className="sched-inline-edit">
-                      <select className="vds-select" value={schedDraft.frequency} onChange={(e)=>setSchedDraft(d=>({...d, frequency:e.target.value}))}>
-                        <option>Ad-hoc</option><option>Hourly</option><option>Daily</option><option>Weekly</option>
-                      </select>
-                      {schedDraft.frequency === "Weekly" && (
-                        <select className="vds-select" value={schedDraft.dayOfWeek || "Monday"} onChange={(e)=>setSchedDraft(d=>({...d, dayOfWeek:e.target.value}))}>
-                          {WEEKDAYS.map(d => <option key={d}>{d}</option>)}
-                        </select>
-                      )}
-                      {schedDraft.frequency !== "Hourly" && (
-                        <input className="vds-input" type="time" style={{width:110}} value={schedDraft.timeOfDay || "02:00"} onChange={(e)=>setSchedDraft(d=>({...d, timeOfDay:e.target.value}))} />
-                      )}
-                      <button className="vds-icon-btn vds-icon-btn--sm" title="Save" aria-label="Save"
-                        onClick={()=>{ onUpdateSchedule && onUpdateSchedule(r.id, schedDraft); setEditingSchedId(null); }}><Icon name="check" size={16} /></button>
-                      <button className="vds-icon-btn vds-icon-btn--sm" title="Cancel" aria-label="Cancel" onClick={()=>setEditingSchedId(null)}><Icon name="x" size={16} /></button>
-                    </div>
-                  </div>
-                ) : (<>
-                  <div className="td">{r.scheduleText}</div>
-                  <div className="td">{r.nextRun}</div>
-                </>)}
+                <div className="td td-name"><button className="proto-name-link" onClick={()=>open(r.id)}>{r.name || "Unnamed automation"}</button></div>
+                <div className="td" style={{textAlign:"center"}}>{(r.steps || []).length}</div>
+                <div className="td">{automationTriggerText(r)}</div>
+                <div className="td">{fmtAutoDate(r.lastRunAt)}</div>
+                <div className="td">{r.lastRunBy || "—"}</div>
+                <div className="td">{fmtAutoDate(r.createdAt)}</div>
+                <div className="td">{r.createdBy || "—"}</div>
                 <div className="td right">
                   <div className="row-actions">
                     <button className="vds-icon-btn vds-icon-btn--sm" title="Run now" aria-label="Run now" onClick={()=>runNow(r.id)}><Icon name="play" size={16} /></button>
-                    {r.dataSourceId
-                      ? <button className="vds-icon-btn vds-icon-btn--sm" title="Edit schedule" aria-label="Edit schedule"
-                          onClick={()=>{ setSchedDraft({ frequency:r.frequency||"Daily", timeOfDay:r.timeOfDay||"02:00", dayOfWeek:r.dayOfWeek||"Monday" }); setEditingSchedId(r.id); }}>
-                          <Icon name="pencil" size={17} /></button>
-                      : <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>open(r.id)}><Icon name="pencil" size={17} /></button>}
+                    <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>open(r.id)}><Icon name="pencil" size={17} /></button>
+                    <DeleteButton onDelete={()=>del(r.id)} />
                   </div>
                 </div>
               </div>
@@ -1354,7 +1362,7 @@ const ORIGINS = [
   { id:"media", icon:"fileText", title:"Media", desc:"Upload images, video, or documents (JPG, PNG, MP4, PDF) stored in S3 and displayed in the app." },
 ];
 const STEPS = [{n:1,label:"Select origin"},{n:2,label:"Upload"},{n:3,label:"Map & import"}];
-const CONNECTOR_STEPS = [{n:1,label:"Select connection"},{n:2,label:"Set up connection & data table"},{n:3,label:"Schedule import"}];
+const CONNECTOR_STEPS = [{n:1,label:"Select connection"},{n:2,label:"Set up connection & data table"},{n:3,label:"Automate"}];
 const PIPELINE_STEPS = [{n:1,label:"Select type"},{n:2,label:"Configure"}];
 const DIRECTIVES = [
   { id:"dir_summ", name:"/summarize-maintenance-notes", desc:"Read free-text technician notes and write a concise summary for each record.", outCol:"summary", outType:"string", pool:["Routine service completed","Part replaced under warranty","Escalated to supervisor","No action required","Follow-up inspection scheduled"] },
@@ -1363,10 +1371,10 @@ const DIRECTIVES = [
   { id:"dir_rec", name:"/draft-repair-recommendations", desc:"Generate a recommended next action for each open issue from its history.", outCol:"recommendation", outType:"string", pool:["Schedule inspection","Replace within 30 days","Monitor and re-check","No action needed","Order replacement part"] },
   { id:"dir_anom", name:"/flag-sensor-anomalies", desc:"Review recent sensor readings and label rows that look anomalous, with a reason.", outCol:"anomaly_flag", outType:"string", pool:["normal","normal","normal","anomalous"] },
 ];
-const PIPELINE_STEPS_SCHED = [{n:1,label:"Select type"},{n:2,label:"Configure"},{n:3,label:"Schedule"}];
+const PIPELINE_STEPS_SCHED = [{n:1,label:"Select type"},{n:2,label:"Configure"},{n:3,label:"Automate"}];
 // Transform pipelines writing to a NEW data get an extra step to configure the output
 // schema (column names/types/primary key) before scheduling. Other modes/types stay at 3 steps.
-const PIPELINE_STEPS_XF_NEW = [{n:1,label:"Select type"},{n:2,label:"Configure"},{n:3,label:"Configure output"},{n:4,label:"Schedule"}];
+const PIPELINE_STEPS_XF_NEW = [{n:1,label:"Select type"},{n:2,label:"Configure"},{n:3,label:"Configure output"},{n:4,label:"Automate"}];
 const PIPELINE_TYPES = [
   { id:"transform", label:"Basic transformation", icon:"shuffle", scopeTag:"P0",
     desc:"Reshape records through SQL transformations — join, filter, aggregate, and clean data from one or more sources, and write the result to a data table." },
@@ -1797,6 +1805,138 @@ function uniqueName(base, existing){
   while (taken.has(norm(base + " " + i))) i++;
   return base + " " + i;
 }
+/* ---------------- Automations ----------------
+   An automation is an ordered list of steps. Only the first step picks a
+   trigger; every later step runs after the one before it, with an optional
+   delay. Each step runs one or more actions. */
+const CURRENT_USER = "Jeff Kroll";
+const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const TABLE_EVENTS = [
+  { value:"new_row", label:"New row" },
+  { value:"row_updated", label:"Row updated" },
+  { value:"row_deleted", label:"Row deleted" },
+];
+const DAYS_OF_WEEK = [
+  { value:"sun", label:"Su" }, { value:"mon", label:"Mo" }, { value:"tue", label:"Tu" },
+  { value:"wed", label:"We" }, { value:"thu", label:"Th" }, { value:"fri", label:"Fr" },
+  { value:"sat", label:"Sa" },
+];
+const DELAY_UNITS = ["minutes","hours","days"];
+const TRIGGER_TYPE_LABELS = {
+  manual:"Manually run", schedule:"Schedule", event:"Table event", after_previous:"After previous step",
+};
+const ACTION_TYPES = [
+  { value:"prompt", label:"Run prompt" },
+  { value:"pipeline", label:"Run data transformation" },
+  { value:"import_table", label:"Sync data table" },
+  { value:"notification", label:"Notify people" },
+];
+const REF_ACTION_TYPES = ["pipeline","import_table"];
+const WEEKDAY_DEFAULT = { sun:false, mon:true, tue:true, wed:true, thu:true, fri:true, sat:false };
+const EVERY_DAY = { sun:true, mon:true, tue:true, wed:true, thu:true, fri:true, sat:true };
+
+const autoId = (p) => p + "_" + Math.random().toString(36).slice(2,10);
+function newScheduleEntry(days, time){
+  return { id:autoId("sch"), days:{ ...(days || WEEKDAY_DEFAULT) }, time:time || "09:00" };
+}
+function newAutomationAction(type){
+  return { id:autoId("act"), type:type || "prompt", refName:"", prompt:"" };
+}
+function newAutomationStep(){
+  return {
+    id:autoId("step"), name:"",
+    trigger:{ type:"schedule", table:"", event:"new_row", schedules:[newScheduleEntry()],
+              delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
+    actions:[newAutomationAction("prompt")],
+  };
+}
+function newAutomation(name){
+  return { id:autoId("auto"), name:name || "", createdAt:todayISO(), createdBy:CURRENT_USER,
+           lastRunAt:"", lastRunBy:"", steps:[newAutomationStep()] };
+}
+function todayISO(){
+  const d = new Date();
+  return d.getUTCFullYear() + "-" + String(d.getUTCMonth()+1).padStart(2,"0") + "-" + String(d.getUTCDate()).padStart(2,"0");
+}
+function fmtAutoDate(iso){
+  if (!iso) return "—";
+  const [y,m,d] = iso.split("-");
+  return MONTHS_SHORT[parseInt(m,10)-1] + " " + parseInt(d,10) + ", " + y;
+}
+const dayLabels = (days) => DAYS_OF_WEEK.filter(d => days && days[d.value]).map(d => d.label);
+/* One-line summary of a step's trigger — used in the list's Trigger column and
+   wherever a thing's automation is described in place of the old schedule text. */
+function triggerSummary(trigger){
+  if (!trigger) return "—";
+  if (trigger.type === "manual") return "Manually run";
+  if (trigger.type === "event") return "On " + (TABLE_EVENTS.find(e=>e.value===trigger.event)||{label:"new row"}).label.toLowerCase() + (trigger.table ? " in " + trigger.table : "");
+  if (trigger.type === "after_previous") return trigger.delayEnabled
+    ? "After previous step + " + trigger.delayValue + " " + trigger.delayUnit
+    : "After previous step";
+  const list = trigger.schedules || [];
+  if (!list.length) return "Schedule";
+  const first = list[0];
+  const days = dayLabels(first.days);
+  const dayText = days.length === 7 ? "Daily" : days.length ? days.join(" ") : "No days";
+  const times = list.map(s => fmtTime(s.time)).join(", ");
+  return dayText + " · " + times + " UTC" + (list.length > 1 ? "" : "");
+}
+const automationTriggerText = (a) => a && a.steps && a.steps[0] ? triggerSummary(a.steps[0].trigger) : "—";
+/* The Automate step in a wizard produces this trigger; it becomes the first
+   step of the automation created for that connector or transformation. */
+/* The transformation wizard keeps its own cadence controls; this maps whatever it
+   captured onto the automation trigger model so the Automate step still creates one. */
+function cadenceToTrigger(mode, sc){
+  const base = newWizardTrigger();
+  if (mode === "input") return { ...base, type:"event", event:"new_row" };
+  if (!sc || sc.frequency === "Manually" || sc.frequency === "Ad-hoc") return { ...base, type:"manual" };
+  const days = sc.frequency === "Weekly"
+    ? DAYS_OF_WEEK.reduce((acc,d,i) => ({ ...acc, [d.value]: WEEKDAYS[(i+6)%7] === (sc.dayOfWeek || "Monday") }), {})
+    : EVERY_DAY;
+  return { ...base, type:"schedule", schedules:[newScheduleEntry(days, sc.timeOfDay || "02:00")] };
+}
+function newWizardTrigger(){
+  return { type:"schedule", table:"", event:"new_row", schedules:[newScheduleEntry()],
+           delayEnabled:false, delayValue:"5", delayUnit:"minutes" };
+}
+/* Keeps the connector's own sync fields in step with the automation trigger, so
+   the summaries shown on a connector's detail page still read correctly. */
+function triggerToSyncFields(trigger){
+  if (!trigger || trigger.type === "manual") return { frequency:"Manually" };
+  if (trigger.type === "event") return { frequency:"On Input Update" };
+  const list = trigger.schedules || [];
+  const first = list[0] || newScheduleEntry();
+  const days = DAYS_OF_WEEK.filter(d => first.days && first.days[d.value]);
+  if (days.length === 7 || days.length === 0) return { frequency:"Daily", timeOfDay:first.time };
+  if (days.length === 1) return { frequency:"Weekly", dayOfWeek:WEEKDAYS[(DAYS_OF_WEEK.findIndex(d=>d.value===days[0].value)+6)%7], timeOfDay:first.time };
+  return { frequency:"Daily", timeOfDay:first.time };
+}
+function automationFromConnector(inst, trigger, dataSourceIds, nameLookup){
+  const ids = dataSourceIds || inst.dataSourceIds || [];
+  const names = ids.map(id => (nameLookup && nameLookup(id)) || "").filter(Boolean);
+  return {
+    id:autoId("auto"),
+    name:"Sync " + (names.length === 1 ? names[0] : inst.name),
+    connectorId:inst.id,
+    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"",
+    steps:[{
+      id:autoId("step"), name:"Sync from " + inst.name,
+      trigger:trigger || newWizardTrigger(),
+      actions:(names.length ? names : [inst.name]).map(n => ({ ...newAutomationAction("import_table"), refName:n })),
+    }],
+  };
+}
+function automationFromPipeline(pipe, trigger){
+  return {
+    id:autoId("auto"), name:"Run " + pipe.name, pipelineId:pipe.id,
+    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"",
+    steps:[{
+      id:autoId("step"), name:"Run " + pipe.name,
+      trigger:trigger || newWizardTrigger(),
+      actions:[{ ...newAutomationAction("pipeline"), refName:pipe.name }],
+    }],
+  };
+}
 function syncSummary(inst){
   if (inst.frequency === "Ad-hoc") return "Ad-hoc — no schedule";
   if (inst.frequency === "On Input Update") return "Event-driven · on input update";
@@ -1838,23 +1978,6 @@ function computeNextRun(inst){
     }
   }
   return d.toLocaleString("en-US", { timeZone:"UTC", month:"short", day:"numeric", hour:"numeric", minute:"2-digit" }) + " UTC";
-}
-function scheduleFromConnector(inst, dataSourceIds, nameLookup){
-  const ids = dataSourceIds || inst.dataSourceIds || [];
-  return ids.map(dsId => ({
-    id: "sch_" + Math.random().toString(36).slice(2,10),
-    connectorId: inst.id, dataSourceId: dsId,
-    name: (nameLookup && nameLookup(dsId)) || inst.name,
-    source: inst.name,
-    type: "Connector",
-    frequency: inst.frequency, timeOfDay: inst.timeOfDay, dayOfWeek: inst.dayOfWeek,
-    scheduleText: syncSummary(inst), nextRun: computeNextRun(inst),
-  }));
-}
-function scheduleFromPipeline(pipe){
-  const sc = pipe.schedule || { frequency:"Daily", timeOfDay:"02:00", dayOfWeek:"Monday" };
-  return { id:"sch_" + Math.random().toString(36).slice(2,10), pipelineId:pipe.id, name:pipe.name, source:pipe.name, type:pipe.typeLabel || "Data transformation",
-    frequency:sc.frequency, timeOfDay:sc.timeOfDay, dayOfWeek:sc.dayOfWeek, intervalMinutes:sc.intervalMinutes, scheduleText:syncSummary(sc), nextRun:computeNextRun(sc) };
 }
 // ---- simulated sync: generate plausible rows for a connector data ----
 const SIM_POOLS = {
@@ -3082,7 +3205,7 @@ function EmailViewerModal({ row, attachments = [], onOpenAttachment, onClose }){
 }
 
 
-function DataSourceDetails({ source, allSources = [], connectors = [], schedules = [], onBack, onUpdate, onConnectData }){
+function DataSourceDetails({ source, allSources = [], connectors = [], automations = [], onBack, onUpdate, onConnectData }){
   const [tab, setTab] = useState("data");
   const p = source.parsed;
   const rows = p ? p.rows : [];
@@ -3256,7 +3379,7 @@ function DataSourceDetails({ source, allSources = [], connectors = [], schedules
                   </div>
                   {insts.map(inst => {
                     const typeInfo = CONNECTORS.find(c => c.id === inst.connectorId);
-                    const sched = schedules.find(s => s.dataSourceId === source.id && s.connectorId === inst.id);
+                    const sched = automations.find(a => a.connectorId === inst.id);
                     return (
                       <div className="conns-row" key={inst.id}>
                         <span className="conns-name"><Icon name={(typeInfo && typeInfo.icon) || "link"} size={16} />{inst.name}</span>
@@ -3612,35 +3735,9 @@ function ScheduleStep({ conn, sched, setSched, editing, onCancel, onBack, onCrea
     <div className="vds-content">
       <PageHead title={(editing ? "Edit " : "Connect ") + conn.name} sub={"Origin: Connectors · " + conn.name} onCancel={onCancel} />
       <Stepper current={3} steps={CONNECTOR_STEPS} />
-      <div className="vds-h4 proto-section-title">Schedule</div>
-      <div className="vds-b2 proto-muted proto-section-note">Connectors keep this data current by syncing automatically. Choose how often {conn.name} should sync.</div>
-
-      <div className="form-grid">
-        <div className="field">
-          <label className="vds-label">Sync frequency</label>
-          <select className="vds-select" value={sched.frequency} onChange={(e)=>set({frequency:e.target.value})}>
-            <option>Ad-hoc</option><option>Hourly</option><option>Daily</option><option>Weekly</option>
-          </select>
-        </div>
-      </div>
-      {sched.frequency === "Weekly" && (
-        <div className="form-grid">
-          <div className="field">
-            <label className="vds-label">Day of week</label>
-            <select className="vds-select" value={sched.dayOfWeek} onChange={(e)=>set({dayOfWeek:e.target.value})}>
-              {WEEKDAYS.map(d => <option key={d}>{d}</option>)}
-            </select>
-          </div>
-        </div>
-      )}
-      {sched.frequency !== "Hourly" && sched.frequency !== "Ad-hoc" && (
-        <div className="form-grid">
-          <div className="field">
-            <label className="vds-label">Time of day (UTC)</label>
-            <input className="vds-input" type="time" value={sched.timeOfDay} onChange={(e)=>set({timeOfDay:e.target.value})} />
-          </div>
-        </div>
-      )}
+      <div className="vds-h4 proto-section-title">Automate</div>
+      <div className="vds-b2 proto-muted proto-section-note">Choose the trigger for the automation this creates. Viaduct keeps the data tables current by running it.</div>
+      <AutomateTriggerFields trigger={sched} setTrigger={setSched} allowEvent={false} />
 
       <div className="wiz-footer">
         <button className="vds-btn" onClick={onBack}><Icon name="arrowLeft" size={17} />Back</button>
@@ -3650,7 +3747,7 @@ function ScheduleStep({ conn, sched, setSched, editing, onCancel, onBack, onCrea
   );
 }
 /* ---------------- Samsara connector: 3 distinct pages (Authenticate / Choose Data / Schedule) ---------------- */
-const CONNECTOR_WIZARD_STEPS = [{n:1,label:"Select connection"},{n:2,label:"Set up connection"},{n:3,label:"Set up data table"},{n:4,label:"Schedule import"}];
+const CONNECTOR_WIZARD_STEPS = [{n:1,label:"Select connection"},{n:2,label:"Set up connection"},{n:3,label:"Set up data table"},{n:4,label:"Automate"}];
 
 function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[], existingConnectors=[], onOpenSource, onCancel, onBackToConnectors, onCreate, onSave, presetTargetId }){
   const { useState } = React;
@@ -3671,9 +3768,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
   const [configs, setConfigs] = useState({}); // source name -> "Customize" patch (column names + filters)
   const [configuring, setConfiguring] = useState(null);
   const [configuringOpenCol, setConfiguringOpenCol] = useState(null); // auto-expand this column's filter in Customize
-  const [sched, setSched] = useState(editing
-    ? { frequency: editInstance.frequency, timeOfDay: editInstance.timeOfDay, dayOfWeek: editInstance.dayOfWeek || "Monday" }
-    : { frequency: "Hourly", timeOfDay: "02:00", dayOfWeek: "Monday" });
+  const [sched, setSched] = useState(() => (editing && editInstance.automationTrigger) || newWizardTrigger());
   const [confirmRemove, setConfirmRemove] = useState(null);
 
   const nameTaken = (n) => (existingConnectors || []).some(c => c.name.trim().toLowerCase() === n.trim().toLowerCase() && (!editing || c.id !== editInstance.id));
@@ -3885,7 +3980,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
     });
     const instance = {
       id: instId, name: name || conn.name, connectorId: conn.id, connectorName: conn.name, group: conn.group,
-      creds: { apiKey }, frequency: sched.frequency, timeOfDay: sched.timeOfDay, dayOfWeek: sched.dayOfWeek,
+      creds: { apiKey }, automationTrigger: sched, ...triggerToSyncFields(sched),
       startDates: Object.fromEntries(pickedList.map(s => [s.name, s.firstDate])),
       status: "Ready", lastChecked: "Just now",
       createdAt: editing ? editInstance.createdAt : day, updatedAt: day,
@@ -3900,35 +3995,10 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
     <div className="vds-content">
       <PageHead title={"Set up " + conn.name + " connection"} sub={"Choose how often " + conn.name + " should sync."} onCancel={onCancel} />
       <Stepper current={4} steps={CONNECTOR_WIZARD_STEPS} />
-      <div className="vds-h4 proto-section-title">Schedule</div>
-      <div className="vds-b2 proto-muted proto-section-note">Connectors keep this data current by syncing automatically. Choose how often {conn.name} should sync.</div>
-      <div className="form-grid">
-        <div className="field">
-          <label className="vds-label">Sync frequency</label>
-          <select className="vds-select" value={sched.frequency} onChange={(e)=>setSched(s=>({ ...s, frequency:e.target.value }))}>
-            <option>Ad-hoc</option><option>Hourly</option><option>Daily</option><option>Weekly</option>
-          </select>
-          <div className="vds-helper-text">{sched.frequency === "Ad-hoc" ? "No recurring schedule — run this connection on demand with Run now, any time after it's created." : ""}</div>
-        </div>
-      </div>
-      {sched.frequency === "Weekly" && (
-        <div className="form-grid">
-          <div className="field">
-            <label className="vds-label">Day of week</label>
-            <select className="vds-select" value={sched.dayOfWeek} onChange={(e)=>setSched(s=>({ ...s, dayOfWeek:e.target.value }))}>
-              {WEEKDAYS.map(d => <option key={d}>{d}</option>)}
-            </select>
-          </div>
-        </div>
-      )}
-      {sched.frequency !== "Hourly" && sched.frequency !== "Ad-hoc" && (
-        <div className="form-grid">
-          <div className="field">
-            <label className="vds-label">Time of day (UTC)</label>
-            <input className="vds-input" type="time" value={sched.timeOfDay} onChange={(e)=>setSched(s=>({ ...s, timeOfDay:e.target.value }))} />
-          </div>
-        </div>
-      )}
+      <div className="vds-h4 proto-section-title">Automate</div>
+      <div className="vds-b2 proto-muted proto-section-note">Choose the trigger for the automation this creates. Viaduct keeps the data tables current by running it.</div>
+      <AutomateTriggerFields trigger={sched} setTrigger={setSched} allowEvent={false} />
+
       <div className="wiz-footer">
         <button className="vds-btn" onClick={()=>setPage("data")}><Icon name="arrowLeft" size={17} />Back</button>
         <button className="vds-btn" onClick={()=>finish(false)}>Finish</button>
@@ -3965,9 +4035,7 @@ function SnowflakeConnectorFlow({ conn, tmpl, editing, editInstance, existingSou
     return out;
   });
   const [configuring, setConfiguring] = useState(null);
-  const [sched, setSched] = useState(editing
-    ? { frequency: editInstance.frequency || "Daily", timeOfDay: editInstance.timeOfDay || "02:00", dayOfWeek: editInstance.dayOfWeek || "Monday" }
-    : { frequency: "Daily", timeOfDay: "02:00", dayOfWeek: "Monday" });
+  const [sched, setSched] = useState(() => (editing && editInstance.automationTrigger) || newWizardTrigger());
   const [confirmRemove, setConfirmRemove] = useState(null);
   const [tableSearch, setTableSearch] = useState("");
 
@@ -4146,7 +4214,7 @@ function SnowflakeConnectorFlow({ conn, tmpl, editing, editInstance, existingSou
     });
     const instance = {
       id: instId, name: name || conn.name, connectorId: conn.id, connectorName: conn.name, group: conn.group,
-      creds, frequency: sched.frequency, timeOfDay: sched.timeOfDay, dayOfWeek: sched.dayOfWeek,
+      creds, automationTrigger: sched, ...triggerToSyncFields(sched),
       startDates: {}, status: "Ready", lastChecked: "Just now",
       createdAt: editing ? editInstance.createdAt : day, updatedAt: day,
       lastRun: runNow ? "Just now" : (editing ? editInstance.lastRun : "Never"),
@@ -4160,35 +4228,10 @@ function SnowflakeConnectorFlow({ conn, tmpl, editing, editInstance, existingSou
     <div className="vds-content">
       <PageHead title={"Set up " + conn.name + " connection"} sub="Choose how often this connection syncs." onCancel={onCancel} />
       <Stepper current={4} steps={CONNECTOR_WIZARD_STEPS} />
-      <div className="vds-h4 proto-section-title">Schedule</div>
-      <div className="vds-b2 proto-muted proto-section-note">Connectors keep this data current by syncing automatically. Choose how often {conn.name} should sync.</div>
-      <div className="form-grid">
-        <div className="field">
-          <label className="vds-label">Sync frequency</label>
-          <select className="vds-select" value={sched.frequency} onChange={(e)=>setSched(s=>({ ...s, frequency:e.target.value }))}>
-            <option>Ad-hoc</option><option>Hourly</option><option>Daily</option><option>Weekly</option>
-          </select>
-          <div className="vds-helper-text">{sched.frequency === "Ad-hoc" ? "No recurring schedule — run this connection on demand with Run now, any time after it's created." : ""}</div>
-        </div>
-      </div>
-      {sched.frequency === "Weekly" && (
-        <div className="form-grid">
-          <div className="field">
-            <label className="vds-label">Day of week</label>
-            <select className="vds-select" value={sched.dayOfWeek} onChange={(e)=>setSched(s=>({ ...s, dayOfWeek:e.target.value }))}>
-              {WEEKDAYS.map(d => <option key={d}>{d}</option>)}
-            </select>
-          </div>
-        </div>
-      )}
-      {sched.frequency !== "Hourly" && sched.frequency !== "Ad-hoc" && (
-        <div className="form-grid">
-          <div className="field">
-            <label className="vds-label">Time of day (UTC)</label>
-            <input className="vds-input" type="time" value={sched.timeOfDay} onChange={(e)=>setSched(s=>({ ...s, timeOfDay:e.target.value }))} />
-          </div>
-        </div>
-      )}
+      <div className="vds-h4 proto-section-title">Automate</div>
+      <div className="vds-b2 proto-muted proto-section-note">Choose the trigger for the automation this creates. Viaduct keeps the data tables current by running it.</div>
+      <AutomateTriggerFields trigger={sched} setTrigger={setSched} allowEvent={false} />
+
       <div className="wiz-footer">
         <button className="vds-btn" onClick={()=>setPage("data")}><Icon name="arrowLeft" size={17} />Back</button>
         <button className="vds-btn" onClick={()=>finish(false)}>Finish</button>
@@ -4289,7 +4332,7 @@ function PushScheduleStep({ conn, editing, note, onCancel, onBack, onCreate }){
     <div className="vds-content">
       <PageHead title={editing ? ("Edit " + conn.name) : "New data table"} sub={"Origin: Connectors · " + conn.name} onCancel={onCancel} />
       <Stepper current={3} steps={CONNECTOR_STEPS} />
-      <div className="vds-h4 proto-section-title">Schedule</div>
+      <div className="vds-h4 proto-section-title">Automate</div>
       <div className="vds-alert vds-alert--info proto-note">{note || "Files are processed as soon as they arrive on Viaduct's servers — no schedule needed."}</div>
       <div className="wiz-footer">
         <button className="vds-btn" onClick={onBack}><Icon name="arrowLeft" size={17} />Back</button>
@@ -4591,13 +4634,8 @@ function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[]
     return editing ? { ...base, ...(editInstance.creds || {}) } : base;
   });
   const setField = (k, v) => setCreds(c => ({ ...c, [k]: v }));
-  // trigger.mode is a single merged choice: "new_file" | "hourly" | "daily" | "weekly"
-  const [trigger, setTrigger] = useState(() => {
-    if (!editing) return { mode: "daily", timeOfDay: "02:00", dayOfWeek: "Monday" };
-    const freq = editInstance.frequency;
-    const mode = freq === "Ad-hoc" ? "adhoc" : freq === "On New File" ? "new_file" : freq === "Hourly" ? "hourly" : freq === "Weekly" ? "weekly" : "daily";
-    return { mode, timeOfDay: editInstance.timeOfDay || "02:00", dayOfWeek: editInstance.dayOfWeek || "Monday" };
-  });
+  const [trigger, setTrigger] = useState(() =>
+    (editing && editInstance.automationTrigger) || newWizardTrigger());
 
   // sourceMappings are per-prefix now (one Data can span many files sharing that prefix).
   const existingMappings = editing ? (editInstance.sourceMappings || []) : [];
@@ -4683,9 +4721,8 @@ function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[]
       id: instId, name: name || conn.name,
       connectorId: conn.id, connectorName: conn.name, group: conn.group,
       creds, sourceMappings, dataSourceIds,
-      frequency: trigger.mode === "adhoc" ? "Ad-hoc" : trigger.mode === "new_file" ? "On New File" : trigger.mode === "hourly" ? "Hourly" : trigger.mode === "weekly" ? "Weekly" : "Daily",
-      timeOfDay: trigger.timeOfDay, dayOfWeek: trigger.dayOfWeek,
-      noSchedule: false, status:"Ready", lastChecked:"Just now",
+      automationTrigger: trigger, ...triggerToSyncFields(trigger),
+      noSchedule: trigger.type === "manual", status:"Ready", lastChecked:"Just now",
       createdAt: editing ? editInstance.createdAt : day, updatedAt: day,
       lastRun: runNow ? "Just now" : (editing ? editInstance.lastRun : "Never"),
     };
@@ -4721,52 +4758,86 @@ function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[]
     )}
   </>);
 }
+/* The Automate step's trigger picker — the same model the automation editor
+   uses, so whatever a wizard captures here becomes the automation's first step. */
+function AutomateTriggerFields({ trigger, setTrigger, tables = [], allowEvent = true, lockedNote = null }){
+  const set = (patch) => setTrigger(t => ({ ...t, ...patch }));
+  const type = trigger.type || "schedule";
+  if (lockedNote) return <div className="vds-alert vds-alert--info proto-note">{lockedNote}</div>;
+  return (
+    <div>
+      <div className="trigger-choice-row" style={{margin:"12px 0"}}>
+        {[["manual","Manually run"],["schedule","Schedule"]].concat(allowEvent ? [["event","Table event"]] : []).map(([v,label]) => (
+          <label className="vds-choice" key={v}>
+            <input type="radio" className="vds-radio" name="wiz-trigger" value={v}
+              checked={type === v} onChange={()=>set({ type:v })} /> {label}
+          </label>
+        ))}
+      </div>
+      {type === "manual" && (
+        <div className="vds-helper-text">No recurring run — trigger it on demand with Run now, any time after it's created.</div>
+      )}
+      {type === "event" && (
+        <div className="trigger-fields-row">
+          <div className="field">
+            <label className="vds-label">Data table</label>
+            <select className="vds-select" value={trigger.table || ""} onChange={(e)=>set({ table:e.target.value })}>
+              <option value="">Select data table…</option>
+              {tables.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label className="vds-label">Event</label>
+            <select className="vds-select" value={trigger.event} onChange={(e)=>set({ event:e.target.value })}>
+              {TABLE_EVENTS.map(ev => <option key={ev.value} value={ev.value}>{ev.label}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
+      {type === "schedule" && (
+        <div>
+          <div className="schedule-list">
+            {(trigger.schedules || []).map(sch => (
+              <div className="schedule-entry" key={sch.id}>
+                <div className="schedule-entry__days">
+                  {DAYS_OF_WEEK.map(d => (
+                    <label className="vds-choice" key={d.value}>
+                      <input type="checkbox" className="vds-checkbox" checked={!!sch.days[d.value]}
+                        onChange={(e)=>set({ schedules: trigger.schedules.map(x => x.id===sch.id
+                          ? { ...x, days:{ ...x.days, [d.value]:e.target.checked } } : x) })} /> {d.label}
+                    </label>
+                  ))}
+                </div>
+                <div className="field schedule-entry__time">
+                  <input className="vds-input" type="time" value={sch.time} aria-label="Time of day"
+                    onChange={(e)=>set({ schedules: trigger.schedules.map(x => x.id===sch.id ? { ...x, time:e.target.value } : x) })} />
+                </div>
+                <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule"
+                  disabled={(trigger.schedules || []).length <= 1}
+                  title={(trigger.schedules || []).length <= 1 ? "At least one schedule is required" : "Remove schedule"}
+                  onClick={()=>set({ schedules: trigger.schedules.filter(x => x.id !== sch.id) })}><Icon name="x" size={16} /></button>
+              </div>
+            ))}
+          </div>
+          <button className="vds-btn vds-btn--sm vds-btn--start-icon" style={{marginTop:8}}
+            onClick={()=>set({ schedules:[...(trigger.schedules||[]), newScheduleEntry()] })}>
+            <Icon name="plus" size={16} />Add schedule</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function S3TriggerStep({ conn, trigger, setTrigger, editing, onCancel, onBack, onFinish }){
   const set = (patch) => setTrigger(t => ({ ...t, ...patch }));
   return (
     <div className="vds-content">
       <PageHead title={editing ? ("Edit " + conn.name) : ("Set up " + conn.name + " connection")} sub="Choose how this connection syncs." onCancel={onCancel} />
       <Stepper current={4} steps={CONNECTOR_WIZARD_STEPS} />
-      <div className="vds-h4 proto-section-title">Schedule import</div>
+      <div className="vds-h4 proto-section-title">Automate</div>
       <div className="vds-b2 proto-muted proto-section-note">Configured once for the whole connection, not per data table.</div>
-      <div className="vds-alert vds-alert--info proto-note">All data on this connection share the same sync schedule. If you need a different cadence for a different dataset, create a separate connection.</div>
-
-      <div className="form-grid">
-        <div className="field" style={{marginTop:16}}>
-          <label className="vds-label">Trigger</label>
-          <select className="vds-select" value={trigger.mode} onChange={(e)=>set({mode:e.target.value})}>
-            <option value="adhoc">Ad-hoc</option>
-            <option value="new_file">On new file</option>
-            <option value="hourly">Hourly</option>
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-          </select>
-          <div className="vds-helper-text">{trigger.mode === "adhoc"
-            ? "No recurring schedule — run this connection on demand with Run now, any time after it's created."
-            : trigger.mode === "new_file"
-            ? "Ingest whenever a file matching any declared prefix appears in the bucket."
-            : "Ingest on a recurring interval, with a manual Run now available any time."}</div>
-        </div>
-      </div>
-
-      {trigger.mode === "weekly" && (
-        <div className="form-grid">
-          <div className="field">
-            <label className="vds-label">Day of week</label>
-            <select className="vds-select" value={trigger.dayOfWeek} onChange={(e)=>set({dayOfWeek:e.target.value})}>
-              {WEEKDAYS.map(d => <option key={d}>{d}</option>)}
-            </select>
-          </div>
-        </div>
-      )}
-      {(trigger.mode === "daily" || trigger.mode === "weekly") && (
-        <div className="form-grid">
-          <div className="field">
-            <label className="vds-label">Time of day (UTC)</label>
-            <input className="vds-input" type="time" value={trigger.timeOfDay} onChange={(e)=>set({timeOfDay:e.target.value})} />
-          </div>
-        </div>
-      )}
+      <div className="vds-alert vds-alert--info proto-note">Every data table on this connection shares this automation. If you need a different trigger for a different dataset, create a separate connection.</div>
+      <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger} tables={(conn.dataSourceNames)||[]} allowEvent={false} />
 
       <div className="wiz-footer">
         <button className="vds-btn" onClick={onBack}><Icon name="arrowLeft" size={17} />Back</button>
@@ -5100,7 +5171,7 @@ CONNECTOR_TEMPLATES.emailparse = {
 const EMAIL_STEPS = [
   { n:1, label:"Name connection" },
   { n:2, label:"Data" },
-  { n:3, label:"Schedule" },
+  { n:3, label:"Automate" },
 ];
 // Every email connection is fully isolated — its own inbox, its own composite pair of Data.
 // The inbox address is {local}@{tenant}.cloud.viaduct.ai; the local part defaults from the connection
@@ -5313,13 +5384,13 @@ function EmailScheduleStep({ conn, tmpl, onCancel, onBack, onCreate }){
     <div className="vds-content">
       <PageHead title={"Connect " + conn.name} sub={tmpl.tagline} onCancel={onCancel} />
       <Stepper current={3} steps={EMAIL_STEPS} />
-      <div className="vds-h4 proto-section-title">Schedule</div>
-      <div className="vds-b2 proto-muted proto-section-note">Every connector shows a schedule here, even event-driven ones like this — it keeps this connection consistent with the Schedules page.</div>
+      <div className="vds-h4 proto-section-title">Automate</div>
+      <div className="vds-b2 proto-muted proto-section-note">Every connector shows an automation here, even event-driven ones like this — it keeps this connection consistent with the Automations page.</div>
       <div className="form-grid">
         <div className="field">
           <label className="vds-label">Trigger</label>
           <input className="vds-input locked" value="On email receipt" readOnly title="Event-driven — can't be changed" />
-          <div className="vds-helper-text">Fixed — can't be changed. Each email received creates one run in Schedules → History.</div>
+          <div className="vds-helper-text">Fixed — can't be changed. Each email received creates one run in Automations → History.</div>
         </div>
       </div>
       <div className="wiz-footer">
@@ -5450,7 +5521,7 @@ const SCRIPT_STEPS = [
   { n:1, label:"Name & target" },
   { n:2, label:"Credentials" },
   { n:3, label:"Script" },
-  { n:4, label:"Schedule" },
+  { n:4, label:"Automate" },
   { n:5, label:"Data" },
 ];
 function scriptDefaultParentCols(){
@@ -5687,7 +5758,7 @@ function ScriptScheduleStep({ conn, tmpl, intervalHours, setIntervalHours, onCan
       <PageHead title={"Connect " + conn.name} sub={tmpl.tagline} onCancel={onCancel} />
       <Stepper current={4} steps={SCRIPT_STEPS} />
 
-      <div className="vds-h4 proto-section-title">Schedule</div>
+      <div className="vds-h4 proto-section-title">Automate</div>
       <div className="vds-b2 proto-muted proto-section-note">Scraping can't be triggered by the site — there's no push. Set how often the script re-runs; you can also trigger it on demand with Run now once the connector exists.</div>
       <div className="form-grid">
         <div className="field">
@@ -5831,7 +5902,7 @@ function ScriptConnectorDetail({ conn, tmpl, editInstance, existingSources, onOp
         {testResult && <span className="verify-inline"><Icon name="check" size={16} />Returned {testResult.parentRows.length} rows.</span>}
       </div>
 
-      <div className="vds-h4 proto-section-title">Schedule</div>
+      <div className="vds-h4 proto-section-title">Automate</div>
       <div className="form-grid">
         <div className="field">
           <label className="vds-label">Run every</label>
@@ -5977,7 +6048,7 @@ function NewConnector({ onCancel, onCreate, editInstance, existingSources=[], ex
   const [verified, setVerified] = useState(editing);
   const [picks, setPicks] = useState(editing && editTmpl && editTmpl.sources ? Object.fromEntries(editTmpl.sources.map(s => [s.name, !!existingByName[s.name]])) : {});
   const [startDates, setStartDates] = useState(editing && editTmpl && editTmpl.sources ? Object.fromEntries(editTmpl.sources.map(s => [s.name, (editInstance.startDates && editInstance.startDates[s.name]) || s.firstDate])) : {});
-  const [sched, setSched] = useState(editing ? { frequency:editInstance.frequency, timeOfDay:editInstance.timeOfDay, dayOfWeek:editInstance.dayOfWeek || "Monday" } : { frequency:"Hourly", timeOfDay:"02:00", dayOfWeek:"Monday" });
+  const [sched, setSched] = useState(() => (editing && editInstance.automationTrigger) || newWizardTrigger());
   const [sftpTemplateId, setSftpTemplateId] = useState(editing ? (editInstance.templateSourceId || null) : null);
   const editManaged = editing ? existingSources.find(s => s.id === editInstance.dataSourceId) : null;
   const [managedName, setManagedName] = useState(editing ? (editManaged ? editManaged.name : (editInstance.managedName || "")) : "");
@@ -6052,7 +6123,7 @@ function NewConnector({ onCancel, onCreate, editInstance, existingSources=[], ex
       name: name || conn.name,
       connectorId: conn.id, connectorName: conn.name, group: conn.group,
       creds,
-      frequency: sched.frequency, timeOfDay: sched.timeOfDay, dayOfWeek: sched.dayOfWeek,
+      automationTrigger: sched, ...triggerToSyncFields(sched),
       startDates: isWarehouse ? {} : Object.fromEntries(chosen.map(s => [s.name, startDates[s.name] || s.firstDate])),
       status: "Ready", lastChecked: "Just now",
       createdAt: day, updatedAt: day, lastRun: "Never",
@@ -6097,7 +6168,7 @@ function NewConnector({ onCancel, onCreate, editInstance, existingSources=[], ex
       name: name || conn.name,
       connectorId: conn.id, connectorName: conn.name, group: conn.group,
       creds, templateSourceId: sftpTemplateId, managedName: managed.name, dataSourceId: managed.id,
-      frequency: sched.frequency, timeOfDay: sched.timeOfDay, dayOfWeek: sched.dayOfWeek,
+      automationTrigger: sched, ...triggerToSyncFields(sched),
       status: "Ready", lastChecked: "Just now",
       createdAt: day, updatedAt: day, lastRun: "Never",
       dataSourceIds: [managed.id],
@@ -6108,7 +6179,7 @@ function NewConnector({ onCancel, onCreate, editInstance, existingSources=[], ex
     const dn = displayNamesFromName(managedName);
     const updated = { ...editInstance, name: name || conn.name, creds, templateSourceId: sftpTemplateId,
       managedName: connSlug(managedName),
-      frequency: sched.frequency, timeOfDay: sched.timeOfDay, dayOfWeek: sched.dayOfWeek, updatedAt: todayStr() };
+      automationTrigger: sched, ...triggerToSyncFields(sched), updatedAt: todayStr() };
     const sourceUpdates = editInstance.dataSourceId
       ? [{ id: editInstance.dataSourceId, patch: { name: connSlug(managedName), singular: dn.singular, plural: dn.plural } }]
       : [];
@@ -6150,7 +6221,7 @@ function NewConnector({ onCancel, onCreate, editInstance, existingSources=[], ex
     const updated = {
       ...editInstance,
       name: name || conn.name, creds,
-      frequency: sched.frequency, timeOfDay: sched.timeOfDay, dayOfWeek: sched.dayOfWeek,
+      automationTrigger: sched, ...triggerToSyncFields(sched),
       startDates: isWarehouse ? {} : Object.fromEntries(chosen.map(s => [s.name, startDates[s.name] || s.firstDate])),
       updatedAt: todayStr(),
       dataSourceIds: [...keptIds, ...newRecords.map(r => r.id)],
@@ -7641,6 +7712,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         id: pipeId, name: name || type.label, typeId, typeLabel: type.label, description: desc,
         sourceId, source: chosenSource ? chosenSource.name : "—", steps,
         schedule: triggerMode === "input" ? { frequency:"On Input Update" } : dirSched,
+        automationTrigger: cadenceToTrigger(triggerMode, dirSched),
         status: "Ready", lastRun: day, updatedAt: day,
         triggerMode, subscribedInputs: effectiveSubscribed, inputSourceIdsAll: xfInputIds,
       };
@@ -7721,7 +7793,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         sourceId, source: chosenSource ? chosenSource.name : "—",
         textColumns: embedCols, outputColumn: outputCol,
         outputName: connSlug(dirOutName),
-        schedule: dirSched, status: "Ready", lastRun: day, updatedAt: day,
+        schedule: dirSched, automationTrigger: cadenceToTrigger("schedule", dirSched), status: "Ready", lastRun: day, updatedAt: day,
       };
       if (isSmart){
         ppipe.assetSourceId = assetSourceId; ppipe.assetSource = assetSource ? assetSource.name : "—";
@@ -7760,7 +7832,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         id: pipeId, name: name || type.label, typeId, typeLabel: type.label, description: desc,
         inputSourceIds: inId ? [inId] : [], outputName: connSlug(dirOutName),
         directiveId, directiveName: dir ? dir.name : "", source: inSrc ? inSrc.name : "—",
-        schedule: dirSched, status: "Ready", lastRun: "Never", updatedAt: day,
+        schedule: dirSched, automationTrigger: cadenceToTrigger("schedule", dirSched), status: "Ready", lastRun: "Never", updatedAt: day,
       };
       if (writeBack){
         dpipe.outputSourceIds = [inId];
@@ -7789,7 +7861,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         sourceId, source: inSrc ? inSrc.name : "—",
         inputSourceIds: sourceId ? [sourceId] : [],
         columnUses: colUses, tpmsColumn, outputSourceIds: [],
-        schedule: dirSched, status: "Ready", lastRun: "Never", updatedAt: day,
+        schedule: dirSched, automationTrigger: cadenceToTrigger("schedule", dirSched), status: "Ready", lastRun: "Never", updatedAt: day,
       };
       if (editing) onSave({ ...editInstance, ...ipipe }, null, null);
       else onCreate({ ...ipipe, createdAt: created }, null, null);
@@ -7835,8 +7907,8 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
       <div className="vds-content">
         <PageHead title={(editing ? "Edit " : "New ") + type.label} sub={"Data transformation · " + type.label} onCancel={onCancel} />
         <Stepper current={scheduleStepN} steps={pipeSteps} />
-        <div className="vds-h4 proto-section-title">Schedule</div>
-        <div className="vds-b2 proto-muted proto-section-note">{isDir ? "How often this directive runs in the agent harness." : isXf ? "How this data transformation reruns — plus a manual Run now, always available from the Schedules page." : "How often this data transformation runs."}</div>
+        <div className="vds-h4 proto-section-title">Automate</div>
+        <div className="vds-b2 proto-muted proto-section-note">{isDir ? "How often this directive runs in the agent harness." : isXf ? "How this data transformation reruns — plus a manual Run now, always available from the Automations page." : "How often this data transformation runs."}</div>
         {isXf && (
           <div className="xf-outmode-row">
             <button className={"xf-outmode" + (triggerMode === "input" ? " on" : "")} onClick={() => setTriggerMode("input")}><Icon name="broadcast" size={16} /><span>On input update</span></button>
@@ -8198,12 +8270,12 @@ function histRowType(sched, pipelines){
 }
 // Flatten schedule-level runs into one row per data for connector runs (a single connector
 // sync covers several tables), and one row per run for pipeline/directive runs.
-function buildHistoryRows(runs, schedules, connectors, pipelines, sources){
-  const schedById = {}; schedules.forEach(s => { schedById[s.id] = s; });
+function buildHistoryRows(runs, automations, connectors, pipelines, sources){
+  const schedById = {}; automations.forEach(a => { schedById[a.id] = a; });
   const rows = [];
   runs.forEach(run => {
-    const sched = schedById[run.scheduleId];
-    if (!sched) return; // schedule since deleted
+    const sched = schedById[run.automationId];
+    if (!sched) return; // automation since deleted
     const type = histRowType(sched, pipelines);
     if (type === "connection"){
       const conn = connectors.find(c => c.id === sched.connectorId);
@@ -8295,7 +8367,219 @@ function RunDetailsPage({ row, onBack, onOpenConfigurator }){
     </div>
   );
 }
-function RunHistory({ cfg, schedules, runs, connectors, pipelines, sources, tabBar, onOpenConnector, onOpenPipeline }){
+/* ---------------- Automation editor ----------------
+   Only the first step picks a trigger; later steps run after the one before
+   them, so all they show is the optional delay. */
+function AutomationEditor({ automation, sources, pipelines, onCancel, onSave }){
+  const [draft, setDraft] = useState(automation);
+  const tableNames = (sources || []).filter(s => s.configured !== false).map(s => s.name);
+  const pipeNames = (pipelines || []).map(p => p.name);
+
+  const patchStep = (stepId, patch) => setDraft(d => ({ ...d,
+    steps: d.steps.map(st => st.id === stepId ? { ...st, ...patch } : st) }));
+  const patchTrigger = (stepId, patch) => setDraft(d => ({ ...d,
+    steps: d.steps.map(st => st.id === stepId ? { ...st, trigger:{ ...st.trigger, ...patch } } : st) }));
+  const patchAction = (stepId, actId, patch) => setDraft(d => ({ ...d,
+    steps: d.steps.map(st => st.id === stepId
+      ? { ...st, actions: st.actions.map(a => a.id === actId ? { ...a, ...patch } : a) } : st) }));
+  const addStep = () => setDraft(d => ({ ...d, steps:[...d.steps, newAutomationStep()] }));
+  const removeStep = (stepId) => setDraft(d => ({ ...d, steps:d.steps.filter(st => st.id !== stepId) }));
+  const moveStep = (i, dir) => setDraft(d => {
+    const next = d.steps.slice(), j = i + dir;
+    if (j < 0 || j >= next.length) return d;
+    [next[i], next[j]] = [next[j], next[i]];
+    return { ...d, steps: next };
+  });
+  const addAction = (stepId) => setDraft(d => ({ ...d,
+    steps:d.steps.map(st => st.id === stepId ? { ...st, actions:[...st.actions, newAutomationAction("prompt")] } : st) }));
+  const removeAction = (stepId, actId) => setDraft(d => ({ ...d,
+    steps:d.steps.map(st => st.id === stepId ? { ...st, actions:st.actions.filter(a => a.id !== actId) } : st) }));
+
+  return (
+    <div className="vds-content">
+      <nav className="vds-breadcrumbs" style={{marginBottom:12}}>
+        <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Automations</a>
+        <span className="vds-breadcrumbs__sep">/</span>
+        <span>{draft.name || "Automation"}</span>
+      </nav>
+      <div className="auto-editor-header">
+        <input className="auto-title-input" placeholder="Unnamed automation" value={draft.name}
+          onChange={(e)=>setDraft(d => ({ ...d, name:e.target.value }))} aria-label="Automation name" />
+        <div className="auto-editor-actions">
+          <button className="vds-btn" onClick={onCancel}>Cancel</button>
+          <button className="vds-btn vds-btn--primary" onClick={()=>onSave(draft)}>Save automation</button>
+        </div>
+      </div>
+
+      <h5 style={{marginBottom:12}}>Steps</h5>
+      {draft.steps.length === 0 ? (
+        <div className="vds-card auto-empty-steps">
+          <span className="vds-b2 proto-muted">This automation has no steps yet.</span>
+          <button className="vds-btn vds-btn--start-icon" onClick={addStep}><Icon name="plus" size={18} />Add step</button>
+        </div>
+      ) : (
+        <div className="step-list">
+          {draft.steps.map((step, i) => {
+            const isFirst = i === 0;
+            const tType = isFirst ? (step.trigger.type === "after_previous" ? "schedule" : step.trigger.type) : "after_previous";
+            return (
+              <div className="vds-card proto-step-card" key={step.id}>
+                <div className="step-card__header">
+                  <span className="vds-b2 step-card__index">{i + 1}</span>
+                  <div className="field step-card__name-field">
+                    <input className="vds-input vds-input--sm" placeholder="Step name" value={step.name}
+                      onChange={(e)=>patchStep(step.id, { name:e.target.value })} aria-label={"Step " + (i+1) + " name"} />
+                  </div>
+                  <div className="step-card__reorder">
+                    <button className="vds-icon-btn vds-icon-btn--sm" title="Move up" aria-label="Move step up"
+                      disabled={i === 0} onClick={()=>moveStep(i, -1)}><Icon name="arrowUp" size={16} /></button>
+                    <button className="vds-icon-btn vds-icon-btn--sm" title="Move down" aria-label="Move step down"
+                      disabled={i === draft.steps.length - 1} onClick={()=>moveStep(i, 1)}><Icon name="arrowDown" size={16} /></button>
+                  </div>
+                  <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" title="Delete step" aria-label="Delete step"
+                    onClick={()=>removeStep(step.id)}><Icon name="trash" size={16} /></button>
+                </div>
+                <div className="step-card__body">
+                  <div>
+                    <h6 style={{margin:"0 0 8px"}}>Trigger</h6>
+                    {isFirst ? (
+                      <div className="trigger-choice-row" style={{marginBottom:12}}>
+                        {[["manual","Manually run"],["schedule","Schedule"],["event","Table event"]].map(([v,label]) => (
+                          <label className="vds-choice" key={v}>
+                            <input type="radio" className="vds-radio" name={"trig-" + step.id} value={v}
+                              checked={tType === v} onChange={()=>patchTrigger(step.id, { type:v })} /> {label}
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="trigger-after-previous">
+                        <span className="vds-b2">After the previous step</span>
+                        <label className="vds-choice">
+                          <input type="checkbox" className="vds-checkbox" checked={!!step.trigger.delayEnabled}
+                            onChange={(e)=>patchTrigger(step.id, { type:"after_previous", delayEnabled:e.target.checked })} /> with delay
+                        </label>
+                        {step.trigger.delayEnabled && (<>
+                          <input className="vds-input vds-input--sm trigger-delay-value" inputMode="numeric" maxLength={3}
+                            value={step.trigger.delayValue} aria-label="Delay amount"
+                            onChange={(e)=>patchTrigger(step.id, { delayValue:e.target.value.replace(/[^0-9]/g,"") })} />
+                          <select className="vds-select vds-select--sm trigger-delay-unit" value={step.trigger.delayUnit}
+                            aria-label="Delay unit" onChange={(e)=>patchTrigger(step.id, { delayUnit:e.target.value })}>
+                            {DELAY_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
+                        </>)}
+                      </div>
+                    )}
+                    {isFirst && tType === "event" && (
+                      <div className="trigger-fields-row">
+                        <div className="field">
+                          <label className="vds-label">Data table</label>
+                          <select className="vds-select" value={step.trigger.table || ""}
+                            onChange={(e)=>patchTrigger(step.id, { table:e.target.value })}>
+                            <option value="">Select data table…</option>
+                            {tableNames.map(n => <option key={n} value={n}>{n}</option>)}
+                          </select>
+                        </div>
+                        <div className="field">
+                          <label className="vds-label">Event</label>
+                          <select className="vds-select" value={step.trigger.event}
+                            onChange={(e)=>patchTrigger(step.id, { event:e.target.value })}>
+                            {TABLE_EVENTS.map(ev => <option key={ev.value} value={ev.value}>{ev.label}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                    {isFirst && tType === "schedule" && (
+                      <div>
+                        <div className="schedule-list">
+                          {(step.trigger.schedules || []).map(sch => (
+                            <div className="schedule-entry" key={sch.id}>
+                              <div className="schedule-entry__days">
+                                {DAYS_OF_WEEK.map(d => (
+                                  <label className="vds-choice" key={d.value}>
+                                    <input type="checkbox" className="vds-checkbox" checked={!!sch.days[d.value]}
+                                      onChange={(e)=>patchTrigger(step.id, { schedules: step.trigger.schedules.map(x =>
+                                        x.id === sch.id ? { ...x, days:{ ...x.days, [d.value]:e.target.checked } } : x) })} /> {d.label}
+                                  </label>
+                                ))}
+                              </div>
+                              <div className="field schedule-entry__time">
+                                <input className="vds-input" type="time" value={sch.time} aria-label="Time of day"
+                                  onChange={(e)=>patchTrigger(step.id, { schedules: step.trigger.schedules.map(x =>
+                                    x.id === sch.id ? { ...x, time:e.target.value } : x) })} />
+                              </div>
+                              <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule"
+                                disabled={(step.trigger.schedules || []).length <= 1}
+                                title={(step.trigger.schedules || []).length <= 1 ? "At least one schedule is required" : "Remove schedule"}
+                                onClick={()=>patchTrigger(step.id, { schedules: step.trigger.schedules.filter(x => x.id !== sch.id) })}>
+                                <Icon name="x" size={16} /></button>
+                            </div>
+                          ))}
+                        </div>
+                        <button className="vds-btn vds-btn--sm vds-btn--start-icon" style={{marginTop:8}}
+                          onClick={()=>patchTrigger(step.id, { schedules:[...(step.trigger.schedules||[]), newScheduleEntry()] })}>
+                          <Icon name="plus" size={16} />Add schedule</button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <h6 style={{margin:"0 0 8px"}}>Actions</h6>
+                    <div className="action-list">
+                      {step.actions.map(act => (
+                        <div className="action-row" key={act.id}>
+                          <div className="field action-row__type">
+                            <select className="vds-select" value={act.type} aria-label="Action type"
+                              onChange={(e)=>patchAction(step.id, act.id, { type:e.target.value, refName:"" })}>
+                              {ACTION_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                            </select>
+                          </div>
+                          {REF_ACTION_TYPES.includes(act.type) && (
+                            <div className="field action-row__ref">
+                              <select className="vds-select" value={act.refName || ""} aria-label="Action target"
+                                onChange={(e)=>patchAction(step.id, act.id, { refName:e.target.value })}>
+                                <option value="">{act.type === "pipeline" ? "Select data transformation…" : "Select data table…"}</option>
+                                {(act.type === "pipeline" ? pipeNames : tableNames).map(n => <option key={n} value={n}>{n}</option>)}
+                              </select>
+                            </div>
+                          )}
+                          {act.type === "notification" && (
+                            <div className="field">
+                              <button className="vds-btn" type="button" onClick={()=>{}}>Configure notification</button>
+                            </div>
+                          )}
+                          {act.type === "prompt" && (
+                            <div className="field action-row__prompt">
+                              <textarea className="vds-textarea" rows={4} value={act.prompt || ""}
+                                placeholder='Enter AI prompt. You may type "/" to be shown a list of directives.'
+                                onChange={(e)=>patchAction(step.id, act.id, { prompt:e.target.value })} />
+                            </div>
+                          )}
+                          <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Remove action"
+                            title={step.actions.length <= 1 ? "At least one action is required" : "Remove action"}
+                            disabled={step.actions.length <= 1}
+                            onClick={()=>removeAction(step.id, act.id)}><Icon name="x" size={16} /></button>
+                        </div>
+                      ))}
+                    </div>
+                    <button className="vds-btn vds-btn--sm vds-btn--start-icon" style={{marginTop:8}}
+                      onClick={()=>addAction(step.id)}><Icon name="plus" size={16} />Add action</button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {draft.steps.length > 0 && (
+        <div style={{marginTop:16}}>
+          <button className="vds-btn vds-btn--start-icon" onClick={addStep}><Icon name="plus" size={18} />Add step</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RunHistory({ cfg, automations, runs, connectors, pipelines, sources, tabBar, onOpenConnector, onOpenPipeline }){
   const [statusF, setStatusF] = useState("all");
   const [typeF, setTypeF] = useState("all");
   const [query, setQuery] = useState("");
@@ -8303,7 +8587,7 @@ function RunHistory({ cfg, schedules, runs, connectors, pipelines, sources, tabB
   const [, setTick] = useState(0);
   const now = Date.now();
 
-  const allRows = buildHistoryRows(runs, schedules, connectors, pipelines, sources);
+  const allRows = buildHistoryRows(runs, automations, connectors, pipelines, sources);
   const hasInProgress = allRows.some(r => r.run.status === "progress");
   React.useEffect(() => {
     if (!hasInProgress) return;
@@ -8346,11 +8630,11 @@ function RunHistory({ cfg, schedules, runs, connectors, pipelines, sources, tabB
           <div className="vds-card proto-stat-card"><div className="stat-label">Success rate (30d)</div><div className="stat-value">{successRate == null ? "—" : successRate + "%"}</div><div className="stat-sub">{total ? okCount + " of " + total + " runs succeeded" : "no runs yet"}</div></div>
         </div>
 
-        {schedules.length === 0 ? (
+        {automations.length === 0 ? (
           <div className="empty">
             <div className="empty-tile"><Icon name="clock" size={30} /></div>
-            <h2>No schedules yet</h2>
-            <p>Schedules created by connectors and data transformations will show their run history here.</p>
+            <h2>No automations yet</h2>
+            <p>Automations created by connectors and data transformations will show their run history here.</p>
           </div>
         ) : (<>
           <div className="vds-b2 proto-muted proto-section-note" style={{marginTop:0}}>Every data table, data transformation, and directive that has run on the platform, one row per run. A connector run shows up here once per data table it syncs.</div>
@@ -8373,13 +8657,13 @@ function RunHistory({ cfg, schedules, runs, connectors, pipelines, sources, tabB
                 </select>
               </div>
               <div className="filter" style={{width:220}}><span className="s-icon"><Icon name="search" size={16} /></span>
-                <input placeholder="Filter by name…" aria-label="Filter by name" value={query} onChange={(e)=>setQuery(e.target.value)} />
+                <input className="vds-input" placeholder="Filter by name…" aria-label="Filter by name" value={query} onChange={(e)=>setQuery(e.target.value)} />
               </div>
             </div>
           </div>
 
           {rows.length === 0 ? (
-            <div className="vds-alert vds-alert--info proto-note">{allRows.length === 0 ? (<>No runs recorded yet. Go to the <strong>Schedules</strong> tab and use <strong>Run now</strong> — each run adds rows here.</>) : "No runs match the current filters."}</div>
+            <div className="vds-alert vds-alert--info proto-note">{allRows.length === 0 ? (<>No runs recorded yet. Go to the <strong>Automations</strong> tab and use <strong>Run now</strong> — each run adds rows here.</>) : "No runs match the current filters."}</div>
           ) : (
             <div className="vds-table-container">
               <div className="thead" style={{gridTemplateColumns:"52px 1.6fr 1.1fr 1.3fr 1.3fr 0.9fr"}}>
@@ -8426,12 +8710,13 @@ function App(){
   const [connectors, setConnectors] = useState([]);
   const [connDetailId, setConnDetailId] = useState(null);
   const [connDetailStep, setConnDetailStep] = useState(null);
-  const [schedules, setSchedules] = useState([]);
+  const [automations, setAutomations] = useState([]);
+  const [editingAutoId, setEditingAutoId] = useState(null);
   const [configuringId, setConfiguringId] = useState(null);
   const [pipelines, setPipelines] = useState([]);
   const [pipeCreating, setPipeCreating] = useState(false);
   const [pipeEditId, setPipeEditId] = useState(null);
-  const [schedTab, setSchedTab] = useState("schedules");
+  const [autoTab, setAutoTab] = useState("automations");
   const [runs, setRuns] = useState([]);
   const [connectDataFor, setConnectDataFor] = useState(null); // { targetId, connId } while launching a preset "Connect data table" flow
   const toggleSection = (k) => setOpenSections(s => ({ ...s, [k]: s[k] === false ? true : false }));
@@ -8442,24 +8727,23 @@ function App(){
     setConnectors(cs => cs.map(c => {
       if (c.id !== id) return c;
       const merged = { ...c, ...patch };
-      setSchedules(sch => sch.map(s => s.connectorId===id ? { ...s, scheduleText:syncSummary(merged), nextRun:computeNextRun(merged) } : s));
       return merged;
     }));
   };
   const deleteConnector = (id) => {
     setConnectors(cs => cs.filter(c => c.id !== id));
-    setSchedules(sch => sch.filter(s => s.connectorId !== id));
+    setAutomations(as => as.filter(a => a.connectorId !== id));
     setConnDetailId(d => d===id ? null : d);
   };
   const openSource = (id) => { setConnCreating(false); setConnDetailId(null); setUpdatingId(null); setCreating(false); setActiveId("datasources"); setDetailId(id); };
   const openConnector = (id, startStep) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setActiveId("dataconnectors"); setConnDetailId(id); setConnDetailStep(startStep || null); };
-  const runSchedule = (schedId) => {
-    const s = schedules.find(x => x.id === schedId);
+  const runAutomation = (autoIdArg) => {
+    const s = automations.find(x => x.id === autoIdArg);
     if (!s) return;
     const runId = "run_" + Math.random().toString(36).slice(2,10);
     const startedTs = Date.now();
-    setRuns(rs => [...rs, { id:runId, scheduleId: schedId, status:"progress", startedTs, finishedTs:null, msg:null }]);
-    setSchedules(sch => sch.map(x => x.id===schedId ? { ...x, lastRunStatus:"progress" } : x));
+    setRuns(rs => [...rs, { id:runId, automationId: autoIdArg, status:"progress", startedTs, finishedTs:null, msg:null }]);
+    setAutomations(as => as.map(x => x.id===autoIdArg ? { ...x, lastRunStatus:"progress" } : x));
     const delay = 1400 + Math.random()*1800;
     setTimeout(() => {
       const ts = Date.now();
@@ -8471,8 +8755,8 @@ function App(){
       const isInboxConn = !!(connTmpl && connTmpl.kind === "inbox");
       const outcome = isScriptConn ? simulateScriptRunOutcome() : simulateRunOutcome();
       setRuns(rs => rs.map(r => r.id===runId ? { ...r, status: outcome.status, finishedTs: ts, msg: outcome.msg || null } : r));
-      const freqObj = conn || s; // pipeline schedules carry their own frequency fields
-      setSchedules(sch => sch.map(x => x.id===schedId ? { ...x, nextRun: computeNextRun(freqObj), lastRunStatus: outcome.status } : x));
+      setAutomations(as => as.map(x => x.id===autoIdArg
+        ? { ...x, lastRunStatus: outcome.status, lastRunAt: todayISO(), lastRunBy: CURRENT_USER } : x));
       if (conn){
         setConnectors(cs => cs.map(c => c.id===conn.id ? {
           ...c, lastRunStatus: outcome.status, lastRunError: outcome.status !== "ok" ? outcome.msg : null,
@@ -8566,16 +8850,24 @@ function App(){
       }
     }, delay);
   };
-  const deleteSchedule = (schedId) => setSchedules(sch => sch.filter(s => s.id !== schedId));
-  // Editing a schedule row inline only changes that one data's cadence — the connector itself,
-  // and every other data it feeds, are untouched.
-  const updateScheduleInline = (schedId, patch) => setSchedules(sch => sch.map(s => s.id===schedId
-    ? { ...s, ...patch, scheduleText: syncSummary(patch), nextRun: computeNextRun(patch) }
-    : s));
-  const editSchedule = (schedId) => { const s = schedules.find(x => x.id === schedId); if (!s) return; if (s.pipelineId) openPipeline(s.pipelineId); else if (s.connectorId) openConnector(s.connectorId, 3); };
+  const deleteAutomation = (id) => setAutomations(as => as.filter(a => a.id !== id));
+  const syncConnectorAutomation = (inst, lookupName, removedIds) => setAutomations(as => {
+    if (inst.noSchedule) return as.filter(a => a.connectorId !== inst.id);
+    const ids = (inst.dataSourceIds || []).filter(id => !(removedIds || []).includes(id));
+    const names = ids.map(id => lookupName(id)).filter(Boolean);
+    const label = names.length === 1 ? names[0] : inst.name;
+    const actions = (names.length ? names : [inst.name]).map(n => ({ ...newAutomationAction("import_table"), refName:n }));
+    if (!as.some(a => a.connectorId === inst.id)) return [automationFromConnector(inst, inst.automationTrigger, ids, lookupName), ...as];
+    return as.map(a => a.connectorId === inst.id
+      ? { ...a, name:"Sync " + label, steps:a.steps.map((st,i) => i===0
+          ? { ...st, name:"Sync from " + inst.name, ...(inst.automationTrigger ? { trigger:inst.automationTrigger } : {}), actions } : st) }
+      : a);
+  });
+  const upsertAutomation = (auto) => setAutomations(as => as.some(a => a.id===auto.id) ? as.map(a => a.id===auto.id ? auto : a) : [auto, ...as]);
   const openPipeline = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConfiguringId(null); setPipeCreating(false); setActiveId("datapipelines"); setPipeEditId(id); };
-  const deletePipeline = (id) => { setPipelines(ps => ps.filter(p => p.id !== id)); setSchedules(sch => sch.filter(s => s.pipelineId !== id)); setPipeEditId(e => e===id ? null : e); };
+  const deletePipeline = (id) => { setPipelines(ps => ps.filter(p => p.id !== id)); setAutomations(as => as.filter(a => a.pipelineId !== id)); setPipeEditId(e => e===id ? null : e); };
 
+  const editingAuto = automations.find(a => a.id === editingAutoId);
   const cfg = HUB_PAGE[activeId];
   const item = ALL_ITEMS.find(i => i.id === activeId) || { label:"Help" };
   const selected = sources.find(s => s.id === detailId);
@@ -8598,7 +8890,7 @@ function App(){
           return next;
         });
         setConnectors(c => [inst, ...c]);
-        if (!inst.noSchedule) setSchedules(sc => [...scheduleFromConnector(inst, inst.dataSourceIds, (id)=>(dsRecords.find(r=>r.id===id)||{}).name), ...sc]);
+        if (!inst.noSchedule) setAutomations(as => [automationFromConnector(inst, inst.automationTrigger, inst.dataSourceIds, (id)=>(dsRecords.find(r=>r.id===id)||{}).name), ...as]);
         const id = connectDataFor.targetId;
         setConnectDataFor(null);
         openSource(id);
@@ -8610,19 +8902,10 @@ function App(){
           return next;
         });
         setConnectors(cs => cs.map(c => c.id===updated.id ? updated : c));
-        setSchedules(sch => {
-          let next = sch.filter(s => !(deleteIds||[]).includes(s.dataSourceId));
-          const already = new Set(next.filter(s => s.connectorId===updated.id).map(s => s.dataSourceId));
-          const missingIds = (updated.dataSourceIds || []).filter(id => !already.has(id));
-          const lookup = (id) => (newRecords||[]).find(r=>r.id===id) || sources.find(x=>x.id===id);
-          const added = missingIds.map(id => { const src = lookup(id); return {
-            id:"sch_"+Math.random().toString(36).slice(2,10), connectorId:updated.id, dataSourceId:id,
-            name:(src&&src.name)||updated.name, source:updated.name, type:"Connector",
-            frequency:updated.frequency, timeOfDay:updated.timeOfDay, dayOfWeek:updated.dayOfWeek,
-            scheduleText:syncSummary(updated), nextRun:computeNextRun(updated),
-          };});
-          return [...next, ...added];
-        });
+        syncConnectorAutomation(updated, (id) => {
+          const src = (newRecords||[]).find(r=>r.id===id) || sources.find(x=>x.id===id);
+          return src && src.name;
+        }, deleteIds);
         const id = connectDataFor.targetId;
         setConnectDataFor(null);
         openSource(id);
@@ -8635,7 +8918,7 @@ function App(){
       onCancel={() => setConfiguringId(null)}
       onSave={(patch) => { updateSource(configuringId, patch); setConfiguringId(null); }} />;
   } else if (activeId === "datasources" && detailId && selected){
-    page = <DataSourceDetails source={selected} allSources={sources} connectors={connectors} schedules={schedules} onBack={() => setDetailId(null)} onUpdate={updateSource}
+    page = <DataSourceDetails source={selected} allSources={sources} connectors={connectors} automations={automations} onBack={() => setDetailId(null)} onUpdate={updateSource}
       onConnectData={(connId, instanceId) => setConnectDataFor({ targetId: selected.id, connId, instanceId })} />;
   } else if (activeId === "datasources" && updatingId && updating){
     page = <UpdateDataSource source={updating} onCancel={() => setUpdatingId(null)} onDone={() => setUpdatingId(null)} onUpdate={updateSource} />;
@@ -8650,22 +8933,10 @@ function App(){
           return next;
         });
         setConnectors(cs => cs.map(c => c.id===updated.id ? updated : c));
-        setSchedules(sch => {
-          let next = sch.filter(s => !(deleteIds||[]).includes(s.dataSourceId));
-          next = next.map(s => s.connectorId===updated.id
-            ? { ...s, source:updated.name, frequency:updated.frequency, timeOfDay:updated.timeOfDay, dayOfWeek:updated.dayOfWeek, scheduleText:syncSummary(updated), nextRun:computeNextRun(updated) }
-            : s);
-          const already = new Set(next.filter(s => s.connectorId===updated.id).map(s => s.dataSourceId));
-          const missingIds = (updated.dataSourceIds || []).filter(id => !already.has(id));
-          const lookup = (id) => (newRecords||[]).find(r=>r.id===id) || sources.find(x=>x.id===id);
-          const added = missingIds.map(id => { const src = lookup(id); return {
-            id:"sch_"+Math.random().toString(36).slice(2,10), connectorId:updated.id, dataSourceId:id,
-            name:(src&&src.name)||updated.name, source:updated.name, type:"Connector",
-            frequency:updated.frequency, timeOfDay:updated.timeOfDay, dayOfWeek:updated.dayOfWeek,
-            scheduleText:syncSummary(updated), nextRun:computeNextRun(updated),
-          };});
-          return [...next, ...added];
-        });
+        syncConnectorAutomation(updated, (id) => {
+          const src = (newRecords||[]).find(r=>r.id===id) || sources.find(x=>x.id===id);
+          return src && src.name;
+        }, deleteIds);
         setConnDetailId(null);
       }} />;
   } else if (activeId === "dataconnectors" && connCreating){
@@ -8676,7 +8947,7 @@ function App(){
         return next;
       });
       setConnectors(c => [inst, ...c]);
-      if (!inst.noSchedule) setSchedules(sc => [...scheduleFromConnector(inst, inst.dataSourceIds, (id)=>(dsRecords.find(r=>r.id===id)||{}).name), ...sc]);
+      if (!inst.noSchedule) setAutomations(as => [automationFromConnector(inst, inst.automationTrigger, inst.dataSourceIds, (id)=>(dsRecords.find(r=>r.id===id)||{}).name), ...as]);
       setConnCreating(false);
     }} />;
   } else if (activeId === "datapipelines" && pipeEditId){
@@ -8693,12 +8964,18 @@ function App(){
               next = next.filter(x => !(x.fromPipeline && x.pipelineId === updated.id && !outIds.has(x.id)));
               return next;
             });
-            setSchedules(sch => {
-              const has = sch.some(s => s.pipelineId === updated.id);
-              if (updated.schedule){ const sc = updated.schedule;
-                return has ? sch.map(s => s.pipelineId===updated.id ? { ...s, name:updated.name, type:updated.typeLabel, frequency:sc.frequency, timeOfDay:sc.timeOfDay, dayOfWeek:sc.dayOfWeek, intervalMinutes:sc.intervalMinutes, scheduleText:syncSummary(sc), nextRun:computeNextRun(sc) } : s) : [scheduleFromPipeline(updated), ...sch];
+            setAutomations(as => {
+              const has = as.some(a => a.pipelineId === updated.id);
+              if (updated.automationTrigger){
+                return has
+                  ? as.map(a => a.pipelineId===updated.id ? { ...a, name:"Run " + updated.name,
+                      steps:a.steps.map((st,i) => i===0
+                        ? { ...st, name:"Run " + updated.name, trigger:updated.automationTrigger,
+                            actions:[{ ...newAutomationAction("pipeline"), refName:updated.name }] }
+                        : st) } : a)
+                  : [automationFromPipeline(updated, updated.automationTrigger), ...as];
               }
-              return has ? sch.filter(s => s.pipelineId !== updated.id) : sch;
+              return has ? as.filter(a => a.pipelineId !== updated.id) : as;
             });
             setPipeEditId(null);
           }} />
@@ -8708,19 +8985,24 @@ function App(){
       onCreate={(pipe, outSrc, migrate) => {
         setPipelines(ps => [pipe, ...ps]);
         setSources(s => { let next = s; if (outSrc) next = [outSrc, ...next]; if (migrate) next = next.map(x => x.id===migrate.id ? { ...x, ...migrate.patch } : x); return next; });
-        if (pipe.schedule) setSchedules(sc => [scheduleFromPipeline(pipe), ...sc]);
+        if (pipe.automationTrigger) setAutomations(as => [automationFromPipeline(pipe, pipe.automationTrigger), ...as]);
         setPipeCreating(false);
       }} />;
-  } else if (activeId === "schedules"){
-    const schedTabBar = (
+  } else if (activeId === "automations"){
+    const autoTabBar = (
       <div className="vds-tabs" style={{margin:"16px 0 0"}}>
-        <button className={"vds-tab" + (schedTab==="schedules" ? " vds-tab--selected" : "")} onClick={()=>setSchedTab("schedules")}>Schedules</button>
-        <button className={"vds-tab" + (schedTab==="history" ? " vds-tab--selected" : "")} onClick={()=>setSchedTab("history")}>History</button>
+        <button className={"vds-tab" + (autoTab==="automations" ? " vds-tab--selected" : "")} onClick={()=>setAutoTab("automations")}>Automations</button>
+        <button className={"vds-tab" + (autoTab==="history" ? " vds-tab--selected" : "")} onClick={()=>setAutoTab("history")}>History</button>
       </div>
     );
-    page = schedTab === "history"
-      ? <RunHistory cfg={cfg} schedules={schedules} runs={runs} connectors={connectors} pipelines={pipelines} sources={sources} tabBar={schedTabBar} onOpenConnector={openConnector} onOpenPipeline={openPipeline} />
-      : <HubPage cfg={cfg} tabsNode={schedTabBar} onOpen={editSchedule} onDelete={deleteSchedule} onRunNow={runSchedule} records={schedules} />;
+    page = editingAuto
+      ? <AutomationEditor automation={editingAuto} sources={sources} pipelines={pipelines}
+          onCancel={() => setEditingAutoId(null)}
+          onSave={(a) => { upsertAutomation(a); setEditingAutoId(null); }} />
+      : autoTab === "history"
+        ? <RunHistory cfg={cfg} automations={automations} runs={runs} connectors={connectors} pipelines={pipelines} sources={sources} tabBar={autoTabBar} onOpenConnector={openConnector} onOpenPipeline={openPipeline} />
+        : <HubPage cfg={cfg} tabsNode={autoTabBar} onNew={() => { const a = newAutomation(""); upsertAutomation(a); setEditingAutoId(a.id); }}
+            onOpen={(id) => setEditingAutoId(id)} onDelete={deleteAutomation} onRunNow={runAutomation} records={automations} />;
   } else if (cfg){
     page = <HubPage cfg={cfg}
       onNew={activeId==="datasources" ? () => setCreating(true) : (activeId==="dataconnectors" ? () => setConnCreating(true) : (activeId==="datapipelines" ? () => setPipeCreating(true) : undefined))}
@@ -8729,7 +9011,6 @@ function App(){
       onDelete={activeId==="datasources" ? deleteSource : (activeId==="dataconnectors" ? deleteConnector : (activeId==="datapipelines" ? deletePipeline : (activeId==="schedules" ? deleteSchedule : undefined)))}
       onOpenSource={(activeId==="dataconnectors" || activeId==="schedules") ? openSource : undefined}
       onRunNow={activeId==="schedules" ? runSchedule : undefined}
-      onUpdateSchedule={activeId==="schedules" ? updateScheduleInline : undefined}
       onConfigure={activeId==="datasources" ? (id) => setConfiguringId(id) : undefined}
       onConnectData={activeId==="datasources" ? (id, connId, instanceId) => setConnectDataFor({ targetId:id, connId, instanceId }) : undefined}
       allConnectors={connectors}
