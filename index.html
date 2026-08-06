@@ -421,12 +421,15 @@
   /* ---------- automation editor ---------- */
   /* The title row stays put while the steps scroll. The negative side margins let
      its background cover .vds-content's 32px gutters, so nothing shows through. */
-  /* top:-20px cancels .vds-content's 20px padding-top so the row pins flush to the
-     scrollport instead of leaving a gap content can show through; the padding-top
-     puts the visual spacing back. */
-  .auto-editor-header { position: sticky; top: -20px; z-index: 3; background: var(--vds-surface-muted);
-    display: flex; align-items: flex-start; justify-content: space-between; gap: var(--vds-dialog-gap);
-    margin: 0 -32px var(--vds-dialog-gap); padding: 20px 32px 10px;
+  /* Pins a detail or wizard page's title row while its content scrolls. The negative
+     side margins let the background cover .vds-content's 32px gutters; top:-20px
+     cancels its 20px padding-top so the row pins flush instead of leaving a strip
+     content shows through, and the padding-top puts that spacing back. */
+  .proto-sticky-head { position: sticky; top: -20px; z-index: 3;
+    background: var(--vds-surface-muted);
+    margin-left: -32px; margin-right: -32px; padding: 20px 32px 10px; }
+  .auto-editor-header { display: flex; align-items: flex-start; justify-content: space-between;
+    gap: var(--vds-dialog-gap); margin-bottom: var(--vds-dialog-gap);
     border-bottom: 1px solid var(--vds-gray-100); }
   .auto-title-field { flex: 1; min-width: 0; }
   .auto-title-input.err { border-color: var(--vds-error-dark); }
@@ -2207,7 +2210,7 @@ function Stepper({ current, steps = STEPS }){
 }
 function PageHead({ title, sub, onCancel }){
   return (
-    <div className="vds-page-header">
+    <div className="vds-page-header proto-sticky-head">
       <div>
         <h1 className="vds-page-title">{title}</h1>
         {sub && <p className="vds-b1 proto-muted proto-page-sub">{sub}</p>}
@@ -3291,7 +3294,7 @@ function DataSourceDetails({ source, allSources = [], connectors = [], automatio
   return (
     <div className="vds-content">
       <button className="vds-btn vds-btn--text vds-btn--sm proto-back-link" onClick={onBack}><Icon name="arrowLeft" size={16} />Data Tables</button>
-      <div className="vds-page-header">
+      <div className="vds-page-header proto-sticky-head">
         <div>
           <h1 className="vds-page-title">{source.name}</h1>
           <p className="vds-b1 proto-muted proto-page-sub">{source.origin} · {source.type} · {source.records} records · synced {source.lastSynced.toLowerCase()}</p>
@@ -6404,7 +6407,7 @@ function ConnectorDetails({ conn, sources, onBack, onUpdate, onOpenSource }){
   return (
     <div className="vds-content">
       <button className="vds-btn vds-btn--text vds-btn--sm proto-back-link" onClick={onBack}><Icon name="arrowLeft" size={16} />Connections</button>
-      <div className="vds-page-header">
+      <div className="vds-page-header proto-sticky-head">
         <div>
           <h1 className="vds-page-title">{conn.name}</h1>
           <p className="vds-b1 proto-muted proto-page-sub">{conn.connectorName} · {conn.group} · {syncSummary(conn)}</p>
@@ -8451,7 +8454,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
         <span className="vds-breadcrumbs__sep">/</span>
         <span>{draft.name || "Automation"}</span>
       </nav>
-      <div className="auto-editor-header">
+      <div className="auto-editor-header proto-sticky-head">
         <div className="auto-title-field">
           <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder="Name your automation. Must be unique."
             value={draft.name} aria-label="Automation name" aria-invalid={nameTaken || undefined}
