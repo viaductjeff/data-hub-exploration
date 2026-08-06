@@ -968,15 +968,15 @@ const HUB_PAGE = {
     cols:["Name","Type","Source","Status","Last run","Actions"],
     emptyTitle:"No data transformations built", emptyBody:"A data transformation reads from a source, transforms the records, and writes the result into Viaduct.", cta:"Create your first data transformation" },
   automations:{ key:"automations", title:"Automations", icon:"bolt",
-    sub:"Run your connectors, directives and data transformations on a trigger you define.",
+    sub:"Run your connectors, saved prompts and data transformations on a trigger you define.",
     noun:"automations", filter:"Filter automations...", hidden:"Show paused automations",
     cols:["Name","Steps","Trigger","Last run","Last run by","Created","Creator","Actions"],
     emptyTitle:"No automations yet", emptyBody:"An automation runs a sequence of steps on a trigger. Build one here, or automate a connector or data transformation from its wizard and it will appear in this list.", cta:"New automation" },
-  directives:{ key:"directives", title:"Directives", icon:"terminal",
-    sub:"Rules that tell Viaduct how to clean, map, and route incoming records.",
-    noun:"directives", filter:"Filter directives...", hidden:"Show archived directives",
+  directives:{ key:"directives", title:"Saved prompts", icon:"terminal",
+    sub:"Named prompts you can reuse — in an automation, or to clean, map and route incoming records.",
+    noun:"saved prompts", filter:"Filter saved prompts...", hidden:"Show archived saved prompts",
     cols:["Name","Applies to","Trigger","Status","Updated","Actions"],
-    emptyTitle:"No directives yet", emptyBody:"Add a directive to transform or route records the moment they arrive.", cta:"Create your first directive" },
+    emptyTitle:"No saved prompts yet", emptyBody:"Add a saved prompt to transform or route records the moment they arrive.", cta:"Create your first saved prompt" },
 };
 
 const NAV = [
@@ -997,7 +997,7 @@ const NAV = [
     { id:"dataconnectors", label:"Connections", icon:"plug", isNew:true },
     { id:"datapipelines", label:"Data Transformations", icon:"workflow", isNew:true },
     { id:"automations", label:"Automations", icon:"bolt", isNew:true },
-    { id:"directives", label:"Directives", icon:"terminal" },
+    { id:"directives", label:"Saved prompts", icon:"terminal" },
   ]},
   { type:"section", key:"admin", label:"Admin", items:[
     { id:"admingroups", label:"Admin Groups", icon:"users" },
@@ -3188,7 +3188,7 @@ function AttachmentViewerModal({ row, onBack, onClose }){
         ) : (
           <div className="vds-card proto-file-preview file-preview-empty">
             <Icon name="fileText" size={28} />
-            <span>No preview available for this file type. It's stored as raw bytes and passed to the extraction directive as-is.</span>
+            <span>No preview available for this file type. It's stored as raw bytes and passed to the extraction saved prompt as-is.</span>
           </div>
         )}
         <div className="vds-dialog__actions">
@@ -5196,7 +5196,7 @@ function WarehouseConfigureStep({ tableName, draft, existingSources, offerPopula
 /* ---------------- Email Inbound Parse: dedicated per-fleet inbox, push on receipt ---------------- */
 CONNECTOR_TEMPLATES.emailparse = {
   kind: "inbox",
-  tagline: "Create a dedicated inbox for each email use case — work orders, procurement, supplier quotes. Emails and attachments land as raw data for downstream directives.",
+  tagline: "Create a dedicated inbox for each email use case — work orders, procurement, supplier quotes. Emails and attachments land as raw data for downstream saved prompts.",
 };
 const EMAIL_STEPS = [
   { n:1, label:"Name connection" },
@@ -5296,7 +5296,7 @@ function emailInboxSources(connName, address){
     id:parentId, name:parentName, origin:connName, type:"Event",
     status:"Ready", records:parentRows.length.toLocaleString("en-US"), recordCount:parentRows.length, lastSynced:"Just now",
     singular:parentDn.singular, plural:parentDn.plural,
-    description:"One row per inbound email received at this connection's dedicated inbox. The connector performs zero parsing — a downstream directive reads this raw data to extract structured information.",
+    description:"One row per inbound email received at this connection's dedicated inbox. The connector performs zero parsing — a downstream saved prompt reads this raw data to extract structured information.",
     published:false, fromConnector:true, emailKind:"parent", tableNameLocked:false, colNameEditable:true, filterable:false,
     columns:parentCols,
     parsed:{ fileName:connName, columns:parentCols.map(c=>c.name), rows:parentRows, previewRows:parentRows, typeByCol:Object.fromEntries(parentCols.map(c=>[c.name,c.type])) },
@@ -5306,7 +5306,7 @@ function emailInboxSources(connName, address){
     id:childId, name:childName, origin:connName, type:"Event",
     status:"Ready", records:childRows.length.toLocaleString("en-US"), recordCount:childRows.length, lastSynced:"Just now",
     singular:childDn.singular, plural:childDn.plural,
-    description:"One row per attachment on an inbound email, keyed to the parent message. A downstream directive iterates these rows to extract structured data from each attachment.",
+    description:"One row per attachment on an inbound email, keyed to the parent message. A downstream saved prompt iterates these rows to extract structured data from each attachment.",
     published:false, fromConnector:true, emailKind:"child", tableNameLocked:false, colNameEditable:true, filterable:false,
     columns:childCols,
     parsed:{ fileName:connName, columns:childCols.map(c=>c.name), rows:childRows, previewRows:childRows, typeByCol:Object.fromEntries(childCols.map(c=>[c.name,c.type])) },
@@ -7624,7 +7624,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
   });
   const setIssueUse = (name, use) => setColUses(prev => ({ ...prev, [name]: use }));
 
-  const choose = (id) => { setTypeId(id); setName(uniqueName(id === "embed" ? "Embedding transformation" : id === "directive" ? "Directive transformation" : id === "smart" ? "Smart Groups transformation" : id === "issue" ? "TPMS Issue Detection" : id === "transform" ? "Basic transformation" : "New data transformation", existingNames)); setDesc(""); setSourceId(null); setSteps([]); setOutputMode("new"); setOutName(""); setOutTargetId(null); setEmbedCols([]); setOutputCol(id === "smart" ? "smart_groups" : "vector_embedding"); setInId(null); setDirOutName(""); setDirectiveId(""); setDirSched(id === "issue" ? { frequency:"By Minute", intervalMinutes:10, timeOfDay:"02:00", dayOfWeek:"Monday" } : { frequency:"Daily", timeOfDay:"02:00", dayOfWeek:"Monday", intervalMinutes:10 }); setAssetSourceId(null); setEventKey(""); setAssetKey(""); setEventWindow("30"); setEventFilter(""); setColUses({}); setStep(2); };
+  const choose = (id) => { setTypeId(id); setName(uniqueName(id === "embed" ? "Embedding transformation" : id === "directive" ? "Saved prompt transformation" : id === "smart" ? "Smart Groups transformation" : id === "issue" ? "TPMS Issue Detection" : id === "transform" ? "Basic transformation" : "New data transformation", existingNames)); setDesc(""); setSourceId(null); setSteps([]); setOutputMode("new"); setOutName(""); setOutTargetId(null); setEmbedCols([]); setOutputCol(id === "smart" ? "smart_groups" : "vector_embedding"); setInId(null); setDirOutName(""); setDirectiveId(""); setDirSched(id === "issue" ? { frequency:"By Minute", intervalMinutes:10, timeOfDay:"02:00", dayOfWeek:"Monday" } : { frequency:"Daily", timeOfDay:"02:00", dayOfWeek:"Monday", intervalMinutes:10 }); setAssetSourceId(null); setEventKey(""); setAssetKey(""); setEventWindow("30"); setEventFilter(""); setColUses({}); setStep(2); };
 
   const xfInputSrc = sources.find(s => s.id === sourceId);
   const xfFieldCollision = isXf && (steps || []).some((st, i) => (st.typeId === "calc" || st.typeId === "cond") && st.params && st.params.field && availableColsTyped(xfInputSrc, steps, i, sources).map(c => c.name).includes(st.params.field));
@@ -7874,7 +7874,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
       const outSrc = {
         id: outSrcId, name: connSlug(dirOutName), origin: "Data transformation", type: "Table",
         status: "Waiting for data", records: "0", recordCount: 0, lastSynced: "Not run yet",
-        description: "Written by the " + (dir ? dir.name : "directive") + " directive via " + (name || "data transformation") + ".",
+        description: "Written by the " + (dir ? dir.name : "saved prompt") + " saved prompt via " + (name || "data transformation") + ".",
         published: true, fromPipeline: true, configured: true, pipelineId: pipeId,
         columns: [], parsed: { fileName: connSlug(dirOutName), columns: [], typeByCol: {}, rows: [] }, relations: { outgoing:[], incoming:[] },
       };
@@ -7938,7 +7938,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         <PageHead title={(editing ? "Edit " : "New ") + type.label} sub={"Data transformation · " + type.label} onCancel={onCancel} />
         <Stepper current={scheduleStepN} steps={pipeSteps} />
         <div className="vds-h4 proto-section-title">Automate</div>
-        <div className="vds-b2 proto-muted proto-section-note">{isDir ? "How often this directive runs in the agent harness." : isXf ? "How this data transformation reruns — plus a manual Run now, always available from the Automations page." : "How often this data transformation runs."}</div>
+        <div className="vds-b2 proto-muted proto-section-note">{isDir ? "How often this saved prompt runs in the agent harness." : isXf ? "How this data transformation reruns — plus a manual Run now, always available from the Automations page." : "How often this data transformation runs."}</div>
         {isXf && (
           <div className="xf-outmode-row">
             <button className={"xf-outmode" + (triggerMode === "input" ? " on" : "")} onClick={() => setTriggerMode("input")}><Icon name="broadcast" size={16} /><span>On input update</span></button>
@@ -8083,11 +8083,11 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         <DataSourcePicker sources={sources} valueId={inId} onChange={setInId} />
 
         <div className="vds-h4 proto-section-title">Directive</div>
-        <div className="vds-b2 proto-muted proto-section-note">A named prompt from your directive library, run in a headless agent harness.</div>
+        <div className="vds-b2 proto-muted proto-section-note">A named prompt from your saved prompt library, run in a headless agent harness.</div>
         <div className="form-grid">
           <div className="field">
             <select className="vds-select" value={directiveId} onChange={e => setDirectiveId(e.target.value)}>
-              <option value="">Select a directive…</option>
+              <option value="">Select a saved prompt…</option>
               {DIRECTIVES.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
             {directiveId && <div className="vds-helper-text">{(DIRECTIVES.find(d => d.id === directiveId) || {}).desc}</div>}
@@ -8101,7 +8101,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
             <input className="vds-input" value={dirOutName} placeholder="e.g. triaged_issues" onChange={e => setDirOutName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))} />
             {(() => { const inSrc = sources.find(s => s.id === inId); return (
               <div className="vds-helper-text">{dirOutName && inSrc && connSlug(dirOutName) === connSlug(inSrc.name)
-                ? ("Matches the input — the directive writes its results into the original data table, " + inSrc.name + ".")
+                ? ("Matches the input — the saved prompt writes its results into the original data table, " + inSrc.name + ".")
                 : ((inSrc ? ("Use the same name as the input (" + inSrc.name + ") to write results into the original data table. ") : "") + "Use a different name to create a new output data.")}</div>
             ); })()}
           </div>
@@ -8296,7 +8296,7 @@ function fmtDuration(startedTs, finishedTs){
 function histRowType(sched, pipelines){
   if (sched.connectorId) return "connection";
   const pipe = sched.pipelineId ? pipelines.find(p => p.id === sched.pipelineId) : null;
-  return (pipe && pipe.typeId === "directive") ? "directive" : "data transformation";
+  return (pipe && pipe.typeId === "directive") ? "saved prompt" : "data transformation";
 }
 // Flatten schedule-level runs into one row per data for connector runs (a single connector
 // sync covers several tables), and one row per run for pipeline/directive runs.
@@ -8363,7 +8363,7 @@ function genArgoLogs(row){
   }
   return lines;
 }
-const RUNH_TYPES = ["connection","data transformation","directive"];
+const RUNH_TYPES = ["connection","data transformation","saved prompt"];
 function RunDetailsPage({ row, onBack, onOpenConfigurator }){
   const meta = runStatusMeta(row.run.status);
   const logs = genArgoLogs(row);
@@ -8631,7 +8631,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                           {act.type === "prompt" && (
                             <div className="field action-row__prompt">
                               <textarea className="vds-textarea" rows={4} value={act.prompt || ""}
-                                placeholder='Enter AI prompt. You may type "/" to be shown a list of directives.'
+                                placeholder='Enter AI prompt. You may type "/" to be shown a list of saved prompts.'
                                 onChange={(e)=>patchAction(step.id, act.id, { prompt:e.target.value })} />
                             </div>
                           )}
@@ -8718,7 +8718,7 @@ function RunHistory({ cfg, automations, runs, connectors, pipelines, sources, ta
             <p>Automations created by connectors and data transformations will show their run history here.</p>
           </div>
         ) : (<>
-          <div className="vds-b2 proto-muted proto-section-note" style={{marginTop:0}}>Every data table, data transformation, and directive that has run on the platform, one row per run. A connector run shows up here once per data table it syncs.</div>
+          <div className="vds-b2 proto-muted proto-section-note" style={{marginTop:0}}>Every data table, data transformation, and saved prompt that has run on the platform, one row per run. A connector run shows up here once per data table it syncs.</div>
           <div className="runh-toolbar">
             <div className="vds-table-toolbar__count"><b>{rows.length}</b> runs</div>
             <div className="runh-filters">
