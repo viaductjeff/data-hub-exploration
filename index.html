@@ -479,6 +479,13 @@
   .action-row__prompt textarea { width: 100%; resize: vertical; }
   .auto-empty-steps { display: flex; flex-direction: column; align-items: center; gap: var(--vds-form-gap); padding: 40px 0; }
 
+  /* Run-outcome strip on the automations list — 10 segments, oldest first. */
+  .run-strip { display: inline-flex; gap: 2px; align-items: center; }
+  .run-seg { width: 4px; height: 16px; border-radius: 2px; background: var(--vds-gray-100); }
+  .run-seg--ok { background: var(--vds-success); }
+  .run-seg--warn { background: var(--vds-warning); }
+  .run-seg--error { background: var(--vds-error); }
+
   /* ---------- automations: run history ---------- */
   .hist-legend { display: flex; align-items: center; gap: 20px; margin: var(--vds-button-gap) 0 var(--vds-dialog-gap); color: var(--vds-text-secondary); font-size: 12px; }
   .hist-legend .lg { display: inline-flex; align-items: center; gap: var(--vds-button-gap); }
@@ -969,7 +976,7 @@ const HUB_PAGE = {
   automations:{ key:"automations", title:"Automations", icon:"bolt",
     sub:"Run your connectors, saved prompts and data transformations on a trigger you define.",
     noun:"automations", filter:"Filter automations...", hidden:"Show paused automations",
-    cols:["Name","Steps","Trigger","Last run","Last run by","Created","Creator","Actions"],
+    cols:["Name","Steps","Trigger","Next scheduled run","Last run","History","Creator","Actions"],
     emptyTitle:"No automations yet", emptyBody:"An automation runs a sequence of steps on a trigger. Build one here, or automate a connector or data transformation from its wizard and it will appear in this list.", cta:"New automation" },
   directives:{ key:"directives", title:"Saved Prompts", icon:"terminal",
     sub:"Named prompts you can reuse — in an automation, or to clean, map and route incoming records.",
@@ -1085,6 +1092,18 @@ function TopBar(){
 }
 
 /* ---------------- Hub list page ---------------- */
+/* Ten run outcomes as a compact strip, oldest on the left. */
+function RunStrip({ history }){
+  const runs = history || [];
+  if (!runs.length) return <span className="proto-muted">—</span>;
+  const label = { ok:"Succeeded", warn:"Warning", error:"Failed" };
+  return (
+    <span className="run-strip" title={runs.length + " most recent runs, oldest first"}>
+      {runs.map((r,i) => <span key={i} className={"run-seg run-seg--" + r} aria-label={label[r] || r} />)}
+    </span>
+  );
+}
+
 function DeleteButton({ onDelete }){
   return (
     <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" title="Delete data table" aria-label="Delete data table" onClick={onDelete}>
@@ -1237,7 +1256,7 @@ function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNo
   const isConn = cfg.key === "dataconnectors";
   const isAuto = cfg.key === "automations";
   const isPipe = cfg.key === "datapipelines";
-  const tmpl = isConn ? "1.3fr 1fr 1.4fr 1.1fr 1.1fr 0.9fr" : (isAuto ? "1.6fr 0.6fr 1.4fr 1fr 1fr 1fr 1fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`));
+  const tmpl = isConn ? "1.3fr 1fr 1.4fr 1.1fr 1.1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 0.9fr 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`));
   const fire = onNew || (() => {});
   const open = onOpen || (() => {});
   const upd = onUpdate || (() => {});
@@ -1294,9 +1313,9 @@ function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNo
                 <div className="td td-name"><button className="proto-name-link" onClick={()=>open(r.id)}>{r.name || "Unnamed automation"}</button></div>
                 <div className="td" style={{textAlign:"center"}}>{(r.steps || []).length}</div>
                 <div className="td">{automationTriggerText(r)}</div>
+                <div className="td">{automationNextRun(r)}</div>
                 <div className="td">{fmtAutoDate(r.lastRunAt)}</div>
-                <div className="td">{r.lastRunBy || "—"}</div>
-                <div className="td">{fmtAutoDate(r.createdAt)}</div>
+                <div className="td"><RunStrip history={r.history} /></div>
                 <div className="td">{r.createdBy || "—"}</div>
                 <div className="td right">
                   <div className="row-actions">
@@ -1880,7 +1899,7 @@ function newAutomationStep(){
 }
 function newAutomation(name){
   return { id:autoId("auto"), name:name || "", createdAt:todayISO(), createdBy:CURRENT_USER,
-           lastRunAt:"", lastRunBy:"", steps:[newAutomationStep()] };
+           lastRunAt:"", lastRunBy:"", history:seedRunHistory(10), steps:[newAutomationStep()] };
 }
 function todayISO(){
   const d = new Date();
@@ -1910,6 +1929,42 @@ function triggerSummary(trigger){
   return dayText + " · " + times + " UTC" + (list.length > 1 ? "" : "");
 }
 const automationTriggerText = (a) => a && a.steps && a.steps[0] ? triggerSummary(a.steps[0].trigger) : "—";
+/* Soonest upcoming day+time across the first step's schedule entries. Manual and
+   table-event triggers have no next run. */
+function nextRunFromTrigger(trigger){
+  if (!trigger || trigger.type !== "schedule") return "—";
+  const list = trigger.schedules || [];
+  const now = new Date();
+  let best = null;
+  list.forEach(sch => {
+    const [hh, mm] = (sch.time || "09:00").split(":").map(Number);
+    for (let add = 0; add < 8; add++){
+      const d = new Date(now.getTime());
+      d.setUTCDate(d.getUTCDate() + add);
+      d.setUTCHours(hh, mm, 0, 0);
+      if (d <= now) continue;
+      if (!sch.days || !sch.days[DAYS_OF_WEEK[d.getUTCDay()].value]) continue;
+      if (!best || d < best) best = d;
+      break;
+    }
+  });
+  return best
+    ? best.toLocaleString("en-US", { timeZone:"UTC", month:"short", day:"numeric", hour:"numeric", minute:"2-digit" }) + " UTC"
+    : "—";
+}
+const automationNextRun = (a) => a && a.steps && a.steps[0] ? nextRunFromTrigger(a.steps[0].trigger) : "—";
+/* Ten most recent run outcomes, oldest first. Warnings and failures are rare, so
+   a healthy automation reads as a solid green run of segments. */
+function seedRunHistory(n){
+  const out = [];
+  for (let i = 0; i < (n || 10); i++){
+    const r = Math.random();
+    out.push(r < 0.025 ? "error" : r < 0.07 ? "warn" : "ok");
+  }
+  return out;
+}
+const RUN_SEGMENT_CLASS = { ok:"ok", pending:"warn", warn:"warn", error:"error" };
+const pushRunHistory = (hist, status) => [...(hist || []).slice(-9), RUN_SEGMENT_CLASS[status] || "ok"];
 /* The Automate step in a wizard produces this trigger; it becomes the first
    step of the automation created for that connector or transformation. */
 /* The transformation wizard keeps its own cadence controls; this maps whatever it
@@ -1946,7 +2001,7 @@ function automationFromConnector(inst, trigger, dataSourceIds, nameLookup){
     id:autoId("auto"),
     name:"Sync " + (names.length === 1 ? names[0] : inst.name),
     connectorId:inst.id,
-    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"",
+    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"", history:seedRunHistory(10),
     steps:[{
       id:autoId("step"), name:"Sync from " + inst.name,
       trigger:trigger || newWizardTrigger(),
@@ -1957,7 +2012,7 @@ function automationFromConnector(inst, trigger, dataSourceIds, nameLookup){
 function automationFromPipeline(pipe, trigger){
   return {
     id:autoId("auto"), name:"Run " + pipe.name, pipelineId:pipe.id,
-    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"",
+    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"", history:seedRunHistory(10),
     steps:[{
       id:autoId("step"), name:"Run " + pipe.name,
       trigger:trigger || newWizardTrigger(),
@@ -8831,7 +8886,8 @@ function App(){
       const outcome = isScriptConn ? simulateScriptRunOutcome() : simulateRunOutcome();
       setRuns(rs => rs.map(r => r.id===runId ? { ...r, status: outcome.status, finishedTs: ts, msg: outcome.msg || null } : r));
       setAutomations(as => as.map(x => x.id===autoIdArg
-        ? { ...x, lastRunStatus: outcome.status, lastRunAt: todayISO(), lastRunBy: CURRENT_USER } : x));
+        ? { ...x, lastRunStatus: outcome.status, lastRunAt: todayISO(), lastRunBy: CURRENT_USER,
+            history: pushRunHistory(x.history, outcome.status) } : x));
       if (conn){
         setConnectors(cs => cs.map(c => c.id===conn.id ? {
           ...c, lastRunStatus: outcome.status, lastRunError: outcome.status !== "ok" ? outcome.msg : null,
