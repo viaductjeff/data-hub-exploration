@@ -480,6 +480,15 @@
   .auto-empty-steps { display: flex; flex-direction: column; align-items: center; gap: var(--vds-form-gap); padding: 40px 0; }
 
   /* Run-outcome strip on the automations list — 10 segments, oldest first. */
+  .proto-run-chip { gap: 6px; }
+  .proto-run-chip svg { flex: none; }
+  /* Hover text is the only place the reason lives, so mark the label as hoverable. */
+  .proto-dashed-underline { cursor: help; text-decoration: underline dashed currentColor;
+    text-decoration-thickness: 1px; text-underline-offset: 3px; }
+  .run-spin { animation: run-sweep 0.9s linear infinite; transform-origin: 50% 50%; }
+  @keyframes run-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .run-seg--running { background: var(--vds-gray-200); }
+
   .run-strip { display: inline-flex; gap: 2px; align-items: center; }
   .run-seg { width: 8px; height: 16px; border-radius: 2px; background: var(--vds-gray-100); }
   .run-seg--ok { background: var(--vds-success); }
@@ -663,8 +672,8 @@
 const { useState, useRef } = React;
 
 /* ---------------- Icons ---------------- */
-function Icon({ name, size = 19 }){
-  const a = { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:1.7, strokeLinecap:"round", strokeLinejoin:"round" };
+function Icon({ name, size = 19, className }){
+  const a = { width:size, height:size, viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:1.7, strokeLinecap:"round", strokeLinejoin:"round", className };
   const P = {
     home:(<><path d="M3 9.7 12 3l9 6.7"/><path d="M5 9.5V20h14V9.5"/><path d="M9.5 20v-5.5h5V20"/></>),
     clipboardList:(<><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M8 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="M8.5 11.5h7M8.5 15.5h5"/></>),
@@ -697,6 +706,7 @@ function Icon({ name, size = 19 }){
     check:(<path d="m5 13 4 4L19 7"/>),
     arrowLeft:(<><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></>),
     grip:(<g fill="currentColor" stroke="none"><circle cx="9" cy="5" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="9" cy="19" r="1.6"/><circle cx="15" cy="5" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="15" cy="19" r="1.6"/></g>),
+    spinner:(<path d="M12 3.5a8.5 8.5 0 1 1-6.01 2.49" />),
     arrowUp:(<><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></>),
     arrowDown:(<><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></>),
     arrowRight:(<><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>),
@@ -1315,7 +1325,7 @@ function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNo
                 <div className="td">{automationTriggerText(r)}</div>
                 <div className="td">{automationNextRun(r)}</div>
                 <div className="td">{fmtAutoDate(r.lastRunAt)}</div>
-                <div className="td"><RunStrip history={r.history} /></div>
+                <div className="td"><RunStrip history={stripFromRuns(r.runList)} /></div>
                 <div className="td">{r.createdBy || "—"}</div>
                 <div className="td right">
                   <div className="row-actions">
@@ -1899,7 +1909,7 @@ function newAutomationStep(){
 }
 function newAutomation(name){
   return { id:autoId("auto"), name:name || "", createdAt:todayISO(), createdBy:CURRENT_USER,
-           lastRunAt:"", lastRunBy:"", history:seedRunHistory(10), steps:[newAutomationStep()] };
+           lastRunAt:"", lastRunBy:"", runList:seedAutomationRuns(null, 14), steps:[newAutomationStep()] };
 }
 function todayISO(){
   const d = new Date();
@@ -1953,18 +1963,47 @@ function nextRunFromTrigger(trigger){
     : "—";
 }
 const automationNextRun = (a) => a && a.steps && a.steps[0] ? nextRunFromTrigger(a.steps[0].trigger) : "—";
-/* Ten most recent run outcomes, oldest first. Warnings and failures are rare, so
-   a healthy automation reads as a solid green run of segments. */
-function seedRunHistory(n){
+const RUN_WARNINGS = [
+  "Ran with 3 rows skipped — 'hire_date' could not be parsed in those rows and they were left out.",
+  "Completed, but the source returned 12% fewer rows than the previous run. Worth checking upstream.",
+  "One action was retried after a transient timeout. The run finished on the second attempt.",
+];
+const RUN_FAILURES = [
+  "Source endpoint timed out after 30s. No rows were written.",
+  "Authentication failed (401 Unauthorized) — the connection's credentials may have expired.",
+  "Schema mismatch: expected column 'vehicle_id' was not present. Run quarantined.",
+  "Rate limit exceeded (429) from the provider. The run stopped partway through.",
+];
+const TRIGGERED_BY_LABEL = { manual:"Manual run", schedule:"Schedule", event:"Table event" };
+/* Past runs for one automation, newest first. Warnings and failures stay rare so a
+   healthy automation reads as a green run of segments on the list. */
+function seedAutomationRuns(trigger, n){
+  const kind = (trigger && trigger.type) || "schedule";
   const out = [];
-  for (let i = 0; i < (n || 10); i++){
+  let t = Date.now() - 36e5;                       // most recent finished about an hour ago
+  for (let i = 0; i < (n || 14); i++){
     const r = Math.random();
-    out.push(r < 0.025 ? "error" : r < 0.07 ? "warn" : "ok");
+    const status = r < 0.015 ? "error" : r < 0.05 ? "warn" : "ok";
+    out.push({
+      id: autoId("run"),
+      at: t,
+      status,
+      durationMin: status === "error" ? 1 + Math.floor(Math.random()*4) : 2 + Math.floor(Math.random()*95),
+      triggeredBy: Math.random() < 0.15 ? "manual" : kind,
+      message: status === "warn" ? RUN_WARNINGS[Math.floor(Math.random()*RUN_WARNINGS.length)]
+             : status === "error" ? RUN_FAILURES[Math.floor(Math.random()*RUN_FAILURES.length)] : null,
+    });
+    t -= (18 + Math.floor(Math.random()*14)) * 36e5;   // roughly a run a day, jittered
   }
   return out;
 }
-const RUN_SEGMENT_CLASS = { ok:"ok", pending:"warn", warn:"warn", error:"error" };
-const pushRunHistory = (hist, status) => [...(hist || []).slice(-9), RUN_SEGMENT_CLASS[status] || "ok"];
+const RUN_STATUS_LABEL = { running:"Running", ok:"Success", warn:"Warning", error:"Error" };
+const fmtRunDuration = (min) => Math.floor(min/60) + "h " + String(min%60).padStart(2,"0") + "m";
+const fmtRunAt = (ms) => new Date(ms).toLocaleString("en-US",
+  { month:"short", day:"numeric", year:"numeric", hour:"numeric", minute:"2-digit" });
+const RUN_SEGMENT_CLASS = { ok:"ok", pending:"warn", warn:"warn", error:"error", running:"running" };
+/* Last ten outcomes, oldest first, for the list's History strip. */
+const stripFromRuns = (runs) => (runs || []).slice(0,10).map(r => RUN_SEGMENT_CLASS[r.status] || "ok").reverse();
 /* The Automate step in a wizard produces this trigger; it becomes the first
    step of the automation created for that connector or transformation. */
 /* The transformation wizard keeps its own cadence controls; this maps whatever it
@@ -2001,7 +2040,7 @@ function automationFromConnector(inst, trigger, dataSourceIds, nameLookup){
     id:autoId("auto"),
     name:"Sync " + (names.length === 1 ? names[0] : inst.name),
     connectorId:inst.id,
-    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"", history:seedRunHistory(10),
+    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"", runList:seedAutomationRuns(trigger, 14),
     steps:[{
       id:autoId("step"), name:"Sync from " + inst.name,
       trigger:trigger || newWizardTrigger(),
@@ -2012,7 +2051,7 @@ function automationFromConnector(inst, trigger, dataSourceIds, nameLookup){
 function automationFromPipeline(pipe, trigger){
   return {
     id:autoId("auto"), name:"Run " + pipe.name, pipelineId:pipe.id,
-    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"", history:seedRunHistory(10),
+    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"", runList:seedAutomationRuns(trigger, 14),
     steps:[{
       id:autoId("step"), name:"Run " + pipe.name,
       trigger:trigger || newWizardTrigger(),
@@ -8450,6 +8489,72 @@ function RunDetailsPage({ row, onBack, onOpenConfigurator }){
 /* ---------------- Automation editor ----------------
    Only the first step picks a trigger; later steps run after the one before
    them, so all they show is the optional delay. */
+/* Status chip for one run. Warning and error carry an explanation, so their label
+   gets a dashed underline and hover text; Running spins. */
+function RunStatusChip({ status, message }){
+  const cls = status === "ok" ? " vds-chip--success"
+            : status === "warn" ? " vds-chip--warning"
+            : status === "error" ? " vds-chip--error" : "";
+  const icon = status === "running" ? "spinner"
+             : status === "ok" ? "check"
+             : status === "warn" ? "alert" : "x";
+  const label = RUN_STATUS_LABEL[status] || status;
+  const explained = status === "warn" || status === "error";
+  return (
+    <span className={"vds-chip vds-chip--sm proto-run-chip" + cls}>
+      <Icon name={icon} size={14} className={status === "running" ? "run-spin" : undefined} />
+      {explained && message
+        ? <span className="proto-dashed-underline" title={message}>{label}</span>
+        : <span>{label}</span>}
+    </span>
+  );
+}
+
+/* Past runs of one automation, with mutually exclusive status filters. */
+function AutomationRunHistory({ automation }){
+  const [filter, setFilter] = useState("all");
+  const runs = automation.runList || [];
+  const counts = {
+    all: runs.length,
+    ok: runs.filter(r => r.status === "ok").length,
+    warn: runs.filter(r => r.status === "warn").length,
+    error: runs.filter(r => r.status === "error").length,
+    running: runs.filter(r => r.status === "running").length,
+  };
+  const shown = filter === "all" ? runs : runs.filter(r => r.status === filter);
+  const FILTERS = [["all","All"],["ok","Success"],["warn","Warning"],["error","Error"],["running","Running"]];
+  return (
+    <div>
+      <div className="runh-filters" style={{margin:"0 0 16px"}}>
+        {FILTERS.map(([v,label]) => (
+          <button key={v} className={"vds-btn vds-btn--sm proto-toggle" + (filter === v ? " on" : "")}
+            aria-pressed={filter === v} onClick={()=>setFilter(v)}>{label} {counts[v]}</button>
+        ))}
+      </div>
+      {shown.length === 0 ? (
+        <div className="vds-alert vds-alert--info proto-note">No runs match this filter.</div>
+      ) : (
+        <div className="vds-table-container">
+          <div className="thead" style={{gridTemplateColumns:"1.3fr 1fr 0.9fr 1fr"}}>
+            <div className="th">Last run</div><div className="th">Status</div>
+            <div className="th">Duration</div><div className="th">Triggered by</div>
+          </div>
+          <div className="tbody">
+            {shown.map(r => (
+              <div className="trow" style={{gridTemplateColumns:"1.3fr 1fr 0.9fr 1fr"}} key={r.id}>
+                <div className="td">{fmtRunAt(r.at)}</div>
+                <div className="td"><RunStatusChip status={r.status} message={r.message} /></div>
+                <div className="td">{r.status === "running" ? "—" : fmtRunDuration(r.durationMin)}</div>
+                <div className="td">{TRIGGERED_BY_LABEL[r.triggeredBy] || "Schedule"}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AutomationEditor({ automation, automations = [], sources, pipelines, onCancel, onSave }){
   const [draft, setDraft] = useState(automation);
   /* Uniqueness is checked on blur, against every other automation's name. */
@@ -8457,6 +8562,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
   const nameIsTaken = (v) => automations.some(a => a.id !== automation.id
     && (a.name || "").trim().toLowerCase() === v.trim().toLowerCase());
   const canSave = !!draft.name.trim() && !nameTaken;
+  const [tab, setTab] = useState("steps");
   const tableNames = (sources || []).filter(s => s.configured !== false).map(s => s.name);
   const pipeNames = (pipelines || []).map(p => p.name);
 
@@ -8520,6 +8626,13 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
         </div>
       </div>
 
+      <div className="vds-tabs" style={{margin:"0 0 16px"}}>
+        <button className={"vds-tab" + (tab==="steps" ? " vds-tab--selected" : "")} onClick={()=>setTab("steps")}>Steps</button>
+        <button className={"vds-tab" + (tab==="history" ? " vds-tab--selected" : "")} onClick={()=>setTab("history")}>History</button>
+      </div>
+      {/* The run list is not edited here, so read it from the live record rather than
+          the local draft — otherwise a run finishing never updates the table. */}
+      {tab === "history" ? <AutomationRunHistory automation={automation} /> : (<>
       <div className="auto-section-head">
         <h5>Steps</h5>
         <span className="vds-b3 proto-muted">Performed in the order specified. Drag to change.</span>
@@ -8706,6 +8819,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
           <button className="vds-btn vds-btn--start-icon" onClick={addStep}><Icon name="plus" size={18} />Add step</button>
         </div>
       )}
+      </>)}
     </div>
   );
 }
@@ -8850,7 +8964,7 @@ function App(){
   const [runs, setRuns] = useState([]);
   const [connectDataFor, setConnectDataFor] = useState(null); // { targetId, connId } while launching a preset "Connect data table" flow
   const toggleSection = (k) => setOpenSections(s => ({ ...s, [k]: s[k] === false ? true : false }));
-  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setActiveId(id); };
+  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setEditingAutoId(null); setConnectDataFor(null); setActiveId(id); };
   const updateSource = (id, patch) => setSources(ss => ss.map(s => s.id===id ? {...s, ...patch} : s));
   const deleteSource = (id) => { setSources(ss => ss.filter(s => s.id !== id)); setDetailId(d => d===id ? null : d); setUpdatingId(u => u===id ? null : u); setConfiguringId(c => c===id ? null : c); };
   const updateConnector = (id, patch) => {
@@ -8873,7 +8987,9 @@ function App(){
     const runId = "run_" + Math.random().toString(36).slice(2,10);
     const startedTs = Date.now();
     setRuns(rs => [...rs, { id:runId, automationId: autoIdArg, status:"progress", startedTs, finishedTs:null, msg:null }]);
-    setAutomations(as => as.map(x => x.id===autoIdArg ? { ...x, lastRunStatus:"progress" } : x));
+    setAutomations(as => as.map(x => x.id===autoIdArg ? { ...x, lastRunStatus:"progress",
+      runList: [{ id:runId, at: startedTs, status:"running", durationMin:null, triggeredBy:"manual", message:null },
+                ...(x.runList || [])] } : x));
     const delay = 1400 + Math.random()*1800;
     setTimeout(() => {
       const ts = Date.now();
@@ -8887,7 +9003,10 @@ function App(){
       setRuns(rs => rs.map(r => r.id===runId ? { ...r, status: outcome.status, finishedTs: ts, msg: outcome.msg || null } : r));
       setAutomations(as => as.map(x => x.id===autoIdArg
         ? { ...x, lastRunStatus: outcome.status, lastRunAt: todayISO(), lastRunBy: CURRENT_USER,
-            history: pushRunHistory(x.history, outcome.status) } : x));
+            runList: (x.runList || []).map(r => r.id === runId
+              ? { ...r, status: outcome.status === "pending" ? "warn" : outcome.status,
+                  durationMin: Math.max(1, Math.round((ts - startedTs)/60000)), message: outcome.msg || null }
+              : r) } : x));
       if (conn){
         setConnectors(cs => cs.map(c => c.id===conn.id ? {
           ...c, lastRunStatus: outcome.status, lastRunError: outcome.status !== "ok" ? outcome.msg : null,
