@@ -986,7 +986,7 @@ const HUB_PAGE = {
     noun:"data transformations", filter:"Filter data transformations...", hidden:"Show disabled data transformations",
     cols:["Name","Type","Source","Status","Last run","Actions"],
     emptyTitle:"No data transformations built", emptyBody:"A data transformation reads from a source, transforms the records, and writes the result into Viaduct.", cta:"Create your first data transformation" },
-  automations:{ key:"automations", title:"Automations", icon:"bolt",
+  automations:{ key:"automations", title:"Automations", icon:"bolt", newLabel:"New Automation",
     sub:"Run your connectors, saved prompts and data transformations on a trigger you define.",
     noun:"automations", filter:"Filter automations...", hidden:"Show paused automations",
     cols:["Name","Steps","Trigger","Next scheduled run","Last run","History","Creator","Actions"],
@@ -1297,7 +1297,7 @@ function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNo
         <div>
           <h1 className="vds-page-title">{cfg.title}</h1>
         </div>
-        {onNew && <button className="vds-btn vds-btn--primary" onClick={fire}><Icon name="plus" size={17} />New</button>}
+        {onNew && <button className="vds-btn vds-btn--primary" onClick={fire}><Icon name="plus" size={17} />{cfg.newLabel || "New"}</button>}
       </div>
       {tabsNode}
       <div className="toolbar">
@@ -8608,8 +8608,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
           the local draft — otherwise a run finishing never updates the table. */}
       {tab === "history" ? <AutomationRunHistory automation={automation} /> : (<>
       <div className="auto-section-head">
-        <h5>Steps</h5>
-        <span className="vds-b3 proto-muted">Performed in the order specified. Drag to change.</span>
+        <span className="vds-b2">Performed in the order specified. Drag to change.</span>
       </div>
       {draft.steps.length === 0 ? (
         <div className="vds-card auto-empty-steps">
