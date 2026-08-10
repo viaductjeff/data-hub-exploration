@@ -489,6 +489,9 @@
   @keyframes run-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
   .run-seg--running { background: var(--vds-gray-200); }
 
+  /* Sits inside the table container, under the header row. */
+  .runh-empty { padding: 24px var(--vds-card-pad-h); background: var(--vds-surface-default); }
+
   .run-strip { display: inline-flex; gap: 2px; align-items: center; }
   .run-seg { width: 8px; height: 16px; border-radius: 2px; background: var(--vds-gray-100); }
   .run-seg--ok { background: var(--vds-success); }
@@ -1909,7 +1912,7 @@ function newAutomationStep(){
 }
 function newAutomation(name){
   return { id:autoId("auto"), name:name || "", createdAt:todayISO(), createdBy:CURRENT_USER,
-           lastRunAt:"", lastRunBy:"", runList:seedAutomationRuns(null, 14), steps:[newAutomationStep()] };
+           lastRunAt:"", lastRunBy:"", runList:[], steps:[newAutomationStep()] };
 }
 function todayISO(){
   const d = new Date();
@@ -1963,40 +1966,7 @@ function nextRunFromTrigger(trigger){
     : "—";
 }
 const automationNextRun = (a) => a && a.steps && a.steps[0] ? nextRunFromTrigger(a.steps[0].trigger) : "—";
-const RUN_WARNINGS = [
-  "Ran with 3 rows skipped — 'hire_date' could not be parsed in those rows and they were left out.",
-  "Completed, but the source returned 12% fewer rows than the previous run. Worth checking upstream.",
-  "One action was retried after a transient timeout. The run finished on the second attempt.",
-];
-const RUN_FAILURES = [
-  "Source endpoint timed out after 30s. No rows were written.",
-  "Authentication failed (401 Unauthorized) — the connection's credentials may have expired.",
-  "Schema mismatch: expected column 'vehicle_id' was not present. Run quarantined.",
-  "Rate limit exceeded (429) from the provider. The run stopped partway through.",
-];
 const TRIGGERED_BY_LABEL = { manual:"Manual run", schedule:"Schedule", event:"Table event" };
-/* Past runs for one automation, newest first. Warnings and failures stay rare so a
-   healthy automation reads as a green run of segments on the list. */
-function seedAutomationRuns(trigger, n){
-  const kind = (trigger && trigger.type) || "schedule";
-  const out = [];
-  let t = Date.now() - 36e5;                       // most recent finished about an hour ago
-  for (let i = 0; i < (n || 14); i++){
-    const r = Math.random();
-    const status = r < 0.015 ? "error" : r < 0.05 ? "warn" : "ok";
-    out.push({
-      id: autoId("run"),
-      at: t,
-      status,
-      durationMin: status === "error" ? 1 + Math.floor(Math.random()*4) : 2 + Math.floor(Math.random()*95),
-      triggeredBy: Math.random() < 0.15 ? "manual" : kind,
-      message: status === "warn" ? RUN_WARNINGS[Math.floor(Math.random()*RUN_WARNINGS.length)]
-             : status === "error" ? RUN_FAILURES[Math.floor(Math.random()*RUN_FAILURES.length)] : null,
-    });
-    t -= (18 + Math.floor(Math.random()*14)) * 36e5;   // roughly a run a day, jittered
-  }
-  return out;
-}
 const RUN_STATUS_LABEL = { running:"Running", ok:"Success", warn:"Warning", error:"Error" };
 const fmtRunDuration = (min) => Math.floor(min/60) + "h " + String(min%60).padStart(2,"0") + "m";
 const fmtRunAt = (ms) => new Date(ms).toLocaleString("en-US",
@@ -2040,7 +2010,7 @@ function automationFromConnector(inst, trigger, dataSourceIds, nameLookup){
     id:autoId("auto"),
     name:"Sync " + (names.length === 1 ? names[0] : inst.name),
     connectorId:inst.id,
-    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"", runList:seedAutomationRuns(trigger, 14),
+    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"", runList:[],
     steps:[{
       id:autoId("step"), name:"Sync from " + inst.name,
       trigger:trigger || newWizardTrigger(),
@@ -2051,7 +2021,7 @@ function automationFromConnector(inst, trigger, dataSourceIds, nameLookup){
 function automationFromPipeline(pipe, trigger){
   return {
     id:autoId("auto"), name:"Run " + pipe.name, pipelineId:pipe.id,
-    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"", runList:seedAutomationRuns(trigger, 14),
+    createdAt:todayISO(), createdBy:CURRENT_USER, lastRunAt:"", lastRunBy:"", runList:[],
     steps:[{
       id:autoId("step"), name:"Run " + pipe.name,
       trigger:trigger || newWizardTrigger(),
@@ -8525,20 +8495,24 @@ function AutomationRunHistory({ automation }){
   const FILTERS = [["all","All"],["ok","Success"],["warn","Warning"],["error","Error"],["running","Running"]];
   return (
     <div>
-      <div className="runh-filters" style={{margin:"0 0 16px"}}>
+      {runs.length > 0 && <div className="runh-filters" style={{margin:"0 0 16px"}}>
         {FILTERS.map(([v,label]) => (
           <button key={v} className={"vds-btn vds-btn--sm proto-toggle" + (filter === v ? " on" : "")}
             aria-pressed={filter === v} onClick={()=>setFilter(v)}>{label} {counts[v]}</button>
         ))}
-      </div>
-      {shown.length === 0 ? (
-        <div className="vds-alert vds-alert--info proto-note">No runs match this filter.</div>
-      ) : (
-        <div className="vds-table-container">
-          <div className="thead" style={{gridTemplateColumns:"1.3fr 1fr 0.9fr 1fr"}}>
-            <div className="th">Last run</div><div className="th">Status</div>
-            <div className="th">Duration</div><div className="th">Triggered by</div>
+      </div>}
+      <div className="vds-table-container">
+        <div className="thead" style={{gridTemplateColumns:"1.3fr 1fr 0.9fr 1fr"}}>
+          <div className="th">Last run</div><div className="th">Status</div>
+          <div className="th">Duration</div><div className="th">Triggered by</div>
+        </div>
+        {shown.length === 0 ? (
+          <div className="runh-empty vds-b2 proto-muted">
+            {runs.length === 0
+              ? "This automation hasn't run yet, so it has no run history. Runs appear here once it's triggered — by its schedule, or with Run now from the automations list."
+              : "No runs match this filter."}
           </div>
+        ) : (
           <div className="tbody">
             {shown.map(r => (
               <div className="trow" style={{gridTemplateColumns:"1.3fr 1fr 0.9fr 1fr"}} key={r.id}>
@@ -8549,8 +8523,8 @@ function AutomationRunHistory({ automation }){
               </div>
             ))}
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -8612,7 +8586,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
       </nav>
       <div className="auto-editor-header proto-sticky-head">
         <div className="auto-title-field">
-          <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder="Name your automation. Must be unique."
+          <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder="Automation name"
             value={draft.name} aria-label="Automation name" aria-invalid={nameTaken || undefined}
             onChange={(e)=>{ setNameTaken(false); setDraft(d => ({ ...d, name:e.target.value })); }}
             onBlur={(e)=>setNameTaken(nameIsTaken(e.target.value))} />
