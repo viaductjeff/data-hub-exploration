@@ -8608,7 +8608,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
           the local draft — otherwise a run finishing never updates the table. */}
       {tab === "history" ? <AutomationRunHistory automation={automation} /> : (<>
       <div className="auto-section-head">
-        <span className="vds-b2">Performed in the order specified. Drag to change.</span>
+        <span className="vds-b2">Performed in the order specified. Drag to reorder.</span>
       </div>
       {draft.steps.length === 0 ? (
         <div className="vds-card auto-empty-steps">
