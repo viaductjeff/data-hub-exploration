@@ -54,7 +54,6 @@
 
   /* ---------- shared page furniture ---------- */
   .proto-muted { color: var(--vds-text-secondary); }
-  .proto-page-sub { margin: 8px 0 0; }
   .proto-section-title { margin: 32px 0 4px; }
   .proto-section-note { margin: 0 0 16px; }
   .proto-cols-instr { margin: 0 0 16px; }
@@ -1265,7 +1264,6 @@ function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNo
       <div className="vds-page-header">
         <div>
           <h1 className="vds-page-title">{cfg.title}</h1>
-          <p className="vds-b1 proto-muted proto-page-sub">{cfg.sub}</p>
         </div>
         {onNew && <button className="vds-btn vds-btn--primary" onClick={fire}><Icon name="plus" size={17} />New</button>}
       </div>
@@ -2213,7 +2211,6 @@ function PageHead({ title, sub, onCancel }){
     <div className="vds-page-header proto-sticky-head">
       <div>
         <h1 className="vds-page-title">{title}</h1>
-        {sub && <p className="vds-b1 proto-muted proto-page-sub">{sub}</p>}
       </div>
       <button className="vds-btn vds-btn--text" onClick={onCancel}><Icon name="x" size={18} />Cancel</button>
     </div>
@@ -3297,7 +3294,6 @@ function DataSourceDetails({ source, allSources = [], connectors = [], automatio
       <div className="vds-page-header proto-sticky-head">
         <div>
           <h1 className="vds-page-title">{source.name}</h1>
-          <p className="vds-b1 proto-muted proto-page-sub">{source.origin} · {source.type} · {source.records} records · synced {source.lastSynced.toLowerCase()}</p>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:10,flex:"0 0 auto"}}>
           <span className={"vds-chip vds-chip--sm proto-pub-pill " + (published ? "yes" : "no")}>{published ? "Published" : "Unpublished"}</span>
@@ -6410,7 +6406,6 @@ function ConnectorDetails({ conn, sources, onBack, onUpdate, onOpenSource }){
       <div className="vds-page-header proto-sticky-head">
         <div>
           <h1 className="vds-page-title">{conn.name}</h1>
-          <p className="vds-b1 proto-muted proto-page-sub">{conn.connectorName} · {conn.group} · {syncSummary(conn)}</p>
         </div>
         <span className="vds-chip vds-chip--sm proto-status-pill"><span className="dot"></span>{conn.status}</span>
       </div>
@@ -8702,7 +8697,7 @@ function RunHistory({ cfg, automations, runs, connectors, pipelines, sources, ta
   return (
     <div className="vds-content">
       <div className="vds-page-header">
-        <div><h1 className="vds-page-title">{cfg.title}</h1><p className="vds-b1 proto-muted proto-page-sub">{cfg.sub}</p></div>
+        <div><h1 className="vds-page-title">{cfg.title}</h1></div>
       </div>
       {tabBar}
       <div className="tab-body" style={{minHeight:0}}>
@@ -8797,7 +8792,6 @@ function App(){
   const [pipelines, setPipelines] = useState([]);
   const [pipeCreating, setPipeCreating] = useState(false);
   const [pipeEditId, setPipeEditId] = useState(null);
-  const [autoTab, setAutoTab] = useState("automations");
   const [runs, setRuns] = useState([]);
   const [connectDataFor, setConnectDataFor] = useState(null); // { targetId, connId } while launching a preset "Connect data table" flow
   const toggleSection = (k) => setOpenSections(s => ({ ...s, [k]: s[k] === false ? true : false }));
@@ -9070,20 +9064,12 @@ function App(){
         setPipeCreating(false);
       }} />;
   } else if (activeId === "automations"){
-    const autoTabBar = (
-      <div className="vds-tabs" style={{margin:"16px 0 0"}}>
-        <button className={"vds-tab" + (autoTab==="automations" ? " vds-tab--selected" : "")} onClick={()=>setAutoTab("automations")}>Automations</button>
-        <button className={"vds-tab" + (autoTab==="history" ? " vds-tab--selected" : "")} onClick={()=>setAutoTab("history")}>History</button>
-      </div>
-    );
     page = editingAuto
       ? <AutomationEditor automation={editingAuto} automations={automations} sources={sources} pipelines={pipelines}
           onCancel={() => setEditingAutoId(null)}
           onSave={(a) => { upsertAutomation(a); setEditingAutoId(null); }} />
-      : autoTab === "history"
-        ? <RunHistory cfg={cfg} automations={automations} runs={runs} connectors={connectors} pipelines={pipelines} sources={sources} tabBar={autoTabBar} onOpenConnector={openConnector} onOpenPipeline={openPipeline} />
-        : <HubPage cfg={cfg} tabsNode={autoTabBar} onNew={() => { const a = newAutomation(""); upsertAutomation(a); setEditingAutoId(a.id); }}
-            onOpen={(id) => setEditingAutoId(id)} onDelete={deleteAutomation} onRunNow={runAutomation} records={automations} />;
+      : <HubPage cfg={cfg} onNew={() => { const a = newAutomation(""); upsertAutomation(a); setEditingAutoId(a.id); }}
+          onOpen={(id) => setEditingAutoId(id)} onDelete={deleteAutomation} onRunNow={runAutomation} records={automations} />;
   } else if (cfg){
     page = <HubPage cfg={cfg}
       onNew={activeId==="datasources" ? () => setCreating(true) : (activeId==="dataconnectors" ? () => setConnCreating(true) : (activeId==="datapipelines" ? () => setPipeCreating(true) : undefined))}
