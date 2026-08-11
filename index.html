@@ -499,6 +499,10 @@
   .prompt-tool-param { padding-top: var(--vds-button-gap); border-top: 1px solid var(--vds-gray-100); }
   .prompt-tool-param__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--vds-button-gap); }
   .prompt-tool-param__head .vds-b2 { font-family: var(--vds-font-mono); }
+  .duck-chat { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
+  .duck-msg { max-width: 88%; padding: 10px 14px; border-radius: 4px; white-space: pre-wrap; line-height: 20px; }
+  .duck-msg--me { align-self: flex-end; background: var(--vds-gray-50); font-family: var(--vds-font-mono); }
+  .duck-msg--duck { align-self: flex-start; background: var(--vds-alert-info-bg); }
   .step-card__reorder { display: flex; flex: none; }
   .step-card__body { display: flex; flex-direction: column; gap: 20px; padding: var(--vds-card-pad-h); }
   .trigger-choice-row { display: flex; flex-wrap: wrap; gap: var(--vds-main-gap); }
@@ -1402,7 +1406,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onUpdate, onDelete, onOpenSource,
                 <div className="td right">
                   {/* Stops a click on an action from also opening the row. */}
                   <div className="row-actions" onClick={(e)=>e.stopPropagation()}>
-                    <button className="vds-icon-btn vds-icon-btn--sm" title="Run now" aria-label="Run now" onClick={()=>runNow(r.id)}><Icon name="play" size={16} /></button>
+                    <RunInViaDuckButton prompt={r} />
                     <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>edit(r.id)}><Icon name="pencil" size={17} /></button>
                     <DeleteButton onDelete={()=>del(r.id)} />
                   </div>
@@ -8962,6 +8966,44 @@ function AutomationView({ automation, onBack, onEdit, onRun, onDelete }){
   );
 }
 
+/* Running a saved prompt means calling it in ViaDuck chat, which only works once
+   it's available to users. */
+function RunInViaDuckButton({ prompt, withLabel = false }){
+  const [open, setOpen] = useState(false);
+  const enabled = !!prompt.toUsers;
+  const why = enabled ? "Run in ViaDuck" : 'Turn on "Available to users" to run this in ViaDuck';
+  const instructions = (prompt.instructions || "").trim();
+  return (<>
+    {withLabel ? (
+      <button className="vds-btn vds-btn--start-icon" disabled={!enabled} title={why} onClick={()=>setOpen(true)}>
+        <Icon name="play" size={16} />Run in ViaDuck</button>
+    ) : (
+      <button className="vds-icon-btn vds-icon-btn--sm" disabled={!enabled} title={why}
+        aria-label="Run in ViaDuck" onClick={()=>setOpen(true)}><Icon name="play" size={16} /></button>
+    )}
+    {open && (
+      <div className="modal-overlay" onClick={()=>setOpen(false)}>
+        <div className="vds-dialog proto-modal-card" onClick={(e)=>e.stopPropagation()}>
+          <div className="vds-dialog__title"><span><span aria-hidden="true">🦆</span> ViaDuck</span></div>
+          <div className="vds-dialog__content">
+            <div className="duck-chat">
+              <div className="duck-msg duck-msg--me">{slashOf(prompt.name)}</div>
+              <div className="duck-msg duck-msg--duck">
+                {instructions
+                  ? "Running " + prompt.name + ". Here's what I'm working from:\n\n" + instructions
+                  : "I can't run " + prompt.name + " yet — it has no instructions saved."}
+              </div>
+            </div>
+          </div>
+          <div className="vds-dialog__actions" style={{marginTop:16}}>
+            <button className="vds-btn" onClick={()=>setOpen(false)}>Close</button>
+          </div>
+        </div>
+      </div>
+    )}
+  </>);
+}
+
 /* Tabs shared by both saved prompt pages. Evals is coming, not built. */
 function PromptTabs({ tab, setTab }){
   return (
@@ -9079,6 +9121,7 @@ function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpen
           <div className="vds-b3 proto-muted">Updated by {prompt.updatedBy} · {fmtAutoDate(prompt.updatedAt)}</div>
         </div>
         <div className="auto-editor-actions">
+          <RunInViaDuckButton prompt={prompt} withLabel />
           <button className="vds-btn vds-btn--start-icon" onClick={()=>onEdit(prompt.id)}>
             <Icon name="pencil" size={17} />Edit</button>
           <button className="vds-btn vds-btn--start-icon proto-btn--danger-quiet" onClick={()=>onDelete(prompt.id)}>
@@ -9115,7 +9158,6 @@ function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpen
               : <div className="vds-b2 proto-muted">None — ViaDuck won't run this on its own.</div>}
           </div>
           <PromptAutomationsCard prompt={prompt} automations={automations} onOpenAutomation={onOpenAutomation} />
-          <PromptToolsCard />
         </div>
       </div>
     </div>
