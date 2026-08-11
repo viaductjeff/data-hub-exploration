@@ -426,10 +426,14 @@
      content shows through, and the padding-top puts that spacing back. */
   .proto-sticky-head { position: sticky; top: -20px; z-index: 3;
     background: var(--vds-surface-muted);
-    margin-left: -32px; margin-right: -32px; padding: 20px 32px 10px; }
+    margin-left: -32px; margin-right: -32px; padding: 20px 32px 10px;
+    border-bottom: none; }
+  /* The background bleeds into the gutters but the rule should not — inset it so it
+     matches the divider on a list page. */
+  .proto-sticky-head::after { content: ""; position: absolute; left: 32px; right: 32px; bottom: 0;
+    height: 1px; background: var(--vds-gray-100); }
   .auto-editor-header { display: flex; align-items: flex-start; justify-content: space-between;
-    gap: var(--vds-dialog-gap); margin-bottom: var(--vds-dialog-gap);
-    border-bottom: 1px solid var(--vds-gray-100); }
+    gap: 32px; margin-bottom: var(--vds-dialog-gap); }
   .auto-title-field { flex: 1; min-width: 0; }
   .auto-title-input.err { border-color: var(--vds-error-dark); }
   /* Section heading with its explanatory note sitting beside it on the baseline. */
@@ -471,7 +475,7 @@
   .trigger-add-row { display: flex; flex-wrap: wrap; gap: var(--vds-button-gap); margin-top: var(--vds-form-gap); }
   .schedule-list { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
   .schedule-entry { display: flex; align-items: flex-start; gap: var(--vds-dialog-gap); }
-  .schedule-entry__days { display: flex; gap: 4px; }
+  .schedule-entry__days { display: flex; gap: var(--vds-button-gap); }
   .schedule-entry__time { width: 120px; }
   .trigger-row-icon { display: flex; align-items: center; flex: none; height: 36px; color: var(--vds-gray-400); }
   .schedule-entry__freq { width: 120px; }
@@ -1336,8 +1340,10 @@ function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNo
         {hasRows && !noMatches && (
           <div className="tbody">
             {filtered.map((r) => isAuto ? (
-              <div className="trow" style={{gridTemplateColumns:tmpl}} key={r.id}>
-                <div className="td td-name"><button className="proto-name-link" onClick={()=>open(r.id)}>{r.name || "Unnamed automation"}</button></div>
+              <div className="trow clickable-row" style={{gridTemplateColumns:tmpl}} key={r.id}
+                onClick={()=>open(r.id)} role="button" tabIndex={0}
+                onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(r.id); } }}>
+                <div className="td td-name">{r.name || "Unnamed automation"}</div>
                 <div className="td" style={{textAlign:"center"}}>{(r.steps || []).length}</div>
                 <div className="td">{automationTriggerText(r)}</div>
                 <div className="td">{automationNextRun(r)}</div>
@@ -1345,7 +1351,8 @@ function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNo
                 <div className="td"><RunStrip history={stripFromRuns(r.runList)} /></div>
                 <div className="td">{r.createdBy || "—"}</div>
                 <div className="td right">
-                  <div className="row-actions">
+                  {/* Stops a click on an action from also opening the row. */}
+                  <div className="row-actions" onClick={(e)=>e.stopPropagation()}>
                     <button className="vds-icon-btn vds-icon-btn--sm" title="Run now" aria-label="Run now" onClick={()=>runNow(r.id)}><Icon name="play" size={16} /></button>
                     <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>open(r.id)}><Icon name="pencil" size={17} /></button>
                     <DeleteButton onDelete={()=>del(r.id)} />
@@ -8591,13 +8598,14 @@ function AutomationRunHistory({ automation }){
   );
 }
 
-function AutomationEditor({ automation, automations = [], sources, pipelines, onCancel, onSave }){
+function AutomationEditor({ automation, automations = [], sources, pipelines, onCancel, onSave, onRun, onDelete }){
   const [draft, setDraft] = useState(automation);
   /* Uniqueness is checked on blur, against every other automation's name. */
   const [nameTaken, setNameTaken] = useState(false);
   const nameIsTaken = (v) => automations.some(a => a.id !== automation.id
     && (a.name || "").trim().toLowerCase() === v.trim().toLowerCase());
   const canSave = !!draft.name.trim() && !nameTaken;
+  const canRun = draft.steps.length > 0 && draft.steps.some(st => (st.actions || []).length > 0);
   const [tab, setTab] = useState("steps");
   const tableNames = (sources || []).filter(s => s.configured !== false).map(s => s.name)
     .sort((a,b) => a.localeCompare(b));
@@ -8656,10 +8664,15 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
           {nameTaken && <div className="vds-helper-text vds-helper-text--error">This name is already used. Names must be unique.</div>}
         </div>
         <div className="auto-editor-actions">
+          <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Run now" disabled={!canRun}
+            title={canRun ? "Run now" : "Add a step with an action to run this"}
+            onClick={()=>onRun && onRun(automation.id)}><Icon name="play" size={16} /></button>
           <button className="vds-btn" onClick={onCancel}>Cancel</button>
           <button className="vds-btn vds-btn--primary" disabled={!canSave}
             title={canSave ? undefined : "Enter a unique name to save"}
             onClick={()=>onSave(draft)}>Save automation</button>
+          <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Delete automation"
+            title="Delete automation" onClick={()=>onDelete && onDelete(automation.id)}><Icon name="trash" size={17} /></button>
         </div>
       </div>
 
@@ -9316,6 +9329,8 @@ function App(){
     page = editingAuto
       ? <AutomationEditor automation={editingAuto} automations={automations} sources={sources} pipelines={pipelines}
           onCancel={() => setEditingAutoId(null)}
+          onRun={(id) => runAutomation(id)}
+          onDelete={(id) => { deleteAutomation(id); setEditingAutoId(null); }}
           onSave={(a) => { upsertAutomation(a); setEditingAutoId(null); }} />
       : <HubPage cfg={cfg} onNew={() => { const a = newAutomation(""); upsertAutomation(a); setEditingAutoId(a.id); }}
           onOpen={(id) => setEditingAutoId(id)} onDelete={deleteAutomation} onRunNow={runAutomation} records={automations} />;
