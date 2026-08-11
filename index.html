@@ -427,13 +427,21 @@
      side margins let the background cover .vds-content's 32px gutters; top:-20px
      cancels its 20px padding-top so the row pins flush instead of leaving a strip
      content shows through, and the padding-top puts that spacing back. */
-  /* top matches padding-top so the title lands flush against the viewport once stuck. */
-  .proto-sticky-head { position: sticky; top: -16px; z-index: 3;
+  /* -20px is .vds-content's own top padding: the header rises far enough to cover it,
+     so nothing scrolls through above. Its 16px of padding stays inside, above the
+     breadcrumb. */
+  .proto-sticky-head { position: sticky; top: -20px; z-index: 3;
     background: var(--vds-surface-muted);
     margin-left: -32px; margin-right: -32px; padding: 16px 32px 10px;
     border-bottom: none; }
   /* The background bleeds into the gutters but the rule should not — inset it so it
      matches the divider on a list page. */
+  /* Detail pages keep the breadcrumb inside the sticky header, so it stays put while
+     the page scrolls. This row is .vds-page-header without its border — the sticky
+     head draws the rule itself. */
+  .proto-detail-head { display: flex; align-items: center; justify-content: space-between;
+    gap: var(--vds-dialog-gap); padding-bottom: 10px; margin-bottom: 10px; }
+  .proto-sticky-head > .vds-breadcrumbs { margin-bottom: var(--vds-dialog-gap); }
   .proto-sticky-head::after { content: ""; position: absolute; left: 32px; right: 32px; bottom: 0;
     height: 1px; background: var(--vds-gray-100); }
   .auto-editor-header { margin-bottom: var(--vds-dialog-gap); }
@@ -8887,12 +8895,13 @@ function AutomationView({ automation, onBack, onEdit, onRun, onDelete }){
 
   return (
     <div className="vds-content">
-      <nav className="vds-breadcrumbs">
-        <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Automations</a>
-        <span className="vds-breadcrumbs__sep">/</span>
-        <span>{automation.name || "Automation"}</span>
-      </nav>
-      <div className="vds-page-header proto-sticky-head">
+      <div className="proto-sticky-head">
+        <nav className="vds-breadcrumbs">
+          <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Automations</a>
+          <span className="vds-breadcrumbs__sep">/</span>
+          <span>{automation.name || "Automation"}</span>
+        </nav>
+        <div className="proto-detail-head">
         <div><h1 className="vds-page-title">{automation.name || "Unnamed automation"}</h1></div>
         <div className="auto-editor-actions">
           <button className="vds-btn vds-btn--start-icon" disabled={!canRun}
@@ -8902,6 +8911,7 @@ function AutomationView({ automation, onBack, onEdit, onRun, onDelete }){
             <Icon name="pencil" size={17} />Edit</button>
           <button className="vds-btn vds-btn--start-icon proto-btn--danger-quiet" onClick={()=>onDelete(automation.id)}>
             <Icon name="trash" size={17} />Delete</button>
+        </div>
         </div>
       </div>
 
@@ -9164,12 +9174,13 @@ function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpen
   const [tab, setTab] = useState("details");
   return (
     <div className="vds-content">
-      <nav className="vds-breadcrumbs">
-        <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Saved Prompts</a>
-        <span className="vds-breadcrumbs__sep">/</span>
-        <span>{prompt.name || "Saved prompt"}</span>
-      </nav>
-      <div className="vds-page-header proto-sticky-head">
+      <div className="proto-sticky-head">
+        <nav className="vds-breadcrumbs">
+          <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Saved Prompts</a>
+          <span className="vds-breadcrumbs__sep">/</span>
+          <span>{prompt.name || "Saved prompt"}</span>
+        </nav>
+        <div className="proto-detail-head">
         <div><h1 className="vds-page-title">{prompt.name || "Untitled saved prompt"}</h1></div>
         <div className="auto-editor-actions">
           <RunInViaDuckButton prompt={prompt} withLabel />
@@ -9177,6 +9188,7 @@ function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpen
             <Icon name="pencil" size={17} />Edit</button>
           <button className="vds-btn vds-btn--start-icon proto-btn--danger-quiet" onClick={()=>onDelete(prompt.id)}>
             <Icon name="trash" size={17} />Delete</button>
+        </div>
         </div>
       </div>
 
@@ -9237,12 +9249,12 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
 
   return (
     <div className="vds-content">
-      <nav className="vds-breadcrumbs">
-        <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Saved Prompts</a>
-        <span className="vds-breadcrumbs__sep">/</span>
-        <span>{draft.name || (isSaved ? "Saved prompt" : "New saved prompt")}</span>
-      </nav>
       <div className="auto-editor-header proto-sticky-head">
+        <nav className="vds-breadcrumbs">
+          <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Saved Prompts</a>
+          <span className="vds-breadcrumbs__sep">/</span>
+          <span>{draft.name || (isSaved ? "Saved prompt" : "New saved prompt")}</span>
+        </nav>
         <div className="auto-title-row">
           <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder="Saved prompt name"
             value={draft.name} aria-label="Saved prompt name" aria-invalid={nameTaken || undefined}
@@ -9378,12 +9390,12 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
 
   return (
     <div className="vds-content">
-      <nav className="vds-breadcrumbs">
-        <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Automations</a>
-        <span className="vds-breadcrumbs__sep">/</span>
-        <span>{draft.name || "Automation"}</span>
-      </nav>
       <div className="auto-editor-header proto-sticky-head">
+        <nav className="vds-breadcrumbs">
+          <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Automations</a>
+          <span className="vds-breadcrumbs__sep">/</span>
+          <span>{draft.name || "Automation"}</span>
+        </nav>
         <div className="auto-title-row">
           <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder="Automation name"
             value={draft.name} aria-label="Automation name" aria-invalid={nameTaken || undefined}
