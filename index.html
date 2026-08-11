@@ -456,6 +456,14 @@
      bottom margin by default — zero it so each row lines up on its centre. */
   :is(.step-card__header, .action-row, .trigger-fields-row, .schedule-entry, .trigger-after-previous) .field { margin-bottom: 0; }
   .step-card__name-field { flex: 1; min-width: 0; }
+  .step-card__name-text { flex: 1; min-width: 0; }
+  .trigger-read-list { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
+  .trigger-read-line { display: flex; align-items: flex-start; gap: var(--vds-dialog-gap); }
+  .trigger-read-line .trigger-row-icon { height: 20px; }
+  .action-read-text { min-width: 0; white-space: pre-wrap; }
+  /* Matches the quiet trash icon button in the list's actions column, not the
+     solid red confirm button in delete dialogs. */
+  .proto-btn--danger-quiet:hover { color: var(--vds-alert-error-icon); border-color: var(--vds-alert-error-icon); }
   .step-card__reorder { display: flex; flex: none; }
   .step-card__body { display: flex; flex-direction: column; gap: 20px; padding: var(--vds-card-pad-h); }
   .trigger-choice-row { display: flex; flex-wrap: wrap; gap: var(--vds-main-gap); }
@@ -1283,7 +1291,7 @@ function ConnectDataButton({ onPick, compact, connectors = [], label = "Connect 
   );
 }
 
-function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNow, onConfigure, onConnectData, lookupSource, records=[], tabsNode, allConnectors=[] }){
+function HubPage({ cfg, onNew, onOpen, onEdit, onUpdate, onDelete, onOpenSource, onRunNow, onConfigure, onConnectData, lookupSource, records=[], tabsNode, allConnectors=[] }){
   const isDS = cfg.key === "datasources";
   const isConn = cfg.key === "dataconnectors";
   const isAuto = cfg.key === "automations";
@@ -1291,6 +1299,8 @@ function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNo
   const tmpl = isConn ? "1.3fr 1fr 1.4fr 1.1fr 1.1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 0.9fr 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`));
   const fire = onNew || (() => {});
   const open = onOpen || (() => {});
+  /* Automations open read-only from the row and editable from the pencil. */
+  const edit = onEdit || open;
   const upd = onUpdate || (() => {});
   const del = onDelete || (() => {});
   const openSrc = onOpenSource || (() => {});
@@ -1355,7 +1365,7 @@ function HubPage({ cfg, onNew, onOpen, onUpdate, onDelete, onOpenSource, onRunNo
                   {/* Stops a click on an action from also opening the row. */}
                   <div className="row-actions" onClick={(e)=>e.stopPropagation()}>
                     <button className="vds-icon-btn vds-icon-btn--sm" title="Run now" aria-label="Run now" onClick={()=>runNow(r.id)}><Icon name="play" size={16} /></button>
-                    <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>open(r.id)}><Icon name="pencil" size={17} /></button>
+                    <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>edit(r.id)}><Icon name="pencil" size={17} /></button>
                     <DeleteButton onDelete={()=>del(r.id)} />
                   </div>
                 </div>
@@ -1919,6 +1929,7 @@ const ACTION_TYPES = [
   { value:"notification", label:"Notify people" },
 ];
 const REF_ACTION_TYPES = ["pipeline","import_table"];
+const ACTION_ICONS = { prompt:"sparkles", pipeline:"shuffle", import_table:"refresh", notification:"bell" };
 const WEEKDAY_DEFAULT = { sun:false, mon:true, tue:true, wed:true, thu:true, fri:true, sat:false };
 const EVERY_DAY = { sun:true, mon:true, tue:true, wed:true, thu:true, fri:true, sat:true };
 
@@ -8672,6 +8683,131 @@ function AutomationRunHistory({ automation }){
   );
 }
 
+/* Trigger and action lines as sentences, for the read-only page. The editor
+   builds the same information out of pickers. */
+function scheduleSentence(sch){
+  const at = "at " + fmtTime(sch.time) + " " + TENANT_TZ;
+  if (sch.freq === "Hourly") return "Hourly";
+  if (sch.freq === "Daily") return "Daily " + at;
+  if (sch.freq === "Monthly") return "Monthly on the " + (sch.nth || "first") + " " + (sch.weekday || "Monday") + " " + at;
+  const days = dayLabels(sch.days);
+  return "Weekly on " + (days.length ? days.join(", ") : "no days") + " " + at;
+}
+function actionSentence(act){
+  if (act.type === "prompt") return (act.prompt || "").trim() || "No prompt entered";
+  if (act.type === "notification") return "Notify people";
+  const label = (ACTION_TYPES.find(t => t.value === act.type) || {}).label || act.type;
+  return act.refName ? label + ": " + act.refName : label + " — nothing selected yet";
+}
+
+function AutomationView({ automation, onBack, onEdit, onRun, onDelete }){
+  const [tab, setTab] = useState("steps");
+  const steps = automation.steps || [];
+  const actionIsSpecified = (a) => a.type === "notification"
+    || (a.type === "prompt" ? !!(a.prompt || "").trim() : !!a.refName);
+  const canRun = steps.some(st => (st.actions || []).some(actionIsSpecified));
+
+  return (
+    <div className="vds-content">
+      <nav className="vds-breadcrumbs" style={{marginBottom:12}}>
+        <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Automations</a>
+        <span className="vds-breadcrumbs__sep">/</span>
+        <span>{automation.name || "Automation"}</span>
+      </nav>
+      <div className="vds-page-header proto-sticky-head">
+        <div><h1 className="vds-page-title">{automation.name || "Unnamed automation"}</h1></div>
+        <div className="auto-editor-actions">
+          <button className="vds-btn vds-btn--start-icon" disabled={!canRun}
+            title={canRun ? "Run now" : "Add an action to run this"}
+            onClick={()=>onRun && onRun(automation.id)}><Icon name="play" size={16} />Run</button>
+          <button className="vds-btn vds-btn--start-icon" onClick={()=>onEdit(automation.id)}>
+            <Icon name="pencil" size={17} />Edit</button>
+          <button className="vds-btn vds-btn--start-icon proto-btn--danger-quiet" onClick={()=>onDelete(automation.id)}>
+            <Icon name="trash" size={17} />Delete</button>
+        </div>
+      </div>
+
+      <div className="vds-tabs" style={{margin:"0 0 16px"}}>
+        <button className={"vds-tab" + (tab==="steps" ? " vds-tab--selected" : "")} onClick={()=>setTab("steps")}>Steps</button>
+        <button className={"vds-tab" + (tab==="history" ? " vds-tab--selected" : "")} onClick={()=>setTab("history")}>History</button>
+      </div>
+      {tab === "history" ? <AutomationRunHistory automation={automation} /> : (<>
+      <div className="auto-section-head">
+        <span className="vds-b2">Performed in the order specified.</span>
+      </div>
+      {steps.length === 0 ? (
+        <div className="vds-card auto-empty-steps">
+          <span className="vds-b2 proto-muted">This automation has no steps yet.</span>
+        </div>
+      ) : (
+        <div className="step-list">
+          {steps.map((step, i) => {
+            const isFirst = i === 0;
+            const schedules = step.trigger.schedules || [];
+            const events = step.trigger.events || [];
+            return (
+              <div className="vds-card proto-step-card" key={step.id}>
+                <div className="step-card__header">
+                  <span className="vds-b2 step-card__index">Step {i + 1}</span>
+                  {step.name && <span className="vds-b1 step-card__name-text">{step.name}</span>}
+                </div>
+                <div className="step-card__body">
+                  <div>
+                    <h5 style={{margin:"0 0 4px"}}>Trigger</h5>
+                    {isFirst && <div className="vds-b2 proto-muted" style={{marginBottom:12}}>Automations can always be manually run, even when triggered on a schedule or by a table event.</div>}
+                    <div className="trigger-read-list">
+                      {!isFirst && (
+                        <div className="trigger-read-line">
+                          <span className="trigger-row-icon"><Icon name="clock" size={18} /></span>
+                          <span className="vds-b2">After the previous step{step.trigger.delayEnabled
+                            ? ", with a delay of " + step.trigger.delayValue + " " + step.trigger.delayUnit : ""}</span>
+                        </div>
+                      )}
+                      {isFirst && schedules.map(sch => (
+                        <div className="trigger-read-line" key={sch.id}>
+                          <span className="trigger-row-icon"><Icon name="clock" size={18} /></span>
+                          <span className="vds-b2">{scheduleSentence(sch)}</span>
+                        </div>
+                      ))}
+                      {isFirst && events.map(ev => (
+                        <div className="trigger-read-line" key={ev.id}>
+                          <span className="trigger-row-icon"><Icon name="database" size={18} /></span>
+                          <span className="vds-b2">When a row is {ev.action}{ev.table ? " in table " + ev.table : ""}</span>
+                        </div>
+                      ))}
+                      {isFirst && schedules.length === 0 && events.length === 0 && (
+                        <span className="vds-b2 proto-muted">Runs only when started by hand.</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="auto-section-head" style={{marginBottom:8}}>
+                      <h5>Actions</h5>
+                      <span className="vds-b3 proto-muted vds-dotted-underline"
+                        title="They are all performed at the same time, in no specific order.">performed all at the same time</span>
+                    </div>
+                    <div className="trigger-read-list">
+                      {(step.actions || []).map(act => (
+                        <div className="trigger-read-line" key={act.id}>
+                          <span className="trigger-row-icon"><Icon name={ACTION_ICONS[act.type] || "sparkles"} size={18} /></span>
+                          <span className="vds-b2 action-read-text">{actionSentence(act)}</span>
+                        </div>
+                      ))}
+                      {(step.actions || []).length === 0 && <span className="vds-b2 proto-muted">No actions.</span>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      </>)}
+    </div>
+  );
+}
+
 function AutomationEditor({ automation, automations = [], sources, pipelines, onCancel, onSave, onRun, onDelete }){
   const [draft, setDraft] = useState(automation);
   /* Uniqueness is checked on blur, against every other automation's name. */
@@ -9127,6 +9263,7 @@ function App(){
   const [connDetailStep, setConnDetailStep] = useState(null);
   const [automations, setAutomations] = useState(seedAutomations);
   const [editingAutoId, setEditingAutoId] = useState(null);
+  const [viewingAutoId, setViewingAutoId] = useState(null);
   const [newAuto, setNewAuto] = useState(null);
   const [configuringId, setConfiguringId] = useState(null);
   const [pipelines, setPipelines] = useState([]);
@@ -9135,7 +9272,7 @@ function App(){
   const [runs, setRuns] = useState([]);
   const [connectDataFor, setConnectDataFor] = useState(null); // { targetId, connId } while launching a preset "Connect data table" flow
   const toggleSection = (k) => setOpenSections(s => ({ ...s, [k]: s[k] === false ? true : false }));
-  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setEditingAutoId(null); setNewAuto(null); setConnectDataFor(null); setActiveId(id); };
+  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setEditingAutoId(null); setViewingAutoId(null); setNewAuto(null); setConnectDataFor(null); setActiveId(id); };
   const updateSource = (id, patch) => setSources(ss => ss.map(s => s.id===id ? {...s, ...patch} : s));
   const deleteSource = (id) => { setSources(ss => ss.filter(s => s.id !== id)); setDetailId(d => d===id ? null : d); setUpdatingId(u => u===id ? null : u); setConfiguringId(c => c===id ? null : c); };
   const updateConnector = (id, patch) => {
@@ -9289,6 +9426,7 @@ function App(){
   const deletePipeline = (id) => { setPipelines(ps => ps.filter(p => p.id !== id)); setAutomations(as => as.filter(a => a.pipelineId !== id)); setPipeEditId(e => e===id ? null : e); };
 
   const editingAuto = automations.find(a => a.id === editingAutoId);
+  const viewingAuto = automations.find(a => a.id === viewingAutoId);
   const cfg = HUB_PAGE[activeId];
   const item = ALL_ITEMS.find(i => i.id === activeId) || { label:"Help" };
   const selected = sources.find(s => s.id === detailId);
@@ -9414,14 +9552,21 @@ function App(){
        editor doesn't leave an unnamed row behind on the list. */
     const editing = editingAuto || newAuto;
     const closeEditor = () => { setEditingAutoId(null); setNewAuto(null); };
+    const closeView = () => setViewingAutoId(null);
     page = editing
       ? <AutomationEditor automation={editing} automations={automations} sources={sources} pipelines={pipelines}
           onCancel={closeEditor}
           onRun={(id) => runAutomation(id)}
           onDelete={(id) => { if (!newAuto) deleteAutomation(id); closeEditor(); }}
           onSave={(a) => { upsertAutomation(a); closeEditor(); }} />
+      : viewingAuto
+      ? <AutomationView automation={viewingAuto} onBack={closeView}
+          onEdit={(id) => { closeView(); setEditingAutoId(id); }}
+          onRun={(id) => runAutomation(id)}
+          onDelete={(id) => { deleteAutomation(id); closeView(); }} />
       : <HubPage cfg={cfg} onNew={() => setNewAuto(newAutomation(""))}
-          onOpen={(id) => setEditingAutoId(id)} onDelete={deleteAutomation} onRunNow={runAutomation} records={automations} />;
+          onOpen={(id) => setViewingAutoId(id)} onEdit={(id) => setEditingAutoId(id)}
+          onDelete={deleteAutomation} onRunNow={runAutomation} records={automations} />;
   } else if (cfg){
     page = <HubPage cfg={cfg}
       onNew={activeId==="datasources" ? () => setCreating(true) : (activeId==="dataconnectors" ? () => setConnCreating(true) : (activeId==="datapipelines" ? () => setPipeCreating(true) : undefined))}
