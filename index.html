@@ -478,6 +478,22 @@
   .prompt-card__toggle { display: flex; align-items: center; justify-content: space-between; width: 100%;
     background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
   .prompt-chat-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-dialog-gap); }
+  .prompt-card--tight { gap: var(--vds-button-gap); }
+  /* Tool picker: a fixed-height dialog so the list scrolls under a pinned action row. */
+  .tool-dialog { max-width: 620px; display: flex; flex-direction: column; max-height: min(80vh, 720px); padding: 0; }
+  .tool-dialog .vds-dialog__title { flex: none; }
+  .tool-dialog__body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column;
+    gap: var(--vds-form-gap); padding: var(--vds-dialog-gap); }
+  .tool-dialog__actions { flex: none; display: flex; justify-content: flex-end; gap: var(--vds-button-gap);
+    padding: var(--vds-form-gap) var(--vds-dialog-gap); border-top: 1px solid var(--vds-gray-100);
+    background: var(--vds-surface-default); }
+  .tool-dialog .prompt-tool-list { max-height: none; }
+  .tool-card { border: 1px solid var(--vds-gray-100); border-radius: 4px; background: var(--vds-surface-default); }
+  .tool-card.is-selected { border-color: var(--vds-slate-300); background: var(--vds-surface-selected); }
+  .tool-card__head { display: flex; align-items: center; gap: var(--vds-button-gap); padding: 8px 8px 8px 14px; cursor: pointer; }
+  .tool-card__name { flex: 1; min-width: 0; font-family: var(--vds-font-mono); font-weight: 500;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tool-card__body { padding: 0 14px 14px; border-top: 1px solid var(--vds-gray-100); padding-top: var(--vds-form-gap); }
   .prompt-field { margin-bottom: 0; }
   .prompt-textarea { height: auto; padding: 12px 14px; line-height: 1.5; }
   .prompt-slash { font-family: var(--vds-font-mono); background: var(--vds-alert-info-bg); color: var(--vds-alert-info-icon); }
@@ -9056,53 +9072,77 @@ function PromptAutomationsCard({ prompt, automations, onOpenAutomation, onNewAut
   );
 }
 
-/* Reference list of the tools a saved prompt can call. Nothing to configure —
-   each row expands to its description and parameters. */
-function PromptToolsCard(){
-  const [open, setOpen] = useState(false);
+/* The tool picker. Rows expand for their description and parameters, and one can
+   be selected to drop into the instructions. */
+function ToolPickerDialog({ onClose, onInsert }){
   const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState(null);
+  const [expanded, setExpanded] = useState(null);
   const q = query.trim().toLowerCase();
   const shown = PROMPT_TOOLS.filter(t => !q || t.name.includes(q));
   return (
-    <div className="vds-card prompt-card">
-      <button className="prompt-card__toggle" onClick={()=>setOpen(o=>!o)} aria-expanded={open}>
-        <h5 className="prompt-card__title">Tools</h5>
-        <Icon name={open ? "chevronUp" : "chevronDown"} size={20} />
-      </button>
-      {open && (<>
-        <div className="filter prompt-tool-search">
-          <span className="s-icon"><Icon name="search" size={16} /></span>
-          <input className="vds-input" placeholder="Filter tools..." aria-label="Filter tools"
-            value={query} onChange={(e)=>setQuery(e.target.value)} />
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="vds-dialog proto-modal-card tool-dialog" onClick={(e)=>e.stopPropagation()}>
+        <div className="vds-dialog__title">
+          <span>Insert a tool call</span>
+          <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Close" title="Close" onClick={onClose}>
+            <Icon name="x" size={17} /></button>
         </div>
-        <div className="prompt-tool-list">
-          {shown.map(tool => (
-            <details className="vds-accordion vds-accordion--filled" key={tool.name}>
-              <summary>{tool.name}</summary>
-              <div className="vds-accordion__details">
-                {tool.description
-                  ? <div className="vds-b2 prompt-tool-desc">{tool.description}</div>
-                  : <div className="vds-b2 proto-muted">No description.</div>}
-                {tool.params.length > 0 && (
-                  <div className="prompt-tool-params">
-                    <span className="vds-b3 proto-muted">Parameters</span>
-                    {tool.params.map(p => (
-                      <div className="prompt-tool-param" key={p.name}>
-                        <div className="prompt-tool-param__head">
-                          <span className="vds-b2"><b>{p.name}</b></span>
-                          <span className="vds-b3 proto-muted">{p.type} · {p.required}</span>
-                        </div>
-                        <div className="vds-b2 proto-muted">{p.desc}</div>
-                      </div>
-                    ))}
+        <div className="tool-dialog__body">
+          <div className="filter prompt-tool-search">
+            <span className="s-icon"><Icon name="search" size={16} /></span>
+            <input className="vds-input" placeholder="Filter tools..." aria-label="Filter tools" autoFocus
+              value={query} onChange={(e)=>setQuery(e.target.value)} />
+          </div>
+          <div className="prompt-tool-list">
+            {shown.map(tool => {
+              const isOpen = expanded === tool.name;
+              const isSel = selected === tool.name;
+              return (
+                <div className={"tool-card" + (isSel ? " is-selected" : "")} key={tool.name}>
+                  <div className="tool-card__head" role="button" tabIndex={0}
+                    onClick={()=>setSelected(tool.name)}
+                    onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); setSelected(tool.name); } }}>
+                    <span className="tool-card__name">{tool.name}</span>
+                    <button className="vds-icon-btn vds-icon-btn--sm" aria-expanded={isOpen}
+                      aria-label={isOpen ? "Hide details" : "Show details"}
+                      onClick={(e)=>{ e.stopPropagation(); setExpanded(isOpen ? null : tool.name); }}>
+                      <Icon name={isOpen ? "chevronUp" : "chevronDown"} size={18} /></button>
                   </div>
-                )}
-              </div>
-            </details>
-          ))}
-          {shown.length === 0 && <span className="vds-b2 proto-muted">No tool matches that filter.</span>}
+                  {isOpen && (
+                    <div className="tool-card__body">
+                      {tool.description
+                        ? <div className="vds-b2 prompt-tool-desc">{tool.description}</div>
+                        : <div className="vds-b2 proto-muted">No description.</div>}
+                      {tool.params.length > 0 && (
+                        <div className="prompt-tool-params">
+                          <span className="vds-b3 proto-muted">Parameters</span>
+                          {tool.params.map(pm => (
+                            <div className="prompt-tool-param" key={pm.name}>
+                              <div className="prompt-tool-param__head">
+                                <span className="vds-b2"><b>{pm.name}</b></span>
+                                <span className="vds-b3 proto-muted">{pm.type} · {pm.required}</span>
+                              </div>
+                              <div className="vds-b2 proto-muted">{pm.desc}</div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {shown.length === 0 && <span className="vds-b2 proto-muted">No tool matches that filter.</span>}
+          </div>
         </div>
-      </>)}
+        <div className="tool-dialog__actions">
+          <button className="vds-btn" onClick={onClose}>Cancel</button>
+          <button className="vds-btn vds-btn--primary" disabled={!selected}
+            title={selected ? undefined : "Select a tool first"}
+            onClick={()=>onInsert(selected)}>Insert selected tool</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -9169,6 +9209,7 @@ function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpen
 function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave, onDelete, onOpenAutomation, onNewAutomation }){
   const [draft, setDraft] = useState(prompt);
   const [tab, setTab] = useState("details");
+  const [toolPicker, setToolPicker] = useState(false);
   /* Uniqueness is checked on blur — two prompts with one name would mean two
      identical slash commands. */
   const [nameTaken, setNameTaken] = useState(false);
@@ -9217,7 +9258,11 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
               placeholder="Describe what this saved prompt should do"
               onChange={(e)=>patch({ instructions:e.target.value })} />
           </div>
-          <h5 className="prompt-card__title">How it appears in chat</h5>
+          <div>
+            <button className="vds-btn vds-btn--sm vds-btn--start-icon" onClick={()=>setToolPicker(true)}>
+              <Icon name="plus" size={16} />Insert tool call</button>
+          </div>
+          <h5 className="prompt-card__title">How it appears in ViaDuck</h5>
           <div className="prompt-chat-row">
             <span className="vds-chip prompt-slash">{slashOf(draft.name)}</span>
             <RunInViaDuckButton prompt={draft} withLabel label="Test in ViaDuck" gate={false} />
@@ -9225,12 +9270,12 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
         </div>
 
         <div className="prompt-col">
-          <div className="vds-card prompt-card">
+          <div className="vds-card prompt-card prompt-card--tight">
             <h5 className="prompt-card__title">Availability</h5>
             <div className="prompt-avail-line">
               <span className="vds-b2 vds-dotted-underline"
                 title="Controls whether this saved prompt can be called in ViaDuck chat.">Available to users</span>
-              <label className="vds-switch">
+              <label className="vds-switch vds-switch--sm">
                 <input type="checkbox" checked={draft.toUsers} aria-label="Available to users"
                   onChange={(e)=>setToUsers(e.target.checked)} />
                 <span className="vds-switch__track"><span className="vds-switch__thumb"></span></span>
@@ -9241,7 +9286,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
                 title={draft.toUsers
                   ? "ViaDuck will run this saved prompt on its own when the context clues match."
                   : "Available to users must be on before ViaDuck can run this saved prompt."}>Available to ViaDuck</span>
-              <label className="vds-switch">
+              <label className="vds-switch vds-switch--sm">
                 <input type="checkbox" checked={draft.toViaduck} disabled={!draft.toUsers} aria-label="Available to ViaDuck"
                   onChange={(e)=>patch({ toViaduck:e.target.checked })} />
                 <span className="vds-switch__track"><span className="vds-switch__thumb"></span></span>
@@ -9258,9 +9303,16 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
           <PromptAutomationsCard prompt={draft} automations={automations}
             onOpenAutomation={onOpenAutomation}
             onNewAutomation={isSaved ? () => onNewAutomation(draft) : undefined} />
-          <PromptToolsCard />
         </div>
       </div>
+      {toolPicker && (
+        <ToolPickerDialog onClose={()=>setToolPicker(false)}
+          onInsert={(name)=>{
+            const base = draft.instructions.replace(/\s+$/, "");
+            patch({ instructions: (base ? base + "\n\n" : "") + "Use the " + name + " tool." });
+            setToolPicker(false);
+          }} />
+      )}
     </div>
   );
 }
