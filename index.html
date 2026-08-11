@@ -460,16 +460,19 @@
   .trigger-delay-value { width: 64px; }
   .trigger-delay-unit { width: 110px; }
   /* Matches .schedule-entry's gap so the leading text lines up with the frequency picker. */
-  .trigger-event-line { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-dialog-gap); }
+  .trigger-event-line { display: flex; align-items: flex-start; gap: var(--vds-dialog-gap); }
+  /* The controls wrap within this box, so a second line starts after the icon
+     rather than under it — the icon reads as an outdent. */
+  .trigger-row-body { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-dialog-gap); }
   .trigger-event-line .field { margin-bottom: 0; }
   .trigger-event-line__action { width: 130px; }
   .trigger-event-line__table { width: 220px; }
   .trigger-add-row { display: flex; flex-wrap: wrap; gap: var(--vds-button-gap); margin-top: var(--vds-button-gap); }
   .schedule-list { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
-  .schedule-entry { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-dialog-gap); }
+  .schedule-entry { display: flex; align-items: flex-start; gap: var(--vds-dialog-gap); }
   .schedule-entry__days { display: flex; gap: 4px; }
   .schedule-entry__time { width: 120px; }
-  .trigger-row-icon { display: flex; align-items: center; flex: none; color: var(--vds-gray-400); }
+  .trigger-row-icon { display: flex; align-items: center; flex: none; height: 36px; color: var(--vds-gray-400); }
   .schedule-entry__freq { width: 120px; }
   .schedule-entry__nth { width: 110px; }
   .schedule-entry__weekday { width: 140px; }
@@ -1910,7 +1913,7 @@ const EVERY_DAY = { sun:true, mon:true, tue:true, wed:true, thu:true, fri:true, 
 const autoId = (p) => p + "_" + Math.random().toString(36).slice(2,10);
 const SCHED_FREQS = ["Hourly","Daily","Weekly","Monthly"];
 const NTH_OPTIONS = ["first","second","third","fourth","last"];
-const TENANT_TZ = "Pacific time (tenant)";
+const TENANT_TZ = "PT (tenant)";
 function newScheduleEntry(days, time, freq){
   return { id:autoId("sch"), freq:freq || "Weekly", days:{ ...(days || WEEKDAY_DEFAULT) },
            time:time || "09:00", nth:"first", weekday:"Monday" };
@@ -8703,7 +8706,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                 <div className="step-card__body">
                   <div>
                     <h5 style={{margin:"0 0 4px"}}>Trigger</h5>
-                    <div className="vds-b2 proto-muted" style={{marginBottom:12}}>Automations can always be manually run, even when triggered on a schedule or by a table event.</div>
+                    {isFirst && <div className="vds-b2 proto-muted" style={{marginBottom:12}}>Automations can always be manually run, even when triggered on a schedule or by a table event.</div>}
                     {!isFirst && (
                       <div className="trigger-after-previous" style={{marginBottom:12}}>
                         <span className="vds-b2">After the previous step</span>
@@ -8738,6 +8741,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                             return (
                               <div className="schedule-entry" key={sch.id}>
                                 <span className="trigger-row-icon"><Icon name="clock" size={18} /></span>
+                                <div className="trigger-row-body">
                                 <div className="field schedule-entry__freq">
                                   <select className="vds-select" value={sch.freq || "Weekly"} aria-label="Frequency"
                                     onChange={(e)=>patchSch({ freq:e.target.value })}>
@@ -8776,12 +8780,14 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                                 <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule" title="Remove schedule"
                                   onClick={()=>patchTrigger(step.id, { schedules: step.trigger.schedules.filter(x => x.id !== sch.id) })}>
                                   <Icon name="x" size={16} /></button>
+                                </div>
                               </div>
                             );
                           })}
                           {(step.trigger.events || []).map(ev => (
                             <div className="trigger-event-line" key={ev.id}>
                               <span className="trigger-row-icon"><Icon name="database" size={18} /></span>
+                              <div className="trigger-row-body">
                               <span className="vds-b2">When a row is</span>
                               <div className="field trigger-event-line__action">
                                 <select className="vds-select" value={ev.action} aria-label="Row action"
@@ -8802,6 +8808,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                               <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove table event" title="Remove table event"
                                 onClick={()=>patchTrigger(step.id, { events: step.trigger.events.filter(x => x.id !== ev.id) })}>
                                 <Icon name="x" size={16} /></button>
+                              </div>
                             </div>
                           ))}
                         </div>
