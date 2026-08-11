@@ -9156,11 +9156,7 @@ function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpen
         <span>{prompt.name || "Saved prompt"}</span>
       </nav>
       <div className="vds-page-header proto-sticky-head">
-        <div>
-          <h1 className="vds-page-title">{prompt.name || "Untitled saved prompt"}</h1>
-          <div className="vds-b3 proto-muted">Created by {prompt.createdBy} · {fmtAutoDate(prompt.createdAt)}</div>
-          <div className="vds-b3 proto-muted">Updated by {prompt.updatedBy} · {fmtAutoDate(prompt.updatedAt)}</div>
-        </div>
+        <div><h1 className="vds-page-title">{prompt.name || "Untitled saved prompt"}</h1></div>
         <div className="auto-editor-actions">
           <RunInViaDuckButton prompt={prompt} withLabel />
           <button className="vds-btn vds-btn--start-icon" onClick={()=>onEdit(prompt.id)}>
