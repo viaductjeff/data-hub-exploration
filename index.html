@@ -9272,26 +9272,20 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
         <div className="prompt-col">
           <div className="vds-card prompt-card prompt-card--tight">
             <h5 className="prompt-card__title">Availability</h5>
-            <div className="prompt-avail-line">
+            <label className="vds-choice">
+              <input type="checkbox" className="vds-checkbox" checked={draft.toUsers}
+                onChange={(e)=>setToUsers(e.target.checked)} />
               <span className="vds-b2 vds-dotted-underline"
                 title="Controls whether this saved prompt can be called in ViaDuck chat.">Available to users</span>
-              <label className="vds-switch vds-switch--sm">
-                <input type="checkbox" checked={draft.toUsers} aria-label="Available to users"
-                  onChange={(e)=>setToUsers(e.target.checked)} />
-                <span className="vds-switch__track"><span className="vds-switch__thumb"></span></span>
-              </label>
-            </div>
-            <div className="prompt-avail-line">
+            </label>
+            <label className="vds-choice">
+              <input type="checkbox" className="vds-checkbox" checked={draft.toViaduck} disabled={!draft.toUsers}
+                onChange={(e)=>patch({ toViaduck:e.target.checked })} />
               <span className="vds-b2 vds-dotted-underline"
                 title={draft.toUsers
                   ? "ViaDuck will run this saved prompt on its own when the context clues match."
                   : "Available to users must be on before ViaDuck can run this saved prompt."}>Available to ViaDuck</span>
-              <label className="vds-switch vds-switch--sm">
-                <input type="checkbox" checked={draft.toViaduck} disabled={!draft.toUsers} aria-label="Available to ViaDuck"
-                  onChange={(e)=>patch({ toViaduck:e.target.checked })} />
-                <span className="vds-switch__track"><span className="vds-switch__thumb"></span></span>
-              </label>
-            </div>
+            </label>
             <div className="field prompt-field">
               <label className="vds-label vds-dotted-underline"
                 title="If you describe when to use this, ViaDuck will run it on its own when that comes up.">Context clues</label>
