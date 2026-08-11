@@ -8886,7 +8886,7 @@ function AutomationView({ automation, onBack, onEdit, onRun, onDelete }){
 
   return (
     <div className="vds-content">
-      <nav className="vds-breadcrumbs" style={{marginBottom:12}}>
+      <nav className="vds-breadcrumbs">
         <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Automations</a>
         <span className="vds-breadcrumbs__sep">/</span>
         <span>{automation.name || "Automation"}</span>
@@ -9146,11 +9146,24 @@ function ToolPickerDialog({ onClose, onInsert }){
   );
 }
 
+/* Who made it and who touched it last. Never editable, shown on both pages. */
+function PromptHistoryCard({ prompt }){
+  return (
+    <div className="vds-card prompt-card">
+      <h5 className="prompt-card__title">History</h5>
+      <div>
+        <div className="vds-b2 proto-muted">Created by {prompt.createdBy} · {fmtAutoDate(prompt.createdAt)}</div>
+        <div className="vds-b2 proto-muted">Updated by {prompt.updatedBy} · {fmtAutoDate(prompt.updatedAt)}</div>
+      </div>
+    </div>
+  );
+}
+
 function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpenAutomation }){
   const [tab, setTab] = useState("details");
   return (
     <div className="vds-content">
-      <nav className="vds-breadcrumbs" style={{marginBottom:12}}>
+      <nav className="vds-breadcrumbs">
         <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Saved Prompts</a>
         <span className="vds-breadcrumbs__sep">/</span>
         <span>{prompt.name || "Saved prompt"}</span>
@@ -9168,13 +9181,16 @@ function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpen
 
       <PromptTabs tab={tab} setTab={setTab} />
       <div className="prompt-grid">
-        <div className="vds-card prompt-card">
-          <h5 className="prompt-card__title">Prompt</h5>
-          <span className="vds-b3 proto-muted">How it appears in ViaDuck</span>
-          <div><span className="vds-chip prompt-slash">{slashOf(prompt.name)}</span></div>
-          {prompt.instructions.trim()
-            ? <div className="vds-b2 prompt-read-text">{prompt.instructions}</div>
-            : <div className="vds-b2 proto-muted">No instructions yet.</div>}
+        <div className="prompt-col">
+          <div className="vds-card prompt-card">
+            <h5 className="prompt-card__title">Prompt</h5>
+            <span className="vds-b3 proto-muted">How it appears in ViaDuck</span>
+            <div><span className="vds-chip prompt-slash">{slashOf(prompt.name)}</span></div>
+            {prompt.instructions.trim()
+              ? <div className="vds-b2 prompt-read-text">{prompt.instructions}</div>
+              : <div className="vds-b2 proto-muted">No instructions yet.</div>}
+          </div>
+          <PromptHistoryCard prompt={prompt} />
         </div>
 
         <div className="prompt-col">
@@ -9220,7 +9236,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
 
   return (
     <div className="vds-content">
-      <nav className="vds-breadcrumbs" style={{marginBottom:12}}>
+      <nav className="vds-breadcrumbs">
         <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Saved Prompts</a>
         <span className="vds-breadcrumbs__sep">/</span>
         <span>{draft.name || (isSaved ? "Saved prompt" : "New saved prompt")}</span>
@@ -9246,21 +9262,24 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
 
       <PromptTabs tab={tab} setTab={setTab} />
       <div className="prompt-grid">
-        <div className="vds-card prompt-card">
-          <div className="prompt-card__head prompt-card__head--center">
-            <h5 className="prompt-card__title">Prompt</h5>
-            <button className="vds-btn vds-btn--sm" onClick={()=>setToolPicker(true)}>Insert tool call</button>
+        <div className="prompt-col">
+          <div className="vds-card prompt-card">
+            <div className="prompt-card__head prompt-card__head--center">
+              <h5 className="prompt-card__title">Prompt</h5>
+              <button className="vds-btn vds-btn--sm" onClick={()=>setToolPicker(true)}>Insert tool call</button>
+            </div>
+            <div className="field prompt-field">
+              <textarea className="vds-textarea prompt-textarea" rows={7} value={draft.instructions}
+                aria-label="Prompt instructions" placeholder="Describe what this saved prompt should do"
+                onChange={(e)=>patch({ instructions:e.target.value })} />
+            </div>
+            <h5 className="prompt-card__title">How it appears in ViaDuck</h5>
+            <div className="prompt-chat-row">
+              <span className="vds-chip prompt-slash">{slashOf(draft.name)}</span>
+              <RunInViaDuckButton prompt={draft} withLabel label="Test in ViaDuck" gate={false} />
+            </div>
           </div>
-          <div className="field prompt-field">
-            <textarea className="vds-textarea prompt-textarea" rows={7} value={draft.instructions}
-              aria-label="Prompt instructions" placeholder="Describe what this saved prompt should do"
-              onChange={(e)=>patch({ instructions:e.target.value })} />
-          </div>
-          <h5 className="prompt-card__title">How it appears in ViaDuck</h5>
-          <div className="prompt-chat-row">
-            <span className="vds-chip prompt-slash">{slashOf(draft.name)}</span>
-            <RunInViaDuckButton prompt={draft} withLabel label="Test in ViaDuck" gate={false} />
-          </div>
+          <PromptHistoryCard prompt={draft} />
         </div>
 
         <div className="prompt-col">
@@ -9358,7 +9377,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
 
   return (
     <div className="vds-content">
-      <nav className="vds-breadcrumbs" style={{marginBottom:12}}>
+      <nav className="vds-breadcrumbs">
         <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Automations</a>
         <span className="vds-breadcrumbs__sep">/</span>
         <span>{draft.name || "Automation"}</span>
