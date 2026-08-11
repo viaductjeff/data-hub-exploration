@@ -9037,20 +9037,22 @@ function PromptTabs({ tab, setTab }){
 
 /* The automations that run this prompt. Same name/trigger/history columns as the
    Automations list, so the two read the same way. */
-function PromptAutomationsCard({ prompt, automations, onOpenAutomation, onNewAutomation }){
+function PromptAutomationsCard({ prompt, automations, onOpenAutomation, onNewAutomation,
+                                newLabel = "New automation", newDisabled = false, newTitle }){
   const used = automationsUsingPrompt(automations, prompt);
-  const countText = used.length === 0 ? "Not used in any automation"
-    : used.length === 1 ? "Used in 1 automation" : "Used in " + used.length + " automations";
+  /* No count line when there are none — the empty state below already says so. */
+  const countText = used.length === 1 ? "Used in 1 automation"
+    : used.length > 1 ? "Used in " + used.length + " automations" : null;
   return (
     <div className="vds-card prompt-card">
       <div className="prompt-card__head">
         <div>
           <h5 className="prompt-card__title">Automations</h5>
-          <span className="vds-b3 proto-muted">{countText}</span>
+          {countText && <span className="vds-b3 proto-muted">{countText}</span>}
         </div>
         {onNewAutomation && (
-          <button className="vds-btn vds-btn--sm vds-btn--start-icon" onClick={onNewAutomation}>
-            <Icon name="plus" size={16} />New automation</button>
+          <button className="vds-btn vds-btn--sm" onClick={onNewAutomation}
+            disabled={newDisabled} title={newTitle}>{newLabel}</button>
         )}
       </div>
       {used.length === 0 ? (
@@ -9295,7 +9297,10 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
           </div>
           <PromptAutomationsCard prompt={draft} automations={automations}
             onOpenAutomation={onOpenAutomation}
-            onNewAutomation={isSaved ? () => onNewAutomation(draft) : undefined} />
+            onNewAutomation={() => onNewAutomation(draft)}
+            newLabel={isSaved ? "New automation" : "Save and create new Automation"}
+            newDisabled={!isSaved && !canSave}
+            newTitle={(!isSaved && !canSave) ? "Enter a unique name to save" : undefined} />
         </div>
       </div>
       {toolPicker && (
@@ -9996,7 +10001,10 @@ function App(){
           onDelete={(id) => { if (!newPrompt) deletePrompt(id); closePromptEditor(); }}
           onSave={(sp) => { upsertPrompt(sp); closePromptEditor(); }}
           onOpenAutomation={openAutomation}
-          onNewAutomation={(sp) => { closePromptEditor(); setViewingPromptId(null); setActiveId("automations"); setNewAuto(automationForPrompt(sp)); }} />
+          onNewAutomation={(sp) => {
+            if (!savedPrompts.some(p => p.id === sp.id)) upsertPrompt(sp);
+            closePromptEditor(); setViewingPromptId(null); setActiveId("automations"); setNewAuto(automationForPrompt(sp));
+          }} />
       : viewingPrompt
       ? <SavedPromptView prompt={viewingPrompt} automations={automations}
           onBack={() => setViewingPromptId(null)}
