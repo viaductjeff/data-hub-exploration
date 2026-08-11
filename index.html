@@ -463,11 +463,12 @@
   .trigger-event-line { display: flex; align-items: flex-start; gap: var(--vds-dialog-gap); }
   /* The controls wrap within this box, so a second line starts after the icon
      rather than under it — the icon reads as an outdent. */
-  .trigger-row-body { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-dialog-gap); }
+  .trigger-row-body { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap;
+    row-gap: var(--vds-button-gap); column-gap: var(--vds-dialog-gap); }
   .trigger-event-line .field { margin-bottom: 0; }
   .trigger-event-line__action { width: 130px; }
   .trigger-event-line__table { width: 220px; }
-  .trigger-add-row { display: flex; flex-wrap: wrap; gap: var(--vds-button-gap); margin-top: var(--vds-button-gap); }
+  .trigger-add-row { display: flex; flex-wrap: wrap; gap: var(--vds-button-gap); margin-top: var(--vds-form-gap); }
   .schedule-list { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
   .schedule-entry { display: flex; align-items: flex-start; gap: var(--vds-dialog-gap); }
   .schedule-entry__days { display: flex; gap: 4px; }
