@@ -477,7 +477,7 @@
   .prompt-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--vds-dialog-gap); }
   .prompt-card__toggle { display: flex; align-items: center; justify-content: space-between; width: 100%;
     background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
-  .prompt-card__foot { padding-top: var(--vds-form-gap); border-top: 1px solid var(--vds-gray-100); }
+  .prompt-chat-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-dialog-gap); }
   .prompt-field { margin-bottom: 0; }
   .prompt-textarea { height: auto; padding: 12px 14px; line-height: 1.5; }
   .prompt-slash { font-family: var(--vds-font-mono); background: var(--vds-alert-info-bg); color: var(--vds-alert-info-icon); }
@@ -8968,18 +8968,20 @@ function AutomationView({ automation, onBack, onEdit, onRun, onDelete }){
 
 /* Running a saved prompt means calling it in ViaDuck chat, which only works once
    it's available to users. */
-function RunInViaDuckButton({ prompt, withLabel = false }){
+function RunInViaDuckButton({ prompt, withLabel = false, label = "Run in ViaDuck", gate = true }){
   const [open, setOpen] = useState(false);
-  const enabled = !!prompt.toUsers;
-  const why = enabled ? "Run in ViaDuck" : 'Turn on "Available to users" to run this in ViaDuck';
+  /* Testing your own draft shouldn't wait on publishing it, so the test variant
+     skips the availability check. */
+  const enabled = !gate || !!prompt.toUsers;
+  const why = enabled ? label : 'Turn on "Available to users" to run this in ViaDuck';
   const instructions = (prompt.instructions || "").trim();
   return (<>
     {withLabel ? (
       <button className="vds-btn vds-btn--start-icon" disabled={!enabled} title={why} onClick={()=>setOpen(true)}>
-        <Icon name="play" size={16} />Run in ViaDuck</button>
+        <Icon name="play" size={16} />{label}</button>
     ) : (
       <button className="vds-icon-btn vds-icon-btn--sm" disabled={!enabled} title={why}
-        aria-label="Run in ViaDuck" onClick={()=>setOpen(true)}><Icon name="play" size={16} /></button>
+        aria-label={label} onClick={()=>setOpen(true)}><Icon name="play" size={16} /></button>
     )}
     {open && (
       <div className="modal-overlay" onClick={()=>setOpen(false)}>
@@ -9209,17 +9211,16 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
       <div className="prompt-grid">
         <div className="vds-card prompt-card">
           <h5 className="prompt-card__title">Definition</h5>
-          <span className="vds-b3 proto-muted">How it appears in chat</span>
-          <div><span className="vds-chip prompt-slash">{slashOf(draft.name)}</span></div>
           <div className="field prompt-field">
             <label className="vds-label">Instructions that get sent</label>
             <textarea className="vds-textarea prompt-textarea" rows={7} value={draft.instructions}
               placeholder="Describe what this saved prompt should do"
               onChange={(e)=>patch({ instructions:e.target.value })} />
           </div>
-          <div className="prompt-card__foot">
-            <button className="vds-btn vds-btn--sm vds-btn--start-icon" onClick={()=>{}}>
-              <Icon name="sparkles" size={16} />Test in chat</button>
+          <h5 className="prompt-card__title">How it appears in chat</h5>
+          <div className="prompt-chat-row">
+            <span className="vds-chip prompt-slash">{slashOf(draft.name)}</span>
+            <RunInViaDuckButton prompt={draft} withLabel label="Test in ViaDuck" gate={false} />
           </div>
         </div>
 
