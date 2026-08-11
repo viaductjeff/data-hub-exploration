@@ -2140,7 +2140,7 @@ function cadenceToTrigger(mode, sc){
   return { ...base, type:"schedule", schedules:[newScheduleEntry(days, sc.timeOfDay || "02:00")] };
 }
 function newWizardTrigger(){
-  return { type:"schedule", table:"", event:"new_row", schedules:[newScheduleEntry()],
+  return { type:"multi", schedules:[], events:[],
            delayEnabled:false, delayValue:"5", delayUnit:"minutes" };
 }
 /* Keeps the connector's own sync fields in step with the automation trigger, so
@@ -2149,7 +2149,7 @@ function triggerToSyncFields(trigger){
   if (!trigger || trigger.type === "manual") return { frequency:"Manually" };
   if (trigger.type === "event") return { frequency:"On Input Update" };
   const first = (trigger.schedules || [])[0];
-  if (!first) return { frequency:"Manually" };
+  if (!first) return { frequency:(trigger.events || []).length ? "On Input Update" : "Manually" };
   if (first.freq === "Hourly") return { frequency:"Hourly" };
   if (first.freq === "Daily") return { frequency:"Daily", timeOfDay:first.time };
   if (first.freq === "Monthly") return { frequency:"Weekly", dayOfWeek:first.weekday || "Monday", timeOfDay:first.time };
@@ -5006,68 +5006,11 @@ function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[]
    uses, so whatever a wizard captures here becomes the automation's first step. */
 function AutomateTriggerFields({ trigger, setTrigger, tables = [], allowEvent = true, lockedNote = null }){
   const set = (patch) => setTrigger(t => ({ ...t, ...patch }));
-  const type = trigger.type || "schedule";
   if (lockedNote) return <div className="vds-alert vds-alert--info proto-note">{lockedNote}</div>;
   return (
     <div>
-      <div className="trigger-choice-row" style={{margin:"12px 0"}}>
-        {[["manual","Manually run"],["schedule","Schedule"]].concat(allowEvent ? [["event","Table event"]] : []).map(([v,label]) => (
-          <label className="vds-choice" key={v}>
-            <input type="radio" className="vds-radio" name="wiz-trigger" value={v}
-              checked={type === v} onChange={()=>set({ type:v })} /> {label}
-          </label>
-        ))}
-      </div>
-      {type === "manual" && (
-        <div className="vds-helper-text">No recurring run — trigger it on demand with Run now, any time after it's created.</div>
-      )}
-      {type === "event" && (
-        <div className="trigger-fields-row">
-          <div className="field">
-            <label className="vds-label">Data table</label>
-            <select className="vds-select" value={trigger.table || ""} onChange={(e)=>set({ table:e.target.value })}>
-              <option value="">Select data table…</option>
-              {tables.map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
-          <div className="field">
-            <label className="vds-label">Event</label>
-            <select className="vds-select" value={trigger.event} onChange={(e)=>set({ event:e.target.value })}>
-              {TABLE_EVENTS.map(ev => <option key={ev.value} value={ev.value}>{ev.label}</option>)}
-            </select>
-          </div>
-        </div>
-      )}
-      {type === "schedule" && (
-        <div>
-          <div className="schedule-list">
-            {(trigger.schedules || []).map(sch => (
-              <div className="schedule-entry" key={sch.id}>
-                <div className="schedule-entry__days">
-                  {DAYS_OF_WEEK.map(d => (
-                    <label className="vds-choice" key={d.value}>
-                      <input type="checkbox" className="vds-checkbox" checked={!!sch.days[d.value]}
-                        onChange={(e)=>set({ schedules: trigger.schedules.map(x => x.id===sch.id
-                          ? { ...x, days:{ ...x.days, [d.value]:e.target.checked } } : x) })} /> {d.label}
-                    </label>
-                  ))}
-                </div>
-                <div className="field schedule-entry__time">
-                  <input className="vds-input" type="time" value={sch.time} aria-label="Time of day"
-                    onChange={(e)=>set({ schedules: trigger.schedules.map(x => x.id===sch.id ? { ...x, time:e.target.value } : x) })} />
-                </div>
-                <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule"
-                  disabled={(trigger.schedules || []).length <= 1}
-                  title={(trigger.schedules || []).length <= 1 ? "At least one schedule is required" : "Remove schedule"}
-                  onClick={()=>set({ schedules: trigger.schedules.filter(x => x.id !== sch.id) })}><Icon name="x" size={16} /></button>
-              </div>
-            ))}
-          </div>
-          <button className="vds-btn vds-btn--sm vds-btn--start-icon" style={{marginTop:8}}
-            onClick={()=>set({ schedules:[...(trigger.schedules||[]), newScheduleEntry()] })}>
-            <Icon name="plus" size={16} />Add schedule</button>
-        </div>
-      )}
+      <div className="vds-b2 proto-muted" style={{margin:"12px 0"}}>Automations can always be manually run, even when triggered on a schedule or by a table event.</div>
+      <TriggerRows trigger={trigger} onChange={set} tables={tables} allowEvent={allowEvent} />
     </div>
   );
 }
@@ -5996,24 +5939,15 @@ function ScriptEditorStep({ conn, tmpl, script, setScript, testResult, onTest, o
     </div>
   );
 }
-function ScriptScheduleStep({ conn, tmpl, intervalHours, setIntervalHours, onCancel, onBack, onContinue }){
+function ScriptScheduleStep({ conn, tmpl, trigger, setTrigger, onCancel, onBack, onContinue }){
   return (
     <div className="vds-content">
       <PageHead title={"Connect " + conn.name} sub={tmpl.tagline} onCancel={onCancel} />
       <Stepper current={4} steps={SCRIPT_STEPS} />
 
       <div className="vds-h4 proto-section-title">Automate</div>
-      <div className="vds-b2 proto-muted proto-section-note">Scraping can't be triggered by the site — there's no push. Set how often the script re-runs; you can also trigger it on demand with Run now once the connector exists.</div>
-      <div className="form-grid">
-        <div className="field">
-          <label className="vds-label">Run every</label>
-          <div style={{display:"flex", alignItems:"center", gap:10}}>
-            <input className="vds-input" type="number" min="1" max="168" style={{maxWidth:100}} value={intervalHours} onChange={(e)=>setIntervalHours(Math.max(1, parseInt(e.target.value||"6",10)))} />
-            <span style={{color:"var(--vds-text-secondary)", fontSize:14}}>hours</span>
-          </div>
-          <div className="vds-helper-text">e.g. 6 for every 6 hours.</div>
-        </div>
-      </div>
+      <div className="vds-b2 proto-muted proto-section-note">Scraping can't be triggered by the site — there's no push. Set when the script re-runs.</div>
+      <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger} allowEvent={false} />
 
       <div className="wiz-footer">
         <button className="vds-btn" onClick={onBack}><Icon name="arrowLeft" size={17} />Back</button>
@@ -6099,13 +6033,14 @@ function ScriptConnectorDetail({ conn, tmpl, editInstance, existingSources, onOp
   const [showPw, setShowPw] = useState(false);
   const [script, setScript] = useState(editInstance.script || "");
   const [testResult, setTestResult] = useState(null);
-  const [intervalHours, setIntervalHours] = useState(editInstance.intervalHours || 6);
+  const [trigger, setTrigger] = useState(() => editInstance.automationTrigger || newWizardTrigger());
   const declared = (editInstance.dataSourceIds || []).map(id => existingSources.find(s => s.id === id)).filter(Boolean);
   const dirty = JSON.stringify(targets) !== JSON.stringify(editInstance.targets||[]) || script !== (editInstance.script||"")
-    || intervalHours !== (editInstance.intervalHours||6) || creds.password !== (editInstance.creds||{}).password || creds.username !== (editInstance.creds||{}).username;
+    || JSON.stringify(trigger) !== JSON.stringify(editInstance.automationTrigger || newWizardTrigger())
+    || creds.password !== (editInstance.creds||{}).password || creds.username !== (editInstance.creds||{}).username;
   const meta = runStatusMeta(editInstance.lastRunStatus || "ok");
 
-  const save = () => onSave({ ...editInstance, targets, creds, script, frequency:"Custom", intervalHours }, { newRecords:[], deleteIds:[], sourceUpdates:[] });
+  const save = () => onSave({ ...editInstance, targets, creds, script, automationTrigger:trigger, ...triggerToSyncFields(trigger) }, { newRecords:[], deleteIds:[], sourceUpdates:[] });
 
   return (
     <div className="vds-content">
@@ -6147,15 +6082,7 @@ function ScriptConnectorDetail({ conn, tmpl, editInstance, existingSources, onOp
       </div>
 
       <div className="vds-h4 proto-section-title">Automate</div>
-      <div className="form-grid">
-        <div className="field">
-          <label className="vds-label">Run every</label>
-          <div style={{display:"flex", alignItems:"center", gap:10}}>
-            <input className="vds-input" type="number" min="1" max="168" style={{maxWidth:100}} value={intervalHours} onChange={(e)=>setIntervalHours(Math.max(1, parseInt(e.target.value||"6",10)))} />
-            <span style={{color:"var(--vds-text-secondary)", fontSize:14}}>hours</span>
-          </div>
-        </div>
-      </div>
+      <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger} allowEvent={false} />
 
       <div className="vds-h4 proto-section-title">Data tables</div>
       <div className="vds-b2 proto-muted proto-section-note">Declared at creation — config is the contract. Edit columns or filters from the Data Tables page, not here.</div>
@@ -6191,7 +6118,7 @@ function ScriptConnectorFlow({ conn, tmpl, editing, editInstance, existingSource
   const [creds, setCreds] = useState({});
   const [script, setScript] = useState(() => scriptStarterTemplate(conn.name, ""));
   const [testResult, setTestResult] = useState(null);
-  const [intervalHours, setIntervalHours] = useState(6);
+  const [trigger, setTrigger] = useState(newWizardTrigger);
   const [parentDraft, setParentDraft] = useState(() => {
     const dn = displayNamesFromName("raw__scraped_workorder");
     return { name:"raw__scraped_workorder", singular:dn.singular, plural:dn.plural,
@@ -6239,7 +6166,7 @@ function ScriptConnectorFlow({ conn, tmpl, editing, editInstance, existingSource
     const instance = {
       id:instId, name: name || conn.name,
       connectorId:conn.id, connectorName:conn.name, group:conn.group,
-      targets, creds, script, frequency:"Custom", intervalHours,
+      targets, creds, script, automationTrigger:trigger, ...triggerToSyncFields(trigger),
       status:"Ready", lastChecked:"Just now", lastRun:day, lastRunStatus:"ok", lastRunError:null,
       createdAt:day, updatedAt:day,
       dataSourceIds:[parent.id, child.id],
@@ -6263,7 +6190,7 @@ function ScriptConnectorFlow({ conn, tmpl, editing, editInstance, existingSource
       onCancel={onCancel} onBack={()=>setPhase(2)} onContinue={()=>setPhase(4)} />;
   }
   if (phase === 4){
-    return <ScriptScheduleStep conn={conn} tmpl={tmpl} intervalHours={intervalHours} setIntervalHours={setIntervalHours}
+    return <ScriptScheduleStep conn={conn} tmpl={tmpl} trigger={trigger} setTrigger={setTrigger}
       onCancel={onCancel} onBack={()=>setPhase(3)} onContinue={()=>setPhase(5)} />;
   }
   return <ScriptDeclareStep conn={conn} tmpl={tmpl}
@@ -7779,7 +7706,15 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
   const [inId, setInId] = useState(editing && editInstance.inputSourceIds ? (editInstance.inputSourceIds[0] || null) : null);
   const [dirOutName, setDirOutName] = useState(editing && editInstance.outputName ? editInstance.outputName : "");
   const [directiveId, setDirectiveId] = useState(editing && editInstance.directiveId ? editInstance.directiveId : "");
-  const [dirSched, setDirSched] = useState(editing && editInstance.schedule ? editInstance.schedule : { frequency:"Daily", timeOfDay:"02:00", dayOfWeek:"Monday" });
+  /* The trigger is the source of truth; the legacy schedule fields on the record
+     are derived from it so the list and detail summaries keep working. */
+  const [trigger, setTrigger] = useState(() => (editing && editInstance.automationTrigger)
+    || (editing && editInstance.schedule ? cadenceToTrigger("schedule", editInstance.schedule) : newWizardTrigger()));
+  const dirSched = triggerToSyncFields(trigger);
+  const xfTableNames = Array.from(new Set([
+    ...(sources || []).filter(s => s.configured !== false).map(s => s.name),
+    ...EXAMPLE_TABLES,
+  ])).sort((a,b) => a.localeCompare(b));
   const [assetSourceId, setAssetSourceId] = useState(editing && editInstance.assetSourceId ? editInstance.assetSourceId : null);
   const [eventKey, setEventKey] = useState(editing && editInstance.eventKey ? editInstance.eventKey : "");
   const [assetKey, setAssetKey] = useState(editing && editInstance.assetKey ? editInstance.assetKey : "");
@@ -7837,7 +7772,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
   });
   const setIssueUse = (name, use) => setColUses(prev => ({ ...prev, [name]: use }));
 
-  const choose = (id) => { setTypeId(id); setName(uniqueName(id === "embed" ? "Embedding transformation" : id === "directive" ? "Saved prompt transformation" : id === "smart" ? "Smart Groups transformation" : id === "issue" ? "TPMS Issue Detection" : id === "transform" ? "Basic transformation" : "New data transformation", existingNames)); setDesc(""); setSourceId(null); setSteps([]); setOutputMode("new"); setOutName(""); setOutTargetId(null); setEmbedCols([]); setOutputCol(id === "smart" ? "smart_groups" : "vector_embedding"); setInId(null); setDirOutName(""); setDirectiveId(""); setDirSched(id === "issue" ? { frequency:"By Minute", intervalMinutes:10, timeOfDay:"02:00", dayOfWeek:"Monday" } : { frequency:"Daily", timeOfDay:"02:00", dayOfWeek:"Monday", intervalMinutes:10 }); setAssetSourceId(null); setEventKey(""); setAssetKey(""); setEventWindow("30"); setEventFilter(""); setColUses({}); setStep(2); };
+  const choose = (id) => { setTypeId(id); setName(uniqueName(id === "embed" ? "Embedding transformation" : id === "directive" ? "Saved prompt transformation" : id === "smart" ? "Smart Groups transformation" : id === "issue" ? "TPMS Issue Detection" : id === "transform" ? "Basic transformation" : "New data transformation", existingNames)); setDesc(""); setSourceId(null); setSteps([]); setOutputMode("new"); setOutName(""); setOutTargetId(null); setEmbedCols([]); setOutputCol(id === "smart" ? "smart_groups" : "vector_embedding"); setInId(null); setDirOutName(""); setDirectiveId(""); setTrigger(newWizardTrigger()); setAssetSourceId(null); setEventKey(""); setAssetKey(""); setEventWindow("30"); setEventFilter(""); setColUses({}); setStep(2); };
 
   const xfInputSrc = sources.find(s => s.id === sourceId);
   const xfFieldCollision = isXf && (steps || []).some((st, i) => (st.typeId === "calc" || st.typeId === "cond") && st.params && st.params.field && availableColsTyped(xfInputSrc, steps, i, sources).map(c => c.name).includes(st.params.field));
@@ -7955,7 +7890,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         id: pipeId, name: name || type.label, typeId, typeLabel: type.label, description: desc,
         sourceId, source: chosenSource ? chosenSource.name : "—", steps,
         schedule: triggerMode === "input" ? { frequency:"On Input Update" } : dirSched,
-        automationTrigger: cadenceToTrigger(triggerMode, dirSched),
+        automationTrigger: triggerMode === "input" ? cadenceToTrigger("input") : trigger,
         status: "Ready", lastRun: day, updatedAt: day,
         triggerMode, subscribedInputs: effectiveSubscribed, inputSourceIdsAll: xfInputIds,
       };
@@ -8036,7 +7971,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         sourceId, source: chosenSource ? chosenSource.name : "—",
         textColumns: embedCols, outputColumn: outputCol,
         outputName: connSlug(dirOutName),
-        schedule: dirSched, automationTrigger: cadenceToTrigger("schedule", dirSched), status: "Ready", lastRun: day, updatedAt: day,
+        schedule: dirSched, automationTrigger: trigger, status: "Ready", lastRun: day, updatedAt: day,
       };
       if (isSmart){
         ppipe.assetSourceId = assetSourceId; ppipe.assetSource = assetSource ? assetSource.name : "—";
@@ -8075,7 +8010,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         id: pipeId, name: name || type.label, typeId, typeLabel: type.label, description: desc,
         inputSourceIds: inId ? [inId] : [], outputName: connSlug(dirOutName),
         directiveId, directiveName: dir ? dir.name : "", source: inSrc ? inSrc.name : "—",
-        schedule: dirSched, automationTrigger: cadenceToTrigger("schedule", dirSched), status: "Ready", lastRun: "Never", updatedAt: day,
+        schedule: dirSched, automationTrigger: trigger, status: "Ready", lastRun: "Never", updatedAt: day,
       };
       if (writeBack){
         dpipe.outputSourceIds = [inId];
@@ -8104,7 +8039,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         sourceId, source: inSrc ? inSrc.name : "—",
         inputSourceIds: sourceId ? [sourceId] : [],
         columnUses: colUses, tpmsColumn, outputSourceIds: [],
-        schedule: dirSched, automationTrigger: cadenceToTrigger("schedule", dirSched), status: "Ready", lastRun: "Never", updatedAt: day,
+        schedule: dirSched, automationTrigger: trigger, status: "Ready", lastRun: "Never", updatedAt: day,
       };
       if (editing) onSave({ ...editInstance, ...ipipe }, null, null);
       else onCreate({ ...ipipe, createdAt: created }, null, null);
@@ -8170,31 +8105,8 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
           </div>
         </>)}
         {(!isXf || triggerMode === "schedule") && (<>
-          <div style={{display:"flex", gap:12, flexWrap:"wrap", alignItems:"flex-end"}}>
-            <div className="form-grid">
-              <div className="field" style={{flex:"1 1 170px", margin:0}}>
-                <label className="vds-label">Frequency</label>
-                <select className="vds-select" value={dirSched.frequency} onChange={e => setDirSched({ ...dirSched, frequency:e.target.value })}>
-                  <option>By Minute</option><option>Hourly</option><option>Daily</option><option>Weekly</option><option>Manually</option>
-                </select>
-              </div>
-            </div>
-            {dirSched.frequency === "By Minute" && <div className="field" style={{flex:"1 1 150px", margin:0}}>
-              <label className="vds-label">Every (minutes)</label>
-              <input className="vds-input" type="number" min="1" value={dirSched.intervalMinutes || 10} onChange={e => setDirSched({ ...dirSched, intervalMinutes: Math.max(1, parseInt(e.target.value, 10) || 1) })} />
-            </div>}
-            {dirSched.frequency !== "Hourly" && dirSched.frequency !== "Manually" && dirSched.frequency !== "By Minute" && <div className="field" style={{flex:"1 1 150px", margin:0}}>
-              <label className="vds-label">Time (UTC)</label>
-              <input className="vds-input" type="time" value={dirSched.timeOfDay} onChange={e => setDirSched({ ...dirSched, timeOfDay:e.target.value })} />
-            </div>}
-            {dirSched.frequency === "Weekly" && <div className="field" style={{flex:"1 1 150px", margin:0}}>
-              <label className="vds-label">Day</label>
-              <select className="vds-select" value={dirSched.dayOfWeek} onChange={e => setDirSched({ ...dirSched, dayOfWeek:e.target.value })}>
-                {WEEKDAYS.map(d => <option key={d}>{d}</option>)}
-              </select>
-            </div>}
-          </div>
-          <div className="vds-b2 proto-muted proto-section-note" style={{marginTop:10}}>Runs {syncSummary(dirSched)} · next run {computeNextRun(dirSched)}</div>
+          <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger} tables={xfTableNames} />
+          <div className="vds-b2 proto-muted proto-section-note" style={{marginTop:10}}>{triggerSummary(trigger)} · next run {nextRunFromTrigger(trigger)}</div>
         </>)}
         {cycleError && <div className="vds-alert vds-alert--error proto-note">{cycleError}</div>}
         <div className="wiz-footer">
@@ -8683,6 +8595,110 @@ function AutomationRunHistory({ automation }){
   );
 }
 
+/* The schedule and table-event rows of a trigger. Shared by the automation
+   editor's first step and every wizard's Automate step, so the two never drift.
+   onChange takes a patch to merge into the trigger. */
+function TriggerRows({ trigger, onChange, tables = [], allowEvent = true }){
+  const schedules = trigger.schedules || [];
+  const events = trigger.events || [];
+  return (
+    <div>
+      {(schedules.length + events.length) > 0 && <div className="schedule-list">
+        {schedules.map(sch => {
+          const patchSch = (patch) => onChange({ schedules: schedules.map(x => x.id === sch.id ? { ...x, ...patch } : x) });
+          const timeField = (<>
+            <div className="field schedule-entry__time">
+              <input className="vds-input" type="time" value={sch.time} aria-label="Time of day"
+                onChange={(e)=>patchSch({ time:e.target.value })} />
+            </div>
+            <span className="vds-b2 proto-muted">{TENANT_TZ}</span>
+          </>);
+          return (
+            <div className="schedule-entry" key={sch.id}>
+              <span className="trigger-row-icon"><Icon name="clock" size={18} /></span>
+              <div className="trigger-row-body">
+              <div className="field schedule-entry__freq">
+                <select className="vds-select" value={sch.freq || "Weekly"} aria-label="Frequency"
+                  onChange={(e)=>patchSch({ freq:e.target.value })}>
+                  {SCHED_FREQS.map(f => <option key={f} value={f}>{f}</option>)}
+                </select>
+              </div>
+              {sch.freq === "Daily" && (<><span className="vds-b2">at</span>{timeField}</>)}
+              {(sch.freq === "Weekly" || !sch.freq) && (<>
+                <span className="vds-b2">on</span>
+                <div className="schedule-entry__days">
+                  {DAYS_OF_WEEK.map(d => (
+                    <label className="vds-choice" key={d.value}>
+                      <input type="checkbox" className="vds-checkbox" checked={!!sch.days[d.value]}
+                        onChange={(e)=>patchSch({ days:{ ...sch.days, [d.value]:e.target.checked } })} /> {d.label}
+                    </label>
+                  ))}
+                </div>
+                {timeField}
+              </>)}
+              {sch.freq === "Monthly" && (<>
+                <span className="vds-b2">on the</span>
+                <div className="field schedule-entry__nth">
+                  <select className="vds-select" value={sch.nth || "first"} aria-label="Which week"
+                    onChange={(e)=>patchSch({ nth:e.target.value })}>
+                    {NTH_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </div>
+                <div className="field schedule-entry__weekday">
+                  <select className="vds-select" value={sch.weekday || "Monday"} aria-label="Day of week"
+                    onChange={(e)=>patchSch({ weekday:e.target.value })}>
+                    {WEEKDAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                {timeField}
+              </>)}
+              <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule" title="Remove schedule"
+                onClick={()=>onChange({ schedules: schedules.filter(x => x.id !== sch.id) })}>
+                <Icon name="x" size={16} /></button>
+              </div>
+            </div>
+          );
+        })}
+        {events.map(ev => (
+          <div className="trigger-event-line" key={ev.id}>
+            <span className="trigger-row-icon"><Icon name="database" size={18} /></span>
+            <div className="trigger-row-body">
+            <span className="vds-b2">When a row is</span>
+            <div className="field trigger-event-line__action">
+              <select className="vds-select" value={ev.action} aria-label="Row action"
+                onChange={(e)=>onChange({ events: events.map(x => x.id === ev.id ? { ...x, action:e.target.value } : x) })}>
+                {ROW_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+            <span className="vds-b2">in table</span>
+            <div className="field trigger-event-line__table">
+              <select className="vds-select" value={ev.table} aria-label="Data table"
+                onChange={(e)=>onChange({ events: events.map(x => x.id === ev.id ? { ...x, table:e.target.value } : x) })}>
+                {tables.length === 0 && <option value="">No data tables yet</option>}
+                {tables.map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+            <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove table event" title="Remove table event"
+              onClick={()=>onChange({ events: events.filter(x => x.id !== ev.id) })}>
+              <Icon name="x" size={16} /></button>
+            </div>
+          </div>
+        ))}
+      </div>}
+      <div className="trigger-add-row">
+        <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
+          onClick={()=>onChange({ schedules:[...schedules, newScheduleEntry()] })}>
+          <Icon name="plus" size={16} />Add schedule</button>
+        {allowEvent && (
+          <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
+            onClick={()=>onChange({ events:[...events, newTriggerEvent(tables)] })}>
+            <Icon name="plus" size={16} />Add table event</button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* Trigger and action lines as sentences, for the read-only page. The editor
    builds the same information out of pickers. */
 function scheduleSentence(sch){
@@ -8952,101 +8968,8 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                       </div>
                     )}
                     {isFirst && (
-                      <div>
-                        {((step.trigger.schedules || []).length + (step.trigger.events || []).length) > 0 && <div className="schedule-list">
-                          {(step.trigger.schedules || []).map(sch => {
-                            const patchSch = (patch) => patchTrigger(step.id, { schedules: step.trigger.schedules.map(x =>
-                              x.id === sch.id ? { ...x, ...patch } : x) });
-                            const timeField = (<>
-                              <div className="field schedule-entry__time">
-                                <input className="vds-input" type="time" value={sch.time} aria-label="Time of day"
-                                  onChange={(e)=>patchSch({ time:e.target.value })} />
-                              </div>
-                              <span className="vds-b2 proto-muted">{TENANT_TZ}</span>
-                            </>);
-                            return (
-                              <div className="schedule-entry" key={sch.id}>
-                                <span className="trigger-row-icon"><Icon name="clock" size={18} /></span>
-                                <div className="trigger-row-body">
-                                <div className="field schedule-entry__freq">
-                                  <select className="vds-select" value={sch.freq || "Weekly"} aria-label="Frequency"
-                                    onChange={(e)=>patchSch({ freq:e.target.value })}>
-                                    {SCHED_FREQS.map(f => <option key={f} value={f}>{f}</option>)}
-                                  </select>
-                                </div>
-                                {sch.freq === "Daily" && (<><span className="vds-b2">at</span>{timeField}</>)}
-                                {(sch.freq === "Weekly" || !sch.freq) && (<>
-                                  <span className="vds-b2">on</span>
-                                  <div className="schedule-entry__days">
-                                    {DAYS_OF_WEEK.map(d => (
-                                      <label className="vds-choice" key={d.value}>
-                                        <input type="checkbox" className="vds-checkbox" checked={!!sch.days[d.value]}
-                                          onChange={(e)=>patchSch({ days:{ ...sch.days, [d.value]:e.target.checked } })} /> {d.label}
-                                      </label>
-                                    ))}
-                                  </div>
-                                  {timeField}
-                                </>)}
-                                {sch.freq === "Monthly" && (<>
-                                  <span className="vds-b2">on the</span>
-                                  <div className="field schedule-entry__nth">
-                                    <select className="vds-select" value={sch.nth || "first"} aria-label="Which week"
-                                      onChange={(e)=>patchSch({ nth:e.target.value })}>
-                                      {NTH_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                                    </select>
-                                  </div>
-                                  <div className="field schedule-entry__weekday">
-                                    <select className="vds-select" value={sch.weekday || "Monday"} aria-label="Day of week"
-                                      onChange={(e)=>patchSch({ weekday:e.target.value })}>
-                                      {WEEKDAYS.map(d => <option key={d} value={d}>{d}</option>)}
-                                    </select>
-                                  </div>
-                                  {timeField}
-                                </>)}
-                                <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule" title="Remove schedule"
-                                  onClick={()=>patchTrigger(step.id, { schedules: step.trigger.schedules.filter(x => x.id !== sch.id) })}>
-                                  <Icon name="x" size={16} /></button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                          {(step.trigger.events || []).map(ev => (
-                            <div className="trigger-event-line" key={ev.id}>
-                              <span className="trigger-row-icon"><Icon name="database" size={18} /></span>
-                              <div className="trigger-row-body">
-                              <span className="vds-b2">When a row is</span>
-                              <div className="field trigger-event-line__action">
-                                <select className="vds-select" value={ev.action} aria-label="Row action"
-                                  onChange={(e)=>patchTrigger(step.id, { events: step.trigger.events.map(x =>
-                                    x.id === ev.id ? { ...x, action:e.target.value } : x) })}>
-                                  {ROW_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
-                                </select>
-                              </div>
-                              <span className="vds-b2">in table</span>
-                              <div className="field trigger-event-line__table">
-                                <select className="vds-select" value={ev.table} aria-label="Data table"
-                                  onChange={(e)=>patchTrigger(step.id, { events: step.trigger.events.map(x =>
-                                    x.id === ev.id ? { ...x, table:e.target.value } : x) })}>
-                                  {tableNames.length === 0 && <option value="">No data tables yet</option>}
-                                  {tableNames.map(n => <option key={n} value={n}>{n}</option>)}
-                                </select>
-                              </div>
-                              <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove table event" title="Remove table event"
-                                onClick={()=>patchTrigger(step.id, { events: step.trigger.events.filter(x => x.id !== ev.id) })}>
-                                <Icon name="x" size={16} /></button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>}
-                        <div className="trigger-add-row">
-                          <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
-                            onClick={()=>patchTrigger(step.id, { schedules:[...(step.trigger.schedules||[]), newScheduleEntry()] })}>
-                            <Icon name="plus" size={16} />Add schedule</button>
-                          <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
-                            onClick={()=>patchTrigger(step.id, { events:[...(step.trigger.events||[]), newTriggerEvent(tableNames)] })}>
-                            <Icon name="plus" size={16} />Add table event</button>
-                        </div>
-                      </div>
+                      <TriggerRows trigger={step.trigger} tables={tableNames}
+                        onChange={(patch)=>patchTrigger(step.id, patch)} />
                     )}
                   </div>
 
