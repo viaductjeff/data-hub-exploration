@@ -189,6 +189,7 @@
   .prio-filter-row { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-button-gap); margin: 16px 0 4px; }
   .prio-filter-label { color: var(--vds-gray-500); }
   .conn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .origin-group-title { margin-top: var(--vds-main-gap); }
   .proto-conn-card { position: relative; display: flex; align-items: center; gap: var(--vds-dialog-gap); text-align: left; cursor: pointer; font-family: inherit; }
   .proto-conn-card:hover { border-color: var(--vds-gray-400); box-shadow: var(--vds-shadow-sm); }
   .proto-conn-card.selected { border-color: var(--vds-info); background: var(--vds-alert-info-bg); }
@@ -2614,10 +2615,35 @@ function PageHead({ title, sub, onCancel }){
   );
 }
 
-function SelectOrigin({ onCancel, onPick }){
+/* Compact tile, same as the one in the connections wizard. */
+function OriginConnCard({ icon, name, group, priority, onClick }){
+  return (
+    <button className={"vds-card proto-conn-card" + (priority === "P3" ? " p3" : "")} onClick={onClick}>
+      <span className="conn-ico"><Icon name={icon} size={20} /></span>
+      <span className="conn-meta">
+        <span className="conn-name">{name}</span>
+        <span className="conn-group">{group}</span>
+      </span>
+      {priority && <span className={"vds-chip vds-chip--sm proto-corner-tag " + priority.toLowerCase()}>{priority}</span>}
+    </button>
+  );
+}
+
+/* The ingestion connectors appear under their own heading below, named for what
+   they do rather than what they are. */
+const INGESTION_CONNECTOR_IDS = ["emailparse", "customscript"];
+const INGESTION_ORIGINS = [
+  { id:"emailparse", icon:"mail", title:"Parse emails", desc:"Read data out of inbound email and its attachments." },
+  { id:"customscript", icon:"terminal", title:"Custom ingestion", desc:"Run a hand-authored script that fetches and shapes the data." },
+];
+
+function SelectOrigin({ onCancel, onPick, onPickConnector }){
+  const connectors = CONNECTORS.filter(c => !INGESTION_CONNECTOR_IDS.includes(c.id));
   return (<>
-    <PageHead title="New data table" sub="Choose where this data table will come from." onCancel={onCancel} />
+    <PageHead title="New data table" onCancel={onCancel} />
     <Stepper current={1} />
+
+    <div className="vds-h4 proto-section-title">Upload</div>
     <div className="origin-grid">
       {ORIGINS.map(o => (
         <button key={o.id} className="vds-card proto-origin-card" onClick={() => onPick(o.id)}>
@@ -2625,6 +2651,22 @@ function SelectOrigin({ onCancel, onPick }){
           <span className="origin-title">{o.title}</span>
           <span className="origin-desc">{o.desc}</span>
         </button>
+      ))}
+    </div>
+
+    <div className="vds-h4 proto-section-title origin-group-title">Application/Database connection</div>
+    <div className="conn-grid">
+      {connectors.map(c => (
+        <OriginConnCard key={c.id} icon={c.icon} name={c.name} group={c.group} priority={c.priority}
+          onClick={()=>onPickConnector(c.id)} />
+      ))}
+    </div>
+
+    <div className="vds-h4 proto-section-title origin-group-title">Ingestion process</div>
+    <div className="conn-grid">
+      {INGESTION_ORIGINS.map(o => (
+        <OriginConnCard key={o.id} icon={o.icon} name={o.title} group={o.desc}
+          onClick={()=>onPickConnector(o.id)} />
       ))}
     </div>
   </>);
@@ -3530,13 +3572,13 @@ function ConfigureSource({ source, title, sub, submitLabel, onCancel, onSave, lo
   </div>);
 }
 
-function NewDataSource({ onCancel, onCreate }){
+function NewDataSource({ onCancel, onCreate, onPickConnector }){
   const [step, setStep] = useState(1);
   const [origin, setOrigin] = useState(null);
   const [parsed, setParsed] = useState(null);
   return (
     <div className="vds-content">
-      {step===1 && <SelectOrigin onCancel={onCancel} onPick={(o)=>{ setOrigin(o); setStep(2); }} />}
+      {step===1 && <SelectOrigin onCancel={onCancel} onPick={(o)=>{ setOrigin(o); setStep(2); }} onPickConnector={onPickConnector} />}
       {step===2 && <UploadStep origin={origin} onCancel={onCancel} onBack={()=>setStep(1)} onParsed={(p)=>{ setParsed(p); setStep(3); }} />}
       {step===3 && parsed && <MapImportStep parsed={parsed} origin={origin} onCancel={onCancel} onBack={()=>setStep(2)} onCreate={onCreate} />}
     </div>
@@ -9684,6 +9726,9 @@ function App(){
   const [detailId, setDetailId] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
   const [connCreating, setConnCreating] = useState(false);
+  /* Set when the connector was chosen from the data table wizard, so the connections
+     wizard opens on that connector instead of its own picker. */
+  const [connPreset, setConnPreset] = useState(null);
   const [connectors, setConnectors] = useState([]);
   const [connDetailId, setConnDetailId] = useState(null);
   const [connDetailStep, setConnDetailStep] = useState(null);
@@ -9702,7 +9747,7 @@ function App(){
   const [runs, setRuns] = useState([]);
   const [connectDataFor, setConnectDataFor] = useState(null); // { targetId, connId } while launching a preset "Connect data table" flow
   const toggleSection = (k) => setOpenSections(s => ({ ...s, [k]: s[k] === false ? true : false }));
-  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setEditingAutoId(null); setViewingAutoId(null); setNewAuto(null); setEditingPromptId(null); setViewingPromptId(null); setNewPrompt(null); setConnectDataFor(null); setActiveId(id); };
+  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setConnPreset(null); setEditingAutoId(null); setViewingAutoId(null); setNewAuto(null); setEditingPromptId(null); setViewingPromptId(null); setNewPrompt(null); setConnectDataFor(null); setActiveId(id); };
   const updateSource = (id, patch) => setSources(ss => ss.map(s => s.id===id ? {...s, ...patch} : s));
   const deleteSource = (id) => { setSources(ss => ss.filter(s => s.id !== id)); setDetailId(d => d===id ? null : d); setUpdatingId(u => u===id ? null : u); setConfiguringId(c => c===id ? null : c); };
   const updateConnector = (id, patch) => {
@@ -9927,7 +9972,8 @@ function App(){
   } else if (activeId === "datasources" && updatingId && updating){
     page = <UpdateDataSource source={updating} onCancel={() => setUpdatingId(null)} onDone={() => setUpdatingId(null)} onUpdate={updateSource} />;
   } else if (activeId === "datasources" && creating){
-    page = <NewDataSource onCancel={() => setCreating(false)} onCreate={(rec) => { setSources(s => [rec, ...s]); setCreating(false); }} />;
+    page = <NewDataSource onCancel={() => setCreating(false)} onCreate={(rec) => { setSources(s => [rec, ...s]); setCreating(false); }}
+      onPickConnector={(id) => { setCreating(false); setConnPreset(id); setConnCreating(true); setActiveId("dataconnectors"); }} />;
   } else if (activeId === "dataconnectors" && connDetailId && connDetail){
     page = <NewConnector editInstance={connDetail} existingSources={sources} existingConnectors={connectors} onOpenSource={openSource} initialStep={connDetailStep} onCancel={() => setConnDetailId(null)}
       onSave={(updated, { newRecords, deleteIds, sourceUpdates }) => {
@@ -9944,7 +9990,8 @@ function App(){
         setConnDetailId(null);
       }} />;
   } else if (activeId === "dataconnectors" && connCreating){
-    page = <NewConnector existingSources={sources} existingConnectors={connectors} onCancel={() => setConnCreating(false)} onCreate={(inst, dsRecords, sourceUpdates) => {
+    page = <NewConnector existingSources={sources} existingConnectors={connectors} presetConnectorId={connPreset}
+      onCancel={() => { setConnCreating(false); setConnPreset(null); }} onCreate={(inst, dsRecords, sourceUpdates) => {
       setSources(s => {
         let next = mergeSourceRecords(s, dsRecords);
         (sourceUpdates||[]).forEach(su => { next = next.map(x => x.id===su.id ? { ...x, ...su.patch } : x); });
@@ -9952,7 +9999,7 @@ function App(){
       });
       setConnectors(c => [inst, ...c]);
       if (!inst.noSchedule) setAutomations(as => [automationFromConnector(inst, inst.automationTrigger, inst.dataSourceIds, (id)=>(dsRecords.find(r=>r.id===id)||{}).name), ...as]);
-      setConnCreating(false);
+      setConnCreating(false); setConnPreset(null);
     }} />;
   } else if (activeId === "datapipelines" && pipeEditId){
     const editing = pipelines.find(p => p.id === pipeEditId);
