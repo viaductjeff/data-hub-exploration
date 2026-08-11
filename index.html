@@ -432,17 +432,18 @@
      matches the divider on a list page. */
   .proto-sticky-head::after { content: ""; position: absolute; left: 32px; right: 32px; bottom: 0;
     height: 1px; background: var(--vds-gray-100); }
-  .auto-editor-header { display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 32px; margin-bottom: var(--vds-dialog-gap); }
-  .auto-title-field { flex: 1; min-width: 0; }
+  .auto-editor-header { margin-bottom: var(--vds-dialog-gap); }
+  /* The buttons centre against the input itself; the duplicate-name message sits
+     below the whole row, so showing it does not shift them. */
+  .auto-title-row { display: flex; align-items: center; gap: 32px; }
   .auto-title-input.err { border-color: var(--vds-error-dark); }
   /* Section heading with its explanatory note sitting beside it on the baseline. */
   .auto-section-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--vds-button-gap); margin-bottom: 12px; }
-  .auto-title-input { width: 100%; padding: 2px 8px; border: 1px solid var(--vds-border-input); border-radius: 4px; background: var(--vds-surface-default); font: 400 36px/47px var(--vds-font-serif); color: var(--vds-text-primary); }
+  .auto-title-input { flex: 1; min-width: 0; padding: 2px 8px; border: 1px solid var(--vds-border-input); border-radius: 4px; background: var(--vds-surface-default); font: 400 36px/47px var(--vds-font-serif); color: var(--vds-text-primary); }
   .auto-title-input::placeholder { color: var(--vds-text-placeholder); }
   .auto-title-input:hover { border-color: var(--vds-border-input-hover); }
   .auto-title-input:focus { border-color: var(--vds-border-input-focus); outline: none; }
-  .auto-editor-actions { display: flex; gap: var(--vds-button-gap); flex: none; margin-top: 6px; }
+  .auto-editor-actions { display: flex; align-items: center; gap: var(--vds-button-gap); flex: none; }
   .step-list { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); }
   .proto-step-card { padding: 0; }
   .step-card__header { display: flex; align-items: center; gap: var(--vds-button-gap); padding: var(--vds-card-pad-v) var(--vds-card-pad-h); border-bottom: 1px solid var(--vds-gray-100); }
@@ -1904,6 +1905,9 @@ const DAYS_OF_WEEK = [
 ];
 const DELAY_UNITS = ["minutes","hours","days"];
 const ROW_ACTIONS = ["inserted","updated","deleted"];
+/* Stand-in tables so the table-event and Sync-data-table pickers have something to
+   choose from before any real data table exists. Real ones are merged in. */
+const EXAMPLE_TABLES = ["drivers","faults","fuel_transactions","inspections","maintenance_records","trips","vehicles"];
 const newTriggerEvent = (tables) => ({ id:autoId("evt"), action:"inserted", table:(tables && tables[0]) || "" });
 const TRIGGER_TYPE_LABELS = {
   manual:"Manually run", schedule:"Schedule", event:"Table event", after_previous:"After previous step",
@@ -1936,6 +1940,76 @@ function newAutomationStep(){
               delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
     actions:[newAutomationAction("prompt")],
   };
+}
+const SEED_WARNINGS = [
+  "Ran with 3 rows skipped — 'hire_date' could not be parsed in those rows.",
+  "Completed, but the source returned 12% fewer rows than the previous run.",
+];
+const SEED_FAILURES = [
+  "Source endpoint timed out after 30s. No rows were written.",
+  "Schema mismatch: expected column 'vehicle_id' was not present. Run quarantined.",
+];
+/* Runs for a seeded example, newest first — mostly clean, with the odd blemish. */
+function seedRuns(kind, n){
+  const out = [];
+  let t = Date.now() - 36e5;
+  for (let i = 0; i < n; i++){
+    const r = Math.random();
+    const status = r < 0.04 ? "error" : r < 0.12 ? "warn" : "ok";
+    out.push({ id:autoId("run"), at:t, status,
+      durationMin: status === "error" ? 1 + Math.floor(Math.random()*4) : 2 + Math.floor(Math.random()*95),
+      triggeredBy: Math.random() < 0.15 ? "manual" : kind,
+      message: status === "warn" ? SEED_WARNINGS[Math.floor(Math.random()*SEED_WARNINGS.length)]
+             : status === "error" ? SEED_FAILURES[Math.floor(Math.random()*SEED_FAILURES.length)] : null });
+    t -= (18 + Math.floor(Math.random()*14)) * 36e5;
+  }
+  return out;
+}
+const seedSched = (freq, days, time, extra) => ({ ...newScheduleEntry(days, time, freq), ...(extra || {}) });
+const seedEvent = (action, table) => ({ id:autoId("evt"), action, table });
+function seedAutomations(){
+  const daily = { sun:true, mon:true, tue:true, wed:true, thu:true, fri:true, sat:true };
+  const mondays = { sun:false, mon:true, tue:false, wed:false, thu:false, fri:false, sat:false };
+  const mk = (name, createdAt, createdBy, kind, runCount, steps) => {
+    const runs = seedRuns(kind, runCount);
+    return { id:autoId("auto"), name, createdAt, createdBy,
+             lastRunAt: runs[0] ? new Date(runs[0].at).toISOString().slice(0,10) : "",
+             lastRunBy: runs[0] ? (runs[0].triggeredBy === "manual" ? createdBy : "System") : "",
+             runList: runs, steps };
+  };
+  return [
+    mk("Nightly telemetry rollup", "2026-01-25", "Diego Ramirez", "schedule", 16, [
+      { id:autoId("step"), name:"Roll up telemetry",
+        trigger:{ type:"multi", schedules:[seedSched("Daily", daily, "02:00")], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
+        actions:[{ ...newAutomationAction("pipeline"), refName:"Daily Telemetry Rollup" }] },
+    ]),
+    mk("Critical fault escalation", "2026-04-14", "Amy Chen", "event", 11, [
+      { id:autoId("step"), name:"Detect critical fault",
+        trigger:{ type:"multi", schedules:[], events:[seedEvent("inserted","faults")], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
+        actions:[{ ...newAutomationAction("prompt"), prompt:"Summarise the fault and decide whether it needs immediate escalation." }] },
+      { id:autoId("step"), name:"Escalate if unresolved",
+        trigger:{ type:"after_previous", schedules:[], events:[], delayEnabled:true, delayValue:"30", delayUnit:"minutes" },
+        actions:[newAutomationAction("notification")] },
+    ]),
+    mk("Weekly fleet utilisation report", "2026-03-02", "Jeff Kroll", "schedule", 9, [
+      { id:autoId("step"), name:"Compute utilisation",
+        trigger:{ type:"multi", schedules:[seedSched("Weekly", mondays, "06:30")], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
+        actions:[{ ...newAutomationAction("pipeline"), refName:"Idle Time Aggregation" }] },
+      { id:autoId("step"), name:"Send it to managers",
+        trigger:{ type:"after_previous", schedules:[], events:[], delayEnabled:true, delayValue:"2", delayUnit:"hours" },
+        actions:[newAutomationAction("notification")] },
+    ]),
+    mk("Driver onboarding sync", "2026-06-10", "Priya Patel", "event", 6, [
+      { id:autoId("step"), name:"Sync the new driver",
+        trigger:{ type:"multi", schedules:[], events:[seedEvent("inserted","drivers")], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
+        actions:[{ ...newAutomationAction("import_table"), refName:"drivers" }, newAutomationAction("notification")] },
+    ]),
+    mk("Monthly maintenance forecast", "2026-02-18", "Marcus Webb", "schedule", 4, [
+      { id:autoId("step"), name:"Forecast upcoming maintenance",
+        trigger:{ type:"multi", schedules:[seedSched("Monthly", mondays, "07:00", { nth:"first", weekday:"Monday" })], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
+        actions:[{ ...newAutomationAction("pipeline"), refName:"Maintenance Forecast" }] },
+    ]),
+  ];
 }
 function newAutomation(name){
   return { id:autoId("auto"), name:name || "", createdAt:todayISO(), createdBy:CURRENT_USER,
@@ -8607,8 +8681,10 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
   const canSave = !!draft.name.trim() && !nameTaken;
   const canRun = draft.steps.length > 0 && draft.steps.some(st => (st.actions || []).length > 0);
   const [tab, setTab] = useState("steps");
-  const tableNames = (sources || []).filter(s => s.configured !== false).map(s => s.name)
-    .sort((a,b) => a.localeCompare(b));
+  const tableNames = Array.from(new Set([
+    ...(sources || []).filter(s => s.configured !== false).map(s => s.name),
+    ...EXAMPLE_TABLES,
+  ])).sort((a,b) => a.localeCompare(b));
   const pipeNames = (pipelines || []).map(p => p.name);
 
   const patchStep = (stepId, patch) => setDraft(d => ({ ...d,
@@ -8656,14 +8732,12 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
         <span>{draft.name || "Automation"}</span>
       </nav>
       <div className="auto-editor-header proto-sticky-head">
-        <div className="auto-title-field">
+        <div className="auto-title-row">
           <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder="Automation name"
             value={draft.name} aria-label="Automation name" aria-invalid={nameTaken || undefined}
             onChange={(e)=>{ setNameTaken(false); setDraft(d => ({ ...d, name:e.target.value })); }}
             onBlur={(e)=>setNameTaken(nameIsTaken(e.target.value))} />
-          {nameTaken && <div className="vds-helper-text vds-helper-text--error">This name is already used. Names must be unique.</div>}
-        </div>
-        <div className="auto-editor-actions">
+          <div className="auto-editor-actions">
           <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Run now" disabled={!canRun}
             title={canRun ? "Run now" : "Add a step with an action to run this"}
             onClick={()=>onRun && onRun(automation.id)}><Icon name="play" size={16} /></button>
@@ -8673,7 +8747,9 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
             onClick={()=>onSave(draft)}>Save automation</button>
           <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Delete automation"
             title="Delete automation" onClick={()=>onDelete && onDelete(automation.id)}><Icon name="trash" size={17} /></button>
+          </div>
         </div>
+        {nameTaken && <div className="vds-helper-text vds-helper-text--error">This name is already used. Names must be unique.</div>}
       </div>
 
       <div className="vds-tabs" style={{margin:"0 0 16px"}}>
@@ -9042,8 +9118,9 @@ function App(){
   const [connectors, setConnectors] = useState([]);
   const [connDetailId, setConnDetailId] = useState(null);
   const [connDetailStep, setConnDetailStep] = useState(null);
-  const [automations, setAutomations] = useState([]);
+  const [automations, setAutomations] = useState(seedAutomations);
   const [editingAutoId, setEditingAutoId] = useState(null);
+  const [newAuto, setNewAuto] = useState(null);
   const [configuringId, setConfiguringId] = useState(null);
   const [pipelines, setPipelines] = useState([]);
   const [pipeCreating, setPipeCreating] = useState(false);
@@ -9051,7 +9128,7 @@ function App(){
   const [runs, setRuns] = useState([]);
   const [connectDataFor, setConnectDataFor] = useState(null); // { targetId, connId } while launching a preset "Connect data table" flow
   const toggleSection = (k) => setOpenSections(s => ({ ...s, [k]: s[k] === false ? true : false }));
-  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setEditingAutoId(null); setConnectDataFor(null); setActiveId(id); };
+  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setEditingAutoId(null); setNewAuto(null); setConnectDataFor(null); setActiveId(id); };
   const updateSource = (id, patch) => setSources(ss => ss.map(s => s.id===id ? {...s, ...patch} : s));
   const deleteSource = (id) => { setSources(ss => ss.filter(s => s.id !== id)); setDetailId(d => d===id ? null : d); setUpdatingId(u => u===id ? null : u); setConfiguringId(c => c===id ? null : c); };
   const updateConnector = (id, patch) => {
@@ -9326,13 +9403,17 @@ function App(){
         setPipeCreating(false);
       }} />;
   } else if (activeId === "automations"){
-    page = editingAuto
-      ? <AutomationEditor automation={editingAuto} automations={automations} sources={sources} pipelines={pipelines}
-          onCancel={() => setEditingAutoId(null)}
+    /* A new automation is held here until it is saved, so cancelling out of the
+       editor doesn't leave an unnamed row behind on the list. */
+    const editing = editingAuto || newAuto;
+    const closeEditor = () => { setEditingAutoId(null); setNewAuto(null); };
+    page = editing
+      ? <AutomationEditor automation={editing} automations={automations} sources={sources} pipelines={pipelines}
+          onCancel={closeEditor}
           onRun={(id) => runAutomation(id)}
-          onDelete={(id) => { deleteAutomation(id); setEditingAutoId(null); }}
-          onSave={(a) => { upsertAutomation(a); setEditingAutoId(null); }} />
-      : <HubPage cfg={cfg} onNew={() => { const a = newAutomation(""); upsertAutomation(a); setEditingAutoId(a.id); }}
+          onDelete={(id) => { if (!newAuto) deleteAutomation(id); closeEditor(); }}
+          onSave={(a) => { upsertAutomation(a); closeEditor(); }} />
+      : <HubPage cfg={cfg} onNew={() => setNewAuto(newAutomation(""))}
           onOpen={(id) => setEditingAutoId(id)} onDelete={deleteAutomation} onRunNow={runAutomation} records={automations} />;
   } else if (cfg){
     page = <HubPage cfg={cfg}
