@@ -9298,7 +9298,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
           <PromptAutomationsCard prompt={draft} automations={automations}
             onOpenAutomation={onOpenAutomation}
             onNewAutomation={() => onNewAutomation(draft)}
-            newLabel={isSaved ? "New automation" : "Save and create new Automation"}
+            newLabel={isSaved ? "New automation" : "Save prompt and create automation"}
             newDisabled={!isSaved && !canSave}
             newTitle={(!isSaved && !canSave) ? "Enter a unique name to save" : undefined} />
         </div>
