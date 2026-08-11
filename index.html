@@ -9276,16 +9276,12 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
             <label className="vds-choice">
               <input type="checkbox" className="vds-checkbox" checked={draft.toUsers}
                 onChange={(e)=>setToUsers(e.target.checked)} />
-              <span className="vds-b2 vds-dotted-underline"
-                title="Controls whether this saved prompt can be called in ViaDuck chat.">Users can run and automate</span>
+              <span className="vds-b2">Users can run and automate</span>
             </label>
             <label className="vds-choice">
               <input type="checkbox" className="vds-checkbox" checked={draft.toViaduck} disabled={!draft.toUsers}
                 onChange={(e)=>patch({ toViaduck:e.target.checked })} />
-              <span className="vds-b2 vds-dotted-underline"
-                title={draft.toUsers
-                  ? "ViaDuck will run this saved prompt on its own when the context clues match."
-                  : "Users can run and automate must be on first."}>ViaDuck can independently run when in context</span>
+              <span className="vds-b2">ViaDuck can independently run when in context</span>
             </label>
             {/* Nested under the ViaDuck checkbox, because the clues are what it matches on. */}
             <div className="field prompt-field prompt-clues">
