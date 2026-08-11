@@ -1919,6 +1919,12 @@ const ROW_ACTIONS = ["inserted","updated","deleted"];
    choose from before any real data table exists. Real ones are merged in. */
 const EXAMPLE_TABLES = ["drivers","faults","fuel_transactions","inspections","maintenance_records","trips","vehicles"];
 const newTriggerEvent = (tables) => ({ id:autoId("evt"), action:"inserted", table:(tables && tables[0]) || "" });
+/* What a table-event trigger can point at: the data tables that exist plus the
+   stand-ins, so the picker is never empty. */
+const allTableNames = (sources) => Array.from(new Set([
+  ...(sources || []).filter(s => s.configured !== false).map(s => s.name),
+  ...EXAMPLE_TABLES,
+])).sort((a,b) => a.localeCompare(b));
 const TRIGGER_TYPE_LABELS = {
   manual:"Manually run", schedule:"Schedule", event:"Table event", after_previous:"After previous step",
 };
@@ -3973,14 +3979,14 @@ function ConfigureStep({ conn, tmpl, name, setName, creds, setCreds, verified, s
     </div>
   );
 }
-function ScheduleStep({ conn, sched, setSched, editing, onCancel, onBack, onCreate }){
+function ScheduleStep({ conn, sched, setSched, tables = [], editing, onCancel, onBack, onCreate }){
   const set = (patch) => setSched(s => ({ ...s, ...patch }));
   return (
     <div className="vds-content">
       <PageHead title={(editing ? "Edit " : "Connect ") + conn.name} sub={"Origin: Connectors · " + conn.name} onCancel={onCancel} />
       <Stepper current={3} steps={CONNECTOR_STEPS} />
       <div className="vds-h4 proto-section-title">Automate</div>
-      <AutomateTriggerFields trigger={sched} setTrigger={setSched} allowEvent={false} />
+      <AutomateTriggerFields trigger={sched} setTrigger={setSched} tables={tables} />
 
       <div className="wiz-footer">
         <button className="vds-btn" onClick={onBack}><Icon name="arrowLeft" size={17} />Back</button>
@@ -4239,7 +4245,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
       <PageHead title={"Set up " + conn.name + " connection"} sub={"Choose how often " + conn.name + " should sync."} onCancel={onCancel} />
       <Stepper current={4} steps={CONNECTOR_WIZARD_STEPS} />
       <div className="vds-h4 proto-section-title">Automate</div>
-      <AutomateTriggerFields trigger={sched} setTrigger={setSched} allowEvent={false} />
+      <AutomateTriggerFields trigger={sched} setTrigger={setSched} tables={allTableNames(existingSources)} />
 
       <div className="wiz-footer">
         <button className="vds-btn" onClick={()=>setPage("data")}><Icon name="arrowLeft" size={17} />Back</button>
@@ -4471,7 +4477,7 @@ function SnowflakeConnectorFlow({ conn, tmpl, editing, editInstance, existingSou
       <PageHead title={"Set up " + conn.name + " connection"} sub="Choose how often this connection syncs." onCancel={onCancel} />
       <Stepper current={4} steps={CONNECTOR_WIZARD_STEPS} />
       <div className="vds-h4 proto-section-title">Automate</div>
-      <AutomateTriggerFields trigger={sched} setTrigger={setSched} allowEvent={false} />
+      <AutomateTriggerFields trigger={sched} setTrigger={setSched} tables={allTableNames(existingSources)} />
 
       <div className="wiz-footer">
         <button className="vds-btn" onClick={()=>setPage("data")}><Icon name="arrowLeft" size={17} />Back</button>
@@ -4979,7 +4985,7 @@ function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[]
   }
 
   if (phase === "trigger"){
-    return <S3TriggerStep conn={conn} trigger={trigger} setTrigger={setTrigger} editing={editing}
+    return <S3TriggerStep conn={conn} trigger={trigger} setTrigger={setTrigger} tables={allTableNames(existingSources)} editing={editing}
       onCancel={onCancel} onBack={()=>setPhase("choose")} onFinish={finish} />;
   }
 
@@ -5001,18 +5007,18 @@ function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[]
 }
 /* The Automate step's trigger picker — the same model the automation editor
    uses, so whatever a wizard captures here becomes the automation's first step. */
-function AutomateTriggerFields({ trigger, setTrigger, tables = [], allowEvent = true, lockedNote = null }){
+function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = null }){
   const set = (patch) => setTrigger(t => ({ ...t, ...patch }));
   if (lockedNote) return <div className="vds-alert vds-alert--info proto-note">{lockedNote}</div>;
   return (
     <div>
       <div className="vds-b2 proto-muted" style={{margin:"12px 0"}}>Automations can always be manually run, even when triggered on a schedule or by a table event.</div>
-      <TriggerRows trigger={trigger} onChange={set} tables={tables} allowEvent={allowEvent} />
+      <TriggerRows trigger={trigger} onChange={set} tables={tables} />
     </div>
   );
 }
 
-function S3TriggerStep({ conn, trigger, setTrigger, editing, onCancel, onBack, onFinish }){
+function S3TriggerStep({ conn, trigger, setTrigger, tables = [], editing, onCancel, onBack, onFinish }){
   const set = (patch) => setTrigger(t => ({ ...t, ...patch }));
   return (
     <div className="vds-content">
@@ -5021,7 +5027,7 @@ function S3TriggerStep({ conn, trigger, setTrigger, editing, onCancel, onBack, o
       <div className="vds-h4 proto-section-title">Automate</div>
       <div className="vds-b2 proto-muted proto-section-note">Configured once for the whole connection, not per data table.</div>
       <div className="vds-alert vds-alert--info proto-note">Every data table on this connection shares this automation. If you need a different trigger for a different dataset, create a separate connection.</div>
-      <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger} tables={(conn.dataSourceNames)||[]} allowEvent={false} />
+      <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger} tables={tables} />
 
       <div className="wiz-footer">
         <button className="vds-btn" onClick={onBack}><Icon name="arrowLeft" size={17} />Back</button>
@@ -5936,7 +5942,7 @@ function ScriptEditorStep({ conn, tmpl, script, setScript, testResult, onTest, o
     </div>
   );
 }
-function ScriptScheduleStep({ conn, tmpl, trigger, setTrigger, onCancel, onBack, onContinue }){
+function ScriptScheduleStep({ conn, tmpl, trigger, setTrigger, tables = [], onCancel, onBack, onContinue }){
   return (
     <div className="vds-content">
       <PageHead title={"Connect " + conn.name} sub={tmpl.tagline} onCancel={onCancel} />
@@ -5944,7 +5950,7 @@ function ScriptScheduleStep({ conn, tmpl, trigger, setTrigger, onCancel, onBack,
 
       <div className="vds-h4 proto-section-title">Automate</div>
       <div className="vds-b2 proto-muted proto-section-note">Scraping can't be triggered by the site — there's no push. Set when the script re-runs.</div>
-      <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger} allowEvent={false} />
+      <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger} tables={tables} />
 
       <div className="wiz-footer">
         <button className="vds-btn" onClick={onBack}><Icon name="arrowLeft" size={17} />Back</button>
@@ -6079,7 +6085,7 @@ function ScriptConnectorDetail({ conn, tmpl, editInstance, existingSources, onOp
       </div>
 
       <div className="vds-h4 proto-section-title">Automate</div>
-      <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger} allowEvent={false} />
+      <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger} tables={allTableNames(existingSources)} />
 
       <div className="vds-h4 proto-section-title">Data tables</div>
       <div className="vds-b2 proto-muted proto-section-note">Declared at creation — config is the contract. Edit columns or filters from the Data Tables page, not here.</div>
@@ -6187,7 +6193,7 @@ function ScriptConnectorFlow({ conn, tmpl, editing, editInstance, existingSource
       onCancel={onCancel} onBack={()=>setPhase(2)} onContinue={()=>setPhase(4)} />;
   }
   if (phase === 4){
-    return <ScriptScheduleStep conn={conn} tmpl={tmpl} trigger={trigger} setTrigger={setTrigger}
+    return <ScriptScheduleStep conn={conn} tmpl={tmpl} trigger={trigger} setTrigger={setTrigger} tables={allTableNames(existingSources)}
       onCancel={onCancel} onBack={()=>setPhase(3)} onContinue={()=>setPhase(5)} />;
   }
   return <ScriptDeclareStep conn={conn} tmpl={tmpl}
@@ -6529,7 +6535,7 @@ function NewConnector({ onCancel, onCreate, editInstance, existingSources=[], ex
   if (isStream){
     return <PushScheduleStep conn={conn} editing={editing} note="Devices stream data to the MQTT broker in real time — no schedule needed. The data tables populate automatically as your devices connect and publish." onCancel={onCancel} onBack={()=>setStep(2)} onCreate={editing ? streamSave : streamCreate} />;
   }
-  return <ScheduleStep conn={conn} sched={sched} setSched={setSched} editing={editing} onCancel={onCancel} onBack={()=>setStep(2)} onCreate={editing ? (isPull ? pullSave : save) : (isPull ? pullCreate : create)} />;
+  return <ScheduleStep conn={conn} sched={sched} setSched={setSched} tables={allTableNames(existingSources)} editing={editing} onCancel={onCancel} onBack={()=>setStep(2)} onCreate={editing ? (isPull ? pullSave : save) : (isPull ? pullCreate : create)} />;
 }
 
 /* ---------------- Connector details ---------------- */
@@ -7708,10 +7714,6 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
   const [trigger, setTrigger] = useState(() => (editing && editInstance.automationTrigger)
     || (editing && editInstance.schedule ? cadenceToTrigger("schedule", editInstance.schedule) : newWizardTrigger()));
   const dirSched = triggerToSyncFields(trigger);
-  const xfTableNames = Array.from(new Set([
-    ...(sources || []).filter(s => s.configured !== false).map(s => s.name),
-    ...EXAMPLE_TABLES,
-  ])).sort((a,b) => a.localeCompare(b));
   const [assetSourceId, setAssetSourceId] = useState(editing && editInstance.assetSourceId ? editInstance.assetSourceId : null);
   const [eventKey, setEventKey] = useState(editing && editInstance.eventKey ? editInstance.eventKey : "");
   const [assetKey, setAssetKey] = useState(editing && editInstance.assetKey ? editInstance.assetKey : "");
@@ -8102,7 +8104,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
           </div>
         </>)}
         {(!isXf || triggerMode === "schedule") && (<>
-          <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger} tables={xfTableNames} />
+          <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger} tables={allTableNames(sources)} />
           <div className="vds-b2 proto-muted proto-section-note" style={{marginTop:10}}>{triggerSummary(trigger)} · next run {nextRunFromTrigger(trigger)}</div>
         </>)}
         {cycleError && <div className="vds-alert vds-alert--error proto-note">{cycleError}</div>}
@@ -8595,7 +8597,7 @@ function AutomationRunHistory({ automation }){
 /* The schedule and table-event rows of a trigger. Shared by the automation
    editor's first step and every wizard's Automate step, so the two never drift.
    onChange takes a patch to merge into the trigger. */
-function TriggerRows({ trigger, onChange, tables = [], allowEvent = true }){
+function TriggerRows({ trigger, onChange, tables = [] }){
   const schedules = trigger.schedules || [];
   const events = trigger.events || [];
   return (
@@ -8686,11 +8688,9 @@ function TriggerRows({ trigger, onChange, tables = [], allowEvent = true }){
         <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
           onClick={()=>onChange({ schedules:[...schedules, newScheduleEntry()] })}>
           <Icon name="plus" size={16} />Add schedule</button>
-        {allowEvent && (
-          <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
-            onClick={()=>onChange({ events:[...events, newTriggerEvent(tables)] })}>
-            <Icon name="plus" size={16} />Add table event</button>
-        )}
+        <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
+          onClick={()=>onChange({ events:[...events, newTriggerEvent(tables)] })}>
+          <Icon name="plus" size={16} />Add table event</button>
       </div>
     </div>
   );
@@ -8832,10 +8832,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
      delete yet. */
   const isSaved = automations.some(a => a.id === automation.id);
   const [tab, setTab] = useState("steps");
-  const tableNames = Array.from(new Set([
-    ...(sources || []).filter(s => s.configured !== false).map(s => s.name),
-    ...EXAMPLE_TABLES,
-  ])).sort((a,b) => a.localeCompare(b));
+  const tableNames = allTableNames(sources);
   const pipeNames = (pipelines || []).map(p => p.name);
 
   const patchStep = (stepId, patch) => setDraft(d => ({ ...d,
