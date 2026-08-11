@@ -427,9 +427,10 @@
      side margins let the background cover .vds-content's 32px gutters; top:-20px
      cancels its 20px padding-top so the row pins flush instead of leaving a strip
      content shows through, and the padding-top puts that spacing back. */
-  .proto-sticky-head { position: sticky; top: -20px; z-index: 3;
+  /* top matches padding-top so the title lands flush against the viewport once stuck. */
+  .proto-sticky-head { position: sticky; top: -16px; z-index: 3;
     background: var(--vds-surface-muted);
-    margin-left: -32px; margin-right: -32px; padding: 20px 32px 10px;
+    margin-left: -32px; margin-right: -32px; padding: 16px 32px 10px;
     border-bottom: none; }
   /* The background bleeds into the gutters but the rule should not — inset it so it
      matches the divider on a list page. */
