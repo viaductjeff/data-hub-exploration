@@ -148,12 +148,15 @@
   .thead { display: grid; align-items: center; min-height: 50px; padding: 0 16px; background: var(--vds-slate-50); border-bottom: 1px solid var(--vds-gray-100); }
   .th { font: 500 12px/16px var(--vds-font-sans); color: var(--vds-text-primary); }
   .th.right { text-align: right; }
+  .th.center { text-align: center; }
   .trow { display: grid; align-items: center; min-height: 46px; padding: 0 16px; background: var(--vds-surface-default); border-bottom: 1px solid var(--vds-gray-100); }
   .trow:last-child { border-bottom: none; }
   .trow:hover { background: var(--vds-surface-hover); }
   .td { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
   .td.right { text-align: right; padding-right: 0; }
   .td-name { font-weight: 500; }
+  .td-flag { display: flex; justify-content: center; color: var(--vds-success); }
+  .td-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .row-actions { display: inline-flex; align-items: center; gap: 4px; justify-content: flex-end; }
   .clickable-row { cursor: pointer; }
 
@@ -464,6 +467,38 @@
   /* Matches the quiet trash icon button in the list's actions column, not the
      solid red confirm button in delete dialogs. */
   .proto-btn--danger-quiet:hover { color: var(--vds-alert-error-icon); border-color: var(--vds-alert-error-icon); }
+
+  /* Saved prompts. Two columns while there's room: the definition on the left,
+     everything about how it's used stacked on the right. */
+  .prompt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: var(--vds-dialog-gap); align-items: start; }
+  .prompt-col { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); min-width: 0; }
+  .prompt-card { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
+  .prompt-card__title { margin: 0; }
+  .prompt-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--vds-dialog-gap); }
+  .prompt-card__toggle { display: flex; align-items: center; justify-content: space-between; width: 100%;
+    background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+  .prompt-card__foot { padding-top: var(--vds-form-gap); border-top: 1px solid var(--vds-gray-100); }
+  .prompt-field { margin-bottom: 0; }
+  .prompt-textarea { height: auto; padding: 12px 14px; line-height: 1.5; }
+  .prompt-slash { font-family: var(--vds-font-mono); background: var(--vds-alert-info-bg); color: var(--vds-alert-info-icon); }
+  .prompt-read-text { white-space: pre-wrap; }
+  .prompt-avail-line { display: flex; align-items: center; justify-content: space-between; gap: var(--vds-dialog-gap); }
+  .prompt-auto-table { border: 1px solid var(--vds-gray-100); border-radius: 4px; overflow: hidden; }
+  .prompt-auto-row { display: grid; grid-template-columns: 1.4fr 1.2fr 124px; gap: var(--vds-form-gap);
+    align-items: center; padding: 10px 14px; border-top: 1px solid var(--vds-gray-100); }
+  .prompt-auto-row > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .prompt-auto-row:first-child { border-top: none; }
+  .prompt-auto-row--head { background: var(--vds-surface-muted); font: 500 12px/16px var(--vds-font-sans);
+    letter-spacing: 0.06em; text-transform: uppercase; color: var(--vds-text-secondary); }
+  .prompt-auto-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .prompt-tool-search { width: 100%; }
+  .prompt-tool-list { display: flex; flex-direction: column; gap: var(--vds-button-gap); max-height: 420px; overflow-y: auto; }
+  .prompt-tool-list summary { font-family: var(--vds-font-mono); }
+  .prompt-tool-desc { white-space: pre-line; }
+  .prompt-tool-params { display: flex; flex-direction: column; gap: var(--vds-button-gap); margin-top: var(--vds-form-gap); }
+  .prompt-tool-param { padding-top: var(--vds-button-gap); border-top: 1px solid var(--vds-gray-100); }
+  .prompt-tool-param__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--vds-button-gap); }
+  .prompt-tool-param__head .vds-b2 { font-family: var(--vds-font-mono); }
   .step-card__reorder { display: flex; flex: none; }
   .step-card__body { display: flex; flex-direction: column; gap: 20px; padding: var(--vds-card-pad-h); }
   .trigger-choice-row { display: flex; flex-wrap: wrap; gap: var(--vds-main-gap); }
@@ -745,6 +780,8 @@ function Icon({ name, size = 19, className }){
     refresh:(<><path d="M21 12a9 9 0 0 0-9-9 9 9 0 0 0-6.4 2.6L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9 9 0 0 0 6.4-2.6L21 16"/><path d="M21 21v-5h-5"/></>),
     trash:(<><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></>),
     swap:(<><path d="M4 8h13"/><path d="m14 5 3 3-3 3"/><path d="M20 16H7"/><path d="m10 13-3 3 3 3"/></>),
+    chevronDown:(<path d="m6 9 6 6 6-6"/>),
+    chevronUp:(<path d="m6 15 6-6 6 6"/>),
     folder:(<><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></>),
     truck:(<><path d="M14 18V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h1"/><path d="M14 9h4l3 3v5a1 1 0 0 1-1 1h-1"/><path d="M9 18h6"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></>),
     cloud:(<path d="M17.5 19a4.5 4.5 0 0 0 .5-9 6 6 0 0 0-11.6-1.5A4 4 0 0 0 6.5 19z"/>),
@@ -1018,10 +1055,10 @@ const HUB_PAGE = {
     noun:"automations", filter:"Filter automations...", hidden:"Show paused automations",
     cols:["Name","Steps","Trigger","Next scheduled run","Last run","History","Creator","Actions"],
     emptyTitle:"No automations yet", emptyBody:"An automation runs a sequence of steps on a trigger. Build one here, or automate a connector or data transformation from its wizard and it will appear in this list.", cta:"New automation" },
-  directives:{ key:"directives", title:"Saved Prompts", icon:"terminal",
+  directives:{ key:"directives", title:"Saved Prompts", icon:"terminal", newLabel:"New Saved Prompt",
     sub:"Named prompts you can reuse — in an automation, or to clean, map and route incoming records.",
     noun:"saved prompts", filter:"Filter saved prompts...", hidden:"Show archived saved prompts",
-    cols:["Name","Applies to","Trigger","Status","Updated","Actions"],
+    cols:["Name","Available to users","Available to ViaDuck","Created","Updated","Created by","Updated by","Actions"],
     emptyTitle:"No saved prompts yet", emptyBody:"Add a saved prompt to transform or route records the moment they arrive.", cta:"Create your first saved prompt" },
 };
 
@@ -1296,7 +1333,8 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onUpdate, onDelete, onOpenSource,
   const isConn = cfg.key === "dataconnectors";
   const isAuto = cfg.key === "automations";
   const isPipe = cfg.key === "datapipelines";
-  const tmpl = isConn ? "1.3fr 1fr 1.4fr 1.1fr 1.1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 0.9fr 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`));
+  const isPrompt = cfg.key === "directives";
+  const tmpl = isConn ? "1.3fr 1fr 1.4fr 1.1fr 1.1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 0.9fr 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : (isPrompt ? "2.1fr 0.85fr 0.9fr 0.8fr 0.8fr 1.15fr 1.15fr 0.7fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`)));
   const fire = onNew || (() => {});
   const open = onOpen || (() => {});
   /* Automations open read-only from the row and editable from the pencil. */
@@ -1340,7 +1378,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onUpdate, onDelete, onOpenSource,
       <div className="vds-table-container">
         <div className="thead" style={{gridTemplateColumns:tmpl}}>
           {cfg.cols.map((c,i) => (
-            <div className={"th" + (i===cfg.cols.length-1 ? " right" : "")} key={c}>
+            <div className={"th" + (i===cfg.cols.length-1 ? " right" : "") + (isPrompt && (i===1 || i===2) ? " center" : "")} key={c}>
               {c}
               {isDS && c === "Published" && (
                 <ColFilterPopover label="Published" options={["Published","Unpublished"]} selected={pubFilter} onChange={setPubFilter} />
@@ -1350,7 +1388,26 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onUpdate, onDelete, onOpenSource,
         </div>
         {hasRows && !noMatches && (
           <div className="tbody">
-            {filtered.map((r) => isAuto ? (
+            {filtered.map((r) => isPrompt ? (
+              <div className="trow clickable-row" style={{gridTemplateColumns:tmpl}} key={r.id}
+                onClick={()=>open(r.id)} role="button" tabIndex={0}
+                onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(r.id); } }}>
+                <div className="td td-name">{r.name || "Untitled saved prompt"}</div>
+                <div className="td td-flag">{r.toUsers ? <Icon name="check" size={17} /> : "—"}</div>
+                <div className="td td-flag">{r.toViaduck ? <Icon name="check" size={17} /> : "—"}</div>
+                <div className="td">{fmtAutoDate(r.createdAt)}</div>
+                <div className="td">{fmtAutoDate(r.updatedAt)}</div>
+                <div className="td td-ellipsis">{r.createdBy}</div>
+                <div className="td td-ellipsis">{r.updatedBy}</div>
+                <div className="td right">
+                  {/* Stops a click on an action from also opening the row. */}
+                  <div className="row-actions" onClick={(e)=>e.stopPropagation()}>
+                    <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>edit(r.id)}><Icon name="pencil" size={17} /></button>
+                    <DeleteButton onDelete={()=>del(r.id)} />
+                  </div>
+                </div>
+              </div>
+            ) : isAuto ? (
               <div className="trow clickable-row" style={{gridTemplateColumns:tmpl}} key={r.id}
                 onClick={()=>open(r.id)} role="button" tabIndex={0}
                 onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(r.id); } }}>
@@ -1902,6 +1959,7 @@ function uniqueName(base, existing){
    trigger; every later step runs after the one before it, with an optional
    delay. Each step runs one or more actions. */
 const CURRENT_USER = "Jeff Kroll";
+const CURRENT_USER_EMAIL = "jeff@viaduct.ai";
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const TABLE_EVENTS = [
   { value:"new_row", label:"New row" },
@@ -2026,8 +2084,90 @@ function seedAutomations(){
         trigger:{ type:"multi", schedules:[seedSched("Monthly", mondays, "07:00", { nth:"first", weekday:"Monday" })], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
         actions:[{ ...newAutomationAction("pipeline"), refName:"Maintenance Forecast" }] },
     ]),
+    /* These five run a saved prompt, which is what fills the Automations card on a
+       saved prompt's page — the link is the slash command in the prompt text. */
+    mk("Warranty claim digest", "2026-05-06", "Amy Chen", "schedule", 12, [
+      { id:autoId("step"), name:"Summarise the week's claims",
+        trigger:{ type:"multi", schedules:[seedSched("Weekly", mondays, "08:00")], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
+        actions:[{ ...newAutomationAction("prompt"), prompt:"/summarize_warranty_claims Group by platform." }] },
+    ]),
+    mk("Claim spike watch", "2026-05-19", "Marcus Webb", "event", 8, [
+      { id:autoId("step"), name:"Summarise the new batch",
+        trigger:{ type:"multi", schedules:[], events:[seedEvent("inserted","work_orders")], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
+        actions:[{ ...newAutomationAction("prompt"), prompt:"/summarize_warranty_claims" }] },
+    ]),
+    mk("Duplicate work order sweep", "2026-04-02", "Jeff Kroll", "schedule", 14, [
+      { id:autoId("step"), name:"Sweep open work orders",
+        trigger:{ type:"multi", schedules:[seedSched("Daily", daily, "05:00")], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
+        actions:[{ ...newAutomationAction("prompt"), prompt:"/detect_duplicate_work_orders" }] },
+    ]),
+    mk("Work order intake check", "2026-06-24", "Priya Patel", "event", 7, [
+      { id:autoId("step"), name:"Check each new work order",
+        trigger:{ type:"multi", schedules:[], events:[seedEvent("inserted","work_orders")], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
+        actions:[{ ...newAutomationAction("prompt"), prompt:"/detect_duplicate_work_orders Only flag matches within 7 days." }] },
+    ]),
+    mk("Recall brief generator", "2026-07-08", "Jeff Kroll", "event", 3, [
+      { id:autoId("step"), name:"Draft the brief",
+        trigger:{ type:"multi", schedules:[], events:[seedEvent("updated","recalls")], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
+        actions:[{ ...newAutomationAction("prompt"), prompt:"/draft_recall_notification_brief" }, newAutomationAction("notification")] },
+    ]),
   ];
 }
+
+/* ---------------- Saved prompts ----------------
+   A saved prompt is a named set of instructions with a slash command, which
+   people can call in ViaDuck chat and automations can run as an action. */
+const slashOf = (name) => "/" + String(name || "").trim().toLowerCase()
+  .replace(/[^a-z0-9\s_]/g, "").replace(/\s+/g, "_");
+/* Automations that run this prompt: its slash command appears in a prompt action. */
+const automationsUsingPrompt = (automations, prompt) => {
+  const cmd = slashOf(prompt && prompt.name);
+  if (!prompt || cmd === "/") return [];
+  return (automations || []).filter(a => (a.steps || []).some(st =>
+    (st.actions || []).some(act => act.type === "prompt" && String(act.prompt || "").includes(cmd))));
+};
+function newSavedPrompt(){
+  return { id:autoId("sp"), name:"", instructions:"", clues:"", toUsers:false, toViaduck:false,
+           createdAt:todayISO(), updatedAt:todayISO(), createdBy:CURRENT_USER_EMAIL, updatedBy:CURRENT_USER_EMAIL };
+}
+function seedSavedPrompts(){
+  return [
+    { id:"sp1", name:"Summarize Warranty Claims", toUsers:false, toViaduck:false,
+      createdAt:"2026-07-28", updatedAt:"2026-08-03", createdBy:"bora@viaduct.ai", updatedBy:"abel@viaduct.ai",
+      instructions:"", clues:"" },
+    { id:"sp2", name:"Flag Outlier Vendors", toUsers:true, toViaduck:false,
+      createdAt:"2026-08-04", updatedAt:"2026-08-04", createdBy:"jan@viaduct.ai", updatedBy:"abel@viaduct.ai",
+      instructions:"Summarize non-approved work order verifications across the fleet from the last 180 days grouped by vendor. Flag any vendor whose average cost per work order is more than 25% above the fleet average. Return the result as a table.",
+      clues:"" },
+    { id:"sp3", name:"Detect Duplicate Work Orders", toUsers:true, toViaduck:true,
+      createdAt:"2026-08-05", updatedAt:"2026-08-05", createdBy:"abel@viaduct.ai", updatedBy:"abel@viaduct.ai",
+      instructions:"", clues:"" },
+    { id:"sp4", name:"Compare Repair Costs By Region", toUsers:true, toViaduck:false,
+      createdAt:"2026-08-03", updatedAt:"2026-08-04", createdBy:"abel@viaduct.ai", updatedBy:"jernej@viaduct.ai",
+      instructions:"", clues:"" },
+    { id:"sp5", name:"Draft Recall Notification Brief", toUsers:false, toViaduck:false,
+      createdAt:"2026-08-03", updatedAt:"2026-08-03", createdBy:"abel@viaduct.ai", updatedBy:"abel@viaduct.ai",
+      instructions:"", clues:"" },
+  ];
+}
+/* The agent tools a saved prompt can call. Reference only — nothing to configure. */
+const PROMPT_TOOLS = [
+  { name:"apply_knowledge_item_modification",
+    description:"Make the changes that have been approved by the user to the stored knowledge items.\n\nWhen the user confirms the suggested knowledge items modifications, that is an indication that the user wants the preference to apply to future requests, and that you should use this tool to modify knowledge items.",
+    params:[
+      { name:"knowledge_item_modification_identifier", type:"string", required:"Required",
+        desc:"A unique identifier for this knowledge items modification. Used to ensure that only modifications that have been suggested by you and approved by the user will be applied." },
+      { name:"approved_updated_knowledge_items", type:"array", required:"Required",
+        desc:"The complete updated list of knowledge items. Each knowledge item should be a concise, atomic instruction. This list will directly replace the previous knowledge items." },
+    ] },
+  { name:"calculate_splits", description:"", params:[] },
+  { name:"client_action", description:"", params:[] },
+  { name:"cluster_events_with_llm", description:"", params:[] },
+  { name:"describe_database_table", description:"", params:[] },
+  { name:"describe_database_tables_from_phrase", description:"", params:[] },
+  { name:"download_data", description:"", params:[] },
+  { name:"get_all_sap_vendors", description:"", params:[] },
+];
 function newAutomation(name){
   return { id:autoId("auto"), name:name || "", createdAt:todayISO(), createdBy:CURRENT_USER,
            lastRunAt:"", lastRunBy:"", runList:[], steps:[newAutomationStep()] };
@@ -8821,6 +8961,266 @@ function AutomationView({ automation, onBack, onEdit, onRun, onDelete }){
   );
 }
 
+/* Tabs shared by both saved prompt pages. Evals is coming, not built. */
+function PromptTabs({ tab, setTab }){
+  return (
+    <div className="vds-tabs" style={{margin:"0 0 16px"}}>
+      <button className={"vds-tab" + (tab==="details" ? " vds-tab--selected" : "")} onClick={()=>setTab("details")}>Details</button>
+      <button className="vds-tab" disabled title="Not built yet">Evals</button>
+    </div>
+  );
+}
+
+/* The automations that run this prompt. Same name/trigger/history columns as the
+   Automations list, so the two read the same way. */
+function PromptAutomationsCard({ prompt, automations, onOpenAutomation, onNewAutomation }){
+  const used = automationsUsingPrompt(automations, prompt);
+  const countText = used.length === 0 ? "Not used in any automation"
+    : used.length === 1 ? "Used in 1 automation" : "Used in " + used.length + " automations";
+  return (
+    <div className="vds-card prompt-card">
+      <div className="prompt-card__head">
+        <div>
+          <h5 className="prompt-card__title">Automations</h5>
+          <span className="vds-b3 proto-muted">{countText}</span>
+        </div>
+        {onNewAutomation && (
+          <button className="vds-btn vds-btn--sm vds-btn--start-icon" onClick={onNewAutomation}>
+            <Icon name="plus" size={16} />New automation</button>
+        )}
+      </div>
+      {used.length === 0 ? (
+        <div className="vds-alert vds-alert--info proto-note">This saved prompt is not part of any automation yet.</div>
+      ) : (
+        <div className="prompt-auto-table">
+          <div className="prompt-auto-row prompt-auto-row--head">
+            <div>Name</div><div>Trigger</div><div>History</div>
+          </div>
+          {used.map(a => (
+            <div className="prompt-auto-row clickable-row" key={a.id} role="button" tabIndex={0}
+              onClick={()=>onOpenAutomation && onOpenAutomation(a.id)}
+              onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); onOpenAutomation && onOpenAutomation(a.id); } }}>
+              <div className="prompt-auto-name">{a.name}</div>
+              <div className="proto-muted">{automationTriggerText(a)}</div>
+              <div><RunStrip history={stripFromRuns(a.runList)} /></div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Reference list of the tools a saved prompt can call. Nothing to configure —
+   each row expands to its description and parameters. */
+function PromptToolsCard(){
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const shown = PROMPT_TOOLS.filter(t => !q || t.name.includes(q));
+  return (
+    <div className="vds-card prompt-card">
+      <button className="prompt-card__toggle" onClick={()=>setOpen(o=>!o)} aria-expanded={open}>
+        <h5 className="prompt-card__title">Tools</h5>
+        <Icon name={open ? "chevronUp" : "chevronDown"} size={20} />
+      </button>
+      {open && (<>
+        <div className="filter prompt-tool-search">
+          <span className="s-icon"><Icon name="search" size={16} /></span>
+          <input className="vds-input" placeholder="Filter tools..." aria-label="Filter tools"
+            value={query} onChange={(e)=>setQuery(e.target.value)} />
+        </div>
+        <div className="prompt-tool-list">
+          {shown.map(tool => (
+            <details className="vds-accordion vds-accordion--filled" key={tool.name}>
+              <summary>{tool.name}</summary>
+              <div className="vds-accordion__details">
+                {tool.description
+                  ? <div className="vds-b2 prompt-tool-desc">{tool.description}</div>
+                  : <div className="vds-b2 proto-muted">No description.</div>}
+                {tool.params.length > 0 && (
+                  <div className="prompt-tool-params">
+                    <span className="vds-b3 proto-muted">Parameters</span>
+                    {tool.params.map(p => (
+                      <div className="prompt-tool-param" key={p.name}>
+                        <div className="prompt-tool-param__head">
+                          <span className="vds-b2"><b>{p.name}</b></span>
+                          <span className="vds-b3 proto-muted">{p.type} · {p.required}</span>
+                        </div>
+                        <div className="vds-b2 proto-muted">{p.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </details>
+          ))}
+          {shown.length === 0 && <span className="vds-b2 proto-muted">No tool matches that filter.</span>}
+        </div>
+      </>)}
+    </div>
+  );
+}
+
+function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpenAutomation }){
+  const [tab, setTab] = useState("details");
+  return (
+    <div className="vds-content">
+      <nav className="vds-breadcrumbs" style={{marginBottom:12}}>
+        <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Saved Prompts</a>
+        <span className="vds-breadcrumbs__sep">/</span>
+        <span>{prompt.name || "Saved prompt"}</span>
+      </nav>
+      <div className="vds-page-header proto-sticky-head">
+        <div>
+          <h1 className="vds-page-title">{prompt.name || "Untitled saved prompt"}</h1>
+          <div className="vds-b3 proto-muted">Created by {prompt.createdBy} · {fmtAutoDate(prompt.createdAt)}</div>
+          <div className="vds-b3 proto-muted">Updated by {prompt.updatedBy} · {fmtAutoDate(prompt.updatedAt)}</div>
+        </div>
+        <div className="auto-editor-actions">
+          <button className="vds-btn vds-btn--start-icon" onClick={()=>onEdit(prompt.id)}>
+            <Icon name="pencil" size={17} />Edit</button>
+          <button className="vds-btn vds-btn--start-icon proto-btn--danger-quiet" onClick={()=>onDelete(prompt.id)}>
+            <Icon name="trash" size={17} />Delete</button>
+        </div>
+      </div>
+
+      <PromptTabs tab={tab} setTab={setTab} />
+      <div className="prompt-grid">
+        <div className="vds-card prompt-card">
+          <h5 className="prompt-card__title">Definition</h5>
+          <span className="vds-b3 proto-muted">How it appears in chat</span>
+          <div><span className="vds-chip prompt-slash">{slashOf(prompt.name)}</span></div>
+          <span className="vds-b3 proto-muted">Instructions that get sent</span>
+          {prompt.instructions.trim()
+            ? <div className="vds-b2 prompt-read-text">{prompt.instructions}</div>
+            : <div className="vds-b2 proto-muted">No instructions yet.</div>}
+        </div>
+
+        <div className="prompt-col">
+          <div className="vds-card prompt-card">
+            <h5 className="prompt-card__title">Availability</h5>
+            <div className="prompt-avail-line">
+              <span className="vds-b2">Available to users</span>
+              <span className="vds-b2 proto-muted">{prompt.toUsers ? "On" : "Off"}</span>
+            </div>
+            <div className="prompt-avail-line">
+              <span className="vds-b2">Available to ViaDuck</span>
+              <span className="vds-b2 proto-muted">{prompt.toViaduck ? "On" : "Off"}</span>
+            </div>
+            <span className="vds-b3 proto-muted">Context clues</span>
+            {prompt.clues.trim()
+              ? <div className="vds-b2 prompt-read-text">{prompt.clues}</div>
+              : <div className="vds-b2 proto-muted">None — ViaDuck won't run this on its own.</div>}
+          </div>
+          <PromptAutomationsCard prompt={prompt} automations={automations} onOpenAutomation={onOpenAutomation} />
+          <PromptToolsCard />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave, onDelete, onOpenAutomation, onNewAutomation }){
+  const [draft, setDraft] = useState(prompt);
+  const [tab, setTab] = useState("details");
+  /* Uniqueness is checked on blur — two prompts with one name would mean two
+     identical slash commands. */
+  const [nameTaken, setNameTaken] = useState(false);
+  const nameIsTaken = (v) => prompts.some(p => p.id !== prompt.id
+    && (p.name || "").trim().toLowerCase() === v.trim().toLowerCase());
+  const isSaved = prompts.some(p => p.id === prompt.id);
+  const canSave = !!draft.name.trim() && !nameTaken;
+  const patch = (p) => setDraft(d => ({ ...d, ...p }));
+  /* ViaDuck can only reach a prompt users can reach, so turning users off turns
+     ViaDuck off with it. */
+  const setToUsers = (on) => patch(on ? { toUsers:true } : { toUsers:false, toViaduck:false });
+
+  return (
+    <div className="vds-content">
+      <nav className="vds-breadcrumbs" style={{marginBottom:12}}>
+        <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Saved Prompts</a>
+        <span className="vds-breadcrumbs__sep">/</span>
+        <span>{draft.name || (isSaved ? "Saved prompt" : "New saved prompt")}</span>
+      </nav>
+      <div className="auto-editor-header proto-sticky-head">
+        <div className="auto-title-row">
+          <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder="Saved prompt name"
+            value={draft.name} aria-label="Saved prompt name" aria-invalid={nameTaken || undefined}
+            onChange={(e)=>{ setNameTaken(false); patch({ name:e.target.value }); }}
+            onBlur={(e)=>setNameTaken(nameIsTaken(e.target.value))} />
+          <div className="auto-editor-actions">
+            <button className="vds-btn" onClick={onCancel}>Cancel</button>
+            <button className="vds-btn vds-btn--primary" disabled={!canSave}
+              title={canSave ? undefined : "Enter a unique name to save"}
+              onClick={()=>onSave(draft)}>Save prompt</button>
+            <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Delete saved prompt"
+              disabled={!isSaved} title={isSaved ? "Delete saved prompt" : "This saved prompt hasn't been saved yet"}
+              onClick={()=>onDelete && onDelete(prompt.id)}><Icon name="trash" size={17} /></button>
+          </div>
+        </div>
+        {nameTaken && <div className="vds-helper-text vds-helper-text--error">This name is already used. Names must be unique.</div>}
+      </div>
+
+      <PromptTabs tab={tab} setTab={setTab} />
+      <div className="prompt-grid">
+        <div className="vds-card prompt-card">
+          <h5 className="prompt-card__title">Definition</h5>
+          <span className="vds-b3 proto-muted">How it appears in chat</span>
+          <div><span className="vds-chip prompt-slash">{slashOf(draft.name)}</span></div>
+          <div className="field prompt-field">
+            <label className="vds-label">Instructions that get sent</label>
+            <textarea className="vds-textarea prompt-textarea" rows={7} value={draft.instructions}
+              placeholder="Describe what this saved prompt should do"
+              onChange={(e)=>patch({ instructions:e.target.value })} />
+          </div>
+          <div className="prompt-card__foot">
+            <button className="vds-btn vds-btn--sm vds-btn--start-icon" onClick={()=>{}}>
+              <Icon name="sparkles" size={16} />Test in chat</button>
+          </div>
+        </div>
+
+        <div className="prompt-col">
+          <div className="vds-card prompt-card">
+            <h5 className="prompt-card__title">Availability</h5>
+            <div className="prompt-avail-line">
+              <span className="vds-b2 vds-dotted-underline"
+                title="Controls whether this saved prompt can be called in ViaDuck chat.">Available to users</span>
+              <label className="vds-switch">
+                <input type="checkbox" checked={draft.toUsers} aria-label="Available to users"
+                  onChange={(e)=>setToUsers(e.target.checked)} />
+                <span className="vds-switch__track"><span className="vds-switch__thumb"></span></span>
+              </label>
+            </div>
+            <div className="prompt-avail-line">
+              <span className="vds-b2 vds-dotted-underline"
+                title={draft.toUsers
+                  ? "ViaDuck will run this saved prompt on its own when the context clues match."
+                  : "Available to users must be on before ViaDuck can run this saved prompt."}>Available to ViaDuck</span>
+              <label className="vds-switch">
+                <input type="checkbox" checked={draft.toViaduck} disabled={!draft.toUsers} aria-label="Available to ViaDuck"
+                  onChange={(e)=>patch({ toViaduck:e.target.checked })} />
+                <span className="vds-switch__track"><span className="vds-switch__thumb"></span></span>
+              </label>
+            </div>
+            <div className="field prompt-field">
+              <label className="vds-label vds-dotted-underline"
+                title="If you describe when to use this, ViaDuck will run it on its own when that comes up.">Context clues</label>
+              <textarea className="vds-textarea prompt-textarea" rows={4} value={draft.clues}
+                placeholder="Eg, when someone asks to reconcile an invoice with a work order"
+                onChange={(e)=>patch({ clues:e.target.value })} />
+            </div>
+          </div>
+          <PromptAutomationsCard prompt={draft} automations={automations}
+            onOpenAutomation={onOpenAutomation}
+            onNewAutomation={isSaved ? () => onNewAutomation(draft) : undefined} />
+          <PromptToolsCard />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AutomationEditor({ automation, automations = [], sources, pipelines, onCancel, onSave, onDelete }){
   const [draft, setDraft] = useState(automation);
   /* Uniqueness is checked on blur, against every other automation's name. */
@@ -9175,6 +9575,10 @@ function App(){
   const [editingAutoId, setEditingAutoId] = useState(null);
   const [viewingAutoId, setViewingAutoId] = useState(null);
   const [newAuto, setNewAuto] = useState(null);
+  const [savedPrompts, setSavedPrompts] = useState(seedSavedPrompts);
+  const [editingPromptId, setEditingPromptId] = useState(null);
+  const [viewingPromptId, setViewingPromptId] = useState(null);
+  const [newPrompt, setNewPrompt] = useState(null);
   const [configuringId, setConfiguringId] = useState(null);
   const [pipelines, setPipelines] = useState([]);
   const [pipeCreating, setPipeCreating] = useState(false);
@@ -9182,7 +9586,7 @@ function App(){
   const [runs, setRuns] = useState([]);
   const [connectDataFor, setConnectDataFor] = useState(null); // { targetId, connId } while launching a preset "Connect data table" flow
   const toggleSection = (k) => setOpenSections(s => ({ ...s, [k]: s[k] === false ? true : false }));
-  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setEditingAutoId(null); setViewingAutoId(null); setNewAuto(null); setConnectDataFor(null); setActiveId(id); };
+  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setEditingAutoId(null); setViewingAutoId(null); setNewAuto(null); setEditingPromptId(null); setViewingPromptId(null); setNewPrompt(null); setConnectDataFor(null); setActiveId(id); };
   const updateSource = (id, patch) => setSources(ss => ss.map(s => s.id===id ? {...s, ...patch} : s));
   const deleteSource = (id) => { setSources(ss => ss.filter(s => s.id !== id)); setDetailId(d => d===id ? null : d); setUpdatingId(u => u===id ? null : u); setConfiguringId(c => c===id ? null : c); };
   const updateConnector = (id, patch) => {
@@ -9337,6 +9741,21 @@ function App(){
 
   const editingAuto = automations.find(a => a.id === editingAutoId);
   const viewingAuto = automations.find(a => a.id === viewingAutoId);
+  const editingPrompt = savedPrompts.find(p => p.id === editingPromptId);
+  const viewingPrompt = savedPrompts.find(p => p.id === viewingPromptId);
+  const upsertPrompt = (sp) => setSavedPrompts(ps => ps.some(p => p.id===sp.id)
+    ? ps.map(p => p.id===sp.id ? { ...sp, updatedAt:todayISO(), updatedBy:CURRENT_USER_EMAIL } : p)
+    : [{ ...sp, updatedAt:todayISO(), updatedBy:CURRENT_USER_EMAIL }, ...ps]);
+  const deletePrompt = (id) => { setSavedPrompts(ps => ps.filter(p => p.id !== id));
+    setEditingPromptId(e => e===id ? null : e); setViewingPromptId(v => v===id ? null : v); };
+  /* A saved prompt's "New automation" lands in the automation editor with the first
+     step already running that prompt. */
+  const automationForPrompt = (sp) => {
+    const a = newAutomation("Run " + sp.name);
+    a.steps[0] = { ...a.steps[0], name:"Run " + sp.name,
+      actions:[{ ...newAutomationAction("prompt"), prompt:slashOf(sp.name) + " " }] };
+    return a;
+  };
   const cfg = HUB_PAGE[activeId];
   const item = ALL_ITEMS.find(i => i.id === activeId) || { label:"Help" };
   const selected = sources.find(s => s.id === detailId);
@@ -9476,6 +9895,28 @@ function App(){
       : <HubPage cfg={cfg} onNew={() => setNewAuto(newAutomation(""))}
           onOpen={(id) => setViewingAutoId(id)} onEdit={(id) => setEditingAutoId(id)}
           onDelete={deleteAutomation} onRunNow={runAutomation} records={automations} />;
+  } else if (activeId === "directives"){
+    /* Same shape as automations: a new prompt is held here until it is saved, the
+       row opens read-only, and the pencil opens the editor. */
+    const editingSp = editingPrompt || newPrompt;
+    const closePromptEditor = () => { setEditingPromptId(null); setNewPrompt(null); };
+    const openAutomation = (id) => { setViewingPromptId(null); closePromptEditor(); setActiveId("automations"); setViewingAutoId(id); };
+    page = editingSp
+      ? <SavedPromptEditor prompt={editingSp} prompts={savedPrompts} automations={automations}
+          onCancel={closePromptEditor}
+          onDelete={(id) => { if (!newPrompt) deletePrompt(id); closePromptEditor(); }}
+          onSave={(sp) => { upsertPrompt(sp); closePromptEditor(); }}
+          onOpenAutomation={openAutomation}
+          onNewAutomation={(sp) => { closePromptEditor(); setViewingPromptId(null); setActiveId("automations"); setNewAuto(automationForPrompt(sp)); }} />
+      : viewingPrompt
+      ? <SavedPromptView prompt={viewingPrompt} automations={automations}
+          onBack={() => setViewingPromptId(null)}
+          onEdit={(id) => { setViewingPromptId(null); setEditingPromptId(id); }}
+          onDelete={(id) => { deletePrompt(id); setViewingPromptId(null); }}
+          onOpenAutomation={openAutomation} />
+      : <HubPage cfg={cfg} onNew={() => setNewPrompt(newSavedPrompt())}
+          onOpen={(id) => setViewingPromptId(id)} onEdit={(id) => setEditingPromptId(id)}
+          onDelete={deletePrompt} records={savedPrompts} />;
   } else if (cfg){
     page = <HubPage cfg={cfg}
       onNew={activeId==="datasources" ? () => setCreating(true) : (activeId==="dataconnectors" ? () => setConnCreating(true) : (activeId==="datapipelines" ? () => setPipeCreating(true) : undefined))}
