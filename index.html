@@ -468,6 +468,10 @@
   .schedule-entry { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-dialog-gap); }
   .schedule-entry__days { display: flex; gap: 4px; }
   .schedule-entry__time { width: 120px; }
+  .trigger-row-icon { display: flex; align-items: center; flex: none; color: var(--vds-gray-400); }
+  .schedule-entry__freq { width: 120px; }
+  .schedule-entry__nth { width: 110px; }
+  .schedule-entry__weekday { width: 140px; }
   .action-list { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
   .action-row { display: flex; align-items: flex-start; gap: var(--vds-button-gap); }
   .action-row .field { flex: none; }
@@ -1903,8 +1907,12 @@ const WEEKDAY_DEFAULT = { sun:false, mon:true, tue:true, wed:true, thu:true, fri
 const EVERY_DAY = { sun:true, mon:true, tue:true, wed:true, thu:true, fri:true, sat:true };
 
 const autoId = (p) => p + "_" + Math.random().toString(36).slice(2,10);
-function newScheduleEntry(days, time){
-  return { id:autoId("sch"), days:{ ...(days || WEEKDAY_DEFAULT) }, time:time || "09:00" };
+const SCHED_FREQS = ["Hourly","Daily","Weekly","Monthly"];
+const NTH_OPTIONS = ["first","second","third","fourth","last"];
+const TENANT_TZ = "Pacific time (tenant)";
+function newScheduleEntry(days, time, freq){
+  return { id:autoId("sch"), freq:freq || "Weekly", days:{ ...(days || WEEKDAY_DEFAULT) },
+           time:time || "09:00", nth:"first", weekday:"Monday" };
 }
 function newAutomationAction(type){
   return { id:autoId("act"), type:type || "prompt", refName:"", prompt:"" };
@@ -1933,12 +1941,17 @@ function fmtAutoDate(iso){
 const dayLabels = (days) => DAYS_OF_WEEK.filter(d => days && days[d.value]).map(d => d.label);
 /* One-line summary of a step's trigger — used in the list's Trigger column and
    wherever a thing's automation is described in place of the old schedule text. */
+function scheduleEntrySummary(sch){
+  const t = fmtTime(sch.time);
+  if (sch.freq === "Hourly") return "Hourly";
+  if (sch.freq === "Daily") return "Daily · " + t;
+  if (sch.freq === "Monthly") return "Monthly · " + (sch.nth || "first") + " " + (sch.weekday || "Monday") + " · " + t;
+  const days = dayLabels(sch.days);
+  return (days.length === 7 ? "Every day" : days.length ? days.join(" ") : "No days") + " · " + t;
+}
 function scheduleSummary(list){
   if (!list || !list.length) return null;
-  const first = list[0];
-  const days = dayLabels(first.days);
-  const dayText = days.length === 7 ? "Daily" : days.length ? days.join(" ") : "No days";
-  return dayText + " · " + list.map(s => fmtTime(s.time)).join(", ") + " UTC";
+  return scheduleEntrySummary(list[0]) + (list.length > 1 ? " +" + (list.length - 1) + " more" : "");
 }
 const eventSummary = (e) => "When a row is " + e.action + (e.table ? " in " + e.table : "");
 function triggerSummary(trigger){
@@ -1959,27 +1972,52 @@ function triggerSummary(trigger){
   return parts.length ? parts.join(" + ") : "Manually run";
 }
 const automationTriggerText = (a) => a && a.steps && a.steps[0] ? triggerSummary(a.steps[0].trigger) : "—";
-/* Soonest upcoming day+time across the first step's schedule entries. Manual and
-   table-event triggers have no next run. */
+/* Soonest upcoming occurrence across the step's schedule entries. Manual-only and
+   event-only triggers have no next run. Computed in the tenant's local time, which
+   is what the editor shows beside each time picker. */
+function nthWeekdayOfMonth(year, month, jsDow, nth){
+  if (nth === "last"){
+    const last = new Date(year, month + 1, 0);
+    return new Date(year, month, last.getDate() - ((last.getDay() - jsDow + 7) % 7));
+  }
+  const first = new Date(year, month, 1);
+  const day = 1 + ((jsDow - first.getDay() + 7) % 7) + ["first","second","third","fourth"].indexOf(nth) * 7;
+  const d = new Date(year, month, day);
+  return d.getMonth() === month ? d : null;
+}
+function nextRunFromSchedule(sch){
+  const now = new Date();
+  const [hh, mm] = (sch.time || "09:00").split(":").map(Number);
+  if (sch.freq === "Hourly"){
+    const d = new Date(now); d.setMinutes(0,0,0); d.setHours(d.getHours() + 1); return d;
+  }
+  if (sch.freq === "Daily"){
+    const d = new Date(now); d.setHours(hh, mm, 0, 0);
+    if (d <= now) d.setDate(d.getDate() + 1);
+    return d;
+  }
+  if (sch.freq === "Monthly"){
+    const jsDow = (WEEKDAYS.indexOf(sch.weekday || "Monday") + 1) % 7;   // Mon->1 … Sun->0
+    for (let add = 0; add < 4; add++){
+      const d = nthWeekdayOfMonth(now.getFullYear(), now.getMonth() + add, jsDow, sch.nth || "first");
+      if (!d) continue;
+      d.setHours(hh, mm, 0, 0);
+      if (d > now) return d;
+    }
+    return null;
+  }
+  for (let add = 0; add < 8; add++){                                      // Weekly
+    const d = new Date(now); d.setDate(d.getDate() + add); d.setHours(hh, mm, 0, 0);
+    if (d <= now) continue;
+    if (sch.days && sch.days[DAYS_OF_WEEK[d.getDay()].value]) return d;
+  }
+  return null;
+}
 function nextRunFromTrigger(trigger){
   if (!trigger || trigger.type === "manual" || trigger.type === "event" || trigger.type === "after_previous") return "—";
-  const list = trigger.schedules || [];
-  const now = new Date();
-  let best = null;
-  list.forEach(sch => {
-    const [hh, mm] = (sch.time || "09:00").split(":").map(Number);
-    for (let add = 0; add < 8; add++){
-      const d = new Date(now.getTime());
-      d.setUTCDate(d.getUTCDate() + add);
-      d.setUTCHours(hh, mm, 0, 0);
-      if (d <= now) continue;
-      if (!sch.days || !sch.days[DAYS_OF_WEEK[d.getUTCDay()].value]) continue;
-      if (!best || d < best) best = d;
-      break;
-    }
-  });
+  const best = (trigger.schedules || []).map(nextRunFromSchedule).filter(Boolean).sort((a,b) => a - b)[0];
   return best
-    ? best.toLocaleString("en-US", { timeZone:"UTC", month:"short", day:"numeric", hour:"numeric", minute:"2-digit" }) + " UTC"
+    ? best.toLocaleString("en-US", { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" })
     : "—";
 }
 const automationNextRun = (a) => a && a.steps && a.steps[0] ? nextRunFromTrigger(a.steps[0].trigger) : "—";
@@ -2013,10 +2051,12 @@ function newWizardTrigger(){
 function triggerToSyncFields(trigger){
   if (!trigger || trigger.type === "manual") return { frequency:"Manually" };
   if (trigger.type === "event") return { frequency:"On Input Update" };
-  const list = trigger.schedules || [];
-  const first = list[0] || newScheduleEntry();
+  const first = (trigger.schedules || [])[0];
+  if (!first) return { frequency:"Manually" };
+  if (first.freq === "Hourly") return { frequency:"Hourly" };
+  if (first.freq === "Daily") return { frequency:"Daily", timeOfDay:first.time };
+  if (first.freq === "Monthly") return { frequency:"Weekly", dayOfWeek:first.weekday || "Monday", timeOfDay:first.time };
   const days = DAYS_OF_WEEK.filter(d => first.days && first.days[d.value]);
-  if (days.length === 7 || days.length === 0) return { frequency:"Daily", timeOfDay:first.time };
   if (days.length === 1) return { frequency:"Weekly", dayOfWeek:WEEKDAYS[(DAYS_OF_WEEK.findIndex(d=>d.value===days[0].value)+6)%7], timeOfDay:first.time };
   return { frequency:"Daily", timeOfDay:first.time };
 }
@@ -8684,29 +8724,63 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                     {isFirst && (
                       <div>
                         <div className="schedule-list">
-                          {(step.trigger.schedules || []).map(sch => (
-                            <div className="schedule-entry" key={sch.id}>
-                              <div className="schedule-entry__days">
-                                {DAYS_OF_WEEK.map(d => (
-                                  <label className="vds-choice" key={d.value}>
-                                    <input type="checkbox" className="vds-checkbox" checked={!!sch.days[d.value]}
-                                      onChange={(e)=>patchTrigger(step.id, { schedules: step.trigger.schedules.map(x =>
-                                        x.id === sch.id ? { ...x, days:{ ...x.days, [d.value]:e.target.checked } } : x) })} /> {d.label}
-                                  </label>
-                                ))}
-                              </div>
+                          {(step.trigger.schedules || []).map(sch => {
+                            const patchSch = (patch) => patchTrigger(step.id, { schedules: step.trigger.schedules.map(x =>
+                              x.id === sch.id ? { ...x, ...patch } : x) });
+                            const timeField = (<>
                               <div className="field schedule-entry__time">
                                 <input className="vds-input" type="time" value={sch.time} aria-label="Time of day"
-                                  onChange={(e)=>patchTrigger(step.id, { schedules: step.trigger.schedules.map(x =>
-                                    x.id === sch.id ? { ...x, time:e.target.value } : x) })} />
+                                  onChange={(e)=>patchSch({ time:e.target.value })} />
                               </div>
-                              <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule" title="Remove schedule"
-                                onClick={()=>patchTrigger(step.id, { schedules: step.trigger.schedules.filter(x => x.id !== sch.id) })}>
-                                <Icon name="x" size={16} /></button>
-                            </div>
-                          ))}
+                              <span className="vds-b2 proto-muted">{TENANT_TZ}</span>
+                            </>);
+                            return (
+                              <div className="schedule-entry" key={sch.id}>
+                                <span className="trigger-row-icon"><Icon name="clock" size={18} /></span>
+                                <div className="field schedule-entry__freq">
+                                  <select className="vds-select" value={sch.freq || "Weekly"} aria-label="Frequency"
+                                    onChange={(e)=>patchSch({ freq:e.target.value })}>
+                                    {SCHED_FREQS.map(f => <option key={f} value={f}>{f}</option>)}
+                                  </select>
+                                </div>
+                                {sch.freq === "Daily" && (<><span className="vds-b2">at</span>{timeField}</>)}
+                                {(sch.freq === "Weekly" || !sch.freq) && (<>
+                                  <span className="vds-b2">on</span>
+                                  <div className="schedule-entry__days">
+                                    {DAYS_OF_WEEK.map(d => (
+                                      <label className="vds-choice" key={d.value}>
+                                        <input type="checkbox" className="vds-checkbox" checked={!!sch.days[d.value]}
+                                          onChange={(e)=>patchSch({ days:{ ...sch.days, [d.value]:e.target.checked } })} /> {d.label}
+                                      </label>
+                                    ))}
+                                  </div>
+                                  {timeField}
+                                </>)}
+                                {sch.freq === "Monthly" && (<>
+                                  <span className="vds-b2">on the</span>
+                                  <div className="field schedule-entry__nth">
+                                    <select className="vds-select" value={sch.nth || "first"} aria-label="Which week"
+                                      onChange={(e)=>patchSch({ nth:e.target.value })}>
+                                      {NTH_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                                    </select>
+                                  </div>
+                                  <div className="field schedule-entry__weekday">
+                                    <select className="vds-select" value={sch.weekday || "Monday"} aria-label="Day of week"
+                                      onChange={(e)=>patchSch({ weekday:e.target.value })}>
+                                      {WEEKDAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
+                                  </div>
+                                  {timeField}
+                                </>)}
+                                <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule" title="Remove schedule"
+                                  onClick={()=>patchTrigger(step.id, { schedules: step.trigger.schedules.filter(x => x.id !== sch.id) })}>
+                                  <Icon name="x" size={16} /></button>
+                              </div>
+                            );
+                          })}
                           {(step.trigger.events || []).map(ev => (
                             <div className="trigger-event-line" key={ev.id}>
+                              <span className="trigger-row-icon"><Icon name="database" size={18} /></span>
                               <span className="vds-b2">When a row is</span>
                               <div className="field trigger-event-line__action">
                                 <select className="vds-select" value={ev.action} aria-label="Row action"
