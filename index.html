@@ -8679,7 +8679,13 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
   const nameIsTaken = (v) => automations.some(a => a.id !== automation.id
     && (a.name || "").trim().toLowerCase() === v.trim().toLowerCase());
   const canSave = !!draft.name.trim() && !nameTaken;
-  const canRun = draft.steps.length > 0 && draft.steps.some(st => (st.actions || []).length > 0);
+  /* A new automation isn't in the list until it's saved, so there is nothing to
+     run or delete yet. */
+  const isSaved = automations.some(a => a.id === automation.id);
+  const actionIsSpecified = (a) => a.type === "notification"
+    || (a.type === "prompt" ? !!(a.prompt || "").trim() : !!a.refName);
+  const hasAction = draft.steps.some(st => (st.actions || []).some(actionIsSpecified));
+  const canRun = isSaved && hasAction;
   const [tab, setTab] = useState("steps");
   const tableNames = Array.from(new Set([
     ...(sources || []).filter(s => s.configured !== false).map(s => s.name),
@@ -8739,14 +8745,15 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
             onBlur={(e)=>setNameTaken(nameIsTaken(e.target.value))} />
           <div className="auto-editor-actions">
           <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Run now" disabled={!canRun}
-            title={canRun ? "Run now" : "Add a step with an action to run this"}
+            title={canRun ? "Run now" : (isSaved ? "Add an action to run this" : "Save this automation before running it")}
             onClick={()=>onRun && onRun(automation.id)}><Icon name="play" size={16} /></button>
           <button className="vds-btn" onClick={onCancel}>Cancel</button>
           <button className="vds-btn vds-btn--primary" disabled={!canSave}
             title={canSave ? undefined : "Enter a unique name to save"}
             onClick={()=>onSave(draft)}>Save automation</button>
           <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Delete automation"
-            title="Delete automation" onClick={()=>onDelete && onDelete(automation.id)}><Icon name="trash" size={17} /></button>
+            disabled={!isSaved} title={isSaved ? "Delete automation" : "This automation hasn't been saved yet"}
+            onClick={()=>onDelete && onDelete(automation.id)}><Icon name="trash" size={17} /></button>
           </div>
         </div>
         {nameTaken && <div className="vds-helper-text vds-helper-text--error">This name is already used. Names must be unique.</div>}
