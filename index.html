@@ -9040,16 +9040,10 @@ function PromptTabs({ tab, setTab }){
 function PromptAutomationsCard({ prompt, automations, onOpenAutomation, onNewAutomation,
                                 newLabel = "New automation", newDisabled = false, newTitle }){
   const used = automationsUsingPrompt(automations, prompt);
-  /* No count line when there are none — the empty state below already says so. */
-  const countText = used.length === 1 ? "Used in 1 automation"
-    : used.length > 1 ? "Used in " + used.length + " automations" : null;
   return (
     <div className="vds-card prompt-card">
       <div className="prompt-card__head">
-        <div>
-          <h5 className="prompt-card__title">Automations</h5>
-          {countText && <span className="vds-b3 proto-muted">{countText}</span>}
-        </div>
+        <h5 className="prompt-card__title">Automations</h5>
         {onNewAutomation && (
           <button className="vds-btn vds-btn--sm" onClick={onNewAutomation}
             disabled={newDisabled} title={newTitle}>{newLabel}</button>
