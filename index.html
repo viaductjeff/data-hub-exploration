@@ -3980,7 +3980,6 @@ function ScheduleStep({ conn, sched, setSched, editing, onCancel, onBack, onCrea
       <PageHead title={(editing ? "Edit " : "Connect ") + conn.name} sub={"Origin: Connectors · " + conn.name} onCancel={onCancel} />
       <Stepper current={3} steps={CONNECTOR_STEPS} />
       <div className="vds-h4 proto-section-title">Automate</div>
-      <div className="vds-b2 proto-muted proto-section-note">Choose the trigger for the automation this creates. Viaduct keeps the data tables current by running it.</div>
       <AutomateTriggerFields trigger={sched} setTrigger={setSched} allowEvent={false} />
 
       <div className="wiz-footer">
@@ -4240,7 +4239,6 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
       <PageHead title={"Set up " + conn.name + " connection"} sub={"Choose how often " + conn.name + " should sync."} onCancel={onCancel} />
       <Stepper current={4} steps={CONNECTOR_WIZARD_STEPS} />
       <div className="vds-h4 proto-section-title">Automate</div>
-      <div className="vds-b2 proto-muted proto-section-note">Choose the trigger for the automation this creates. Viaduct keeps the data tables current by running it.</div>
       <AutomateTriggerFields trigger={sched} setTrigger={setSched} allowEvent={false} />
 
       <div className="wiz-footer">
@@ -4473,7 +4471,6 @@ function SnowflakeConnectorFlow({ conn, tmpl, editing, editInstance, existingSou
       <PageHead title={"Set up " + conn.name + " connection"} sub="Choose how often this connection syncs." onCancel={onCancel} />
       <Stepper current={4} steps={CONNECTOR_WIZARD_STEPS} />
       <div className="vds-h4 proto-section-title">Automate</div>
-      <div className="vds-b2 proto-muted proto-section-note">Choose the trigger for the automation this creates. Viaduct keeps the data tables current by running it.</div>
       <AutomateTriggerFields trigger={sched} setTrigger={setSched} allowEvent={false} />
 
       <div className="wiz-footer">
