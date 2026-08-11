@@ -459,6 +459,11 @@
   .trigger-after-previous { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-form-gap); }
   .trigger-delay-value { width: 64px; }
   .trigger-delay-unit { width: 110px; }
+  .trigger-event-line { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-button-gap); }
+  .trigger-event-line .field { margin-bottom: 0; }
+  .trigger-event-line__action { width: 130px; }
+  .trigger-event-line__table { width: 220px; }
+  .trigger-add-row { display: flex; flex-wrap: wrap; gap: var(--vds-button-gap); margin-top: var(--vds-button-gap); }
   .schedule-list { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
   .schedule-entry { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-dialog-gap); }
   .schedule-entry__days { display: flex; gap: 4px; }
@@ -1882,6 +1887,8 @@ const DAYS_OF_WEEK = [
   { value:"sat", label:"Sa" },
 ];
 const DELAY_UNITS = ["minutes","hours","days"];
+const ROW_ACTIONS = ["inserted","updated","deleted"];
+const newTriggerEvent = (tables) => ({ id:autoId("evt"), action:"inserted", table:(tables && tables[0]) || "" });
 const TRIGGER_TYPE_LABELS = {
   manual:"Manually run", schedule:"Schedule", event:"Table event", after_previous:"After previous step",
 };
@@ -1905,7 +1912,7 @@ function newAutomationAction(type){
 function newAutomationStep(){
   return {
     id:autoId("step"), name:"",
-    trigger:{ type:"schedule", table:"", event:"new_row", schedules:[newScheduleEntry()],
+    trigger:{ type:"multi", schedules:[newScheduleEntry()], events:[],
               delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
     actions:[newAutomationAction("prompt")],
   };
@@ -1926,26 +1933,36 @@ function fmtAutoDate(iso){
 const dayLabels = (days) => DAYS_OF_WEEK.filter(d => days && days[d.value]).map(d => d.label);
 /* One-line summary of a step's trigger — used in the list's Trigger column and
    wherever a thing's automation is described in place of the old schedule text. */
-function triggerSummary(trigger){
-  if (!trigger) return "—";
-  if (trigger.type === "manual") return "Manually run";
-  if (trigger.type === "event") return "On " + (TABLE_EVENTS.find(e=>e.value===trigger.event)||{label:"new row"}).label.toLowerCase() + (trigger.table ? " in " + trigger.table : "");
-  if (trigger.type === "after_previous") return trigger.delayEnabled
-    ? "After previous step + " + trigger.delayValue + " " + trigger.delayUnit
-    : "After previous step";
-  const list = trigger.schedules || [];
-  if (!list.length) return "Schedule";
+function scheduleSummary(list){
+  if (!list || !list.length) return null;
   const first = list[0];
   const days = dayLabels(first.days);
   const dayText = days.length === 7 ? "Daily" : days.length ? days.join(" ") : "No days";
-  const times = list.map(s => fmtTime(s.time)).join(", ");
-  return dayText + " · " + times + " UTC" + (list.length > 1 ? "" : "");
+  return dayText + " · " + list.map(s => fmtTime(s.time)).join(", ") + " UTC";
+}
+const eventSummary = (e) => "When a row is " + e.action + (e.table ? " in " + e.table : "");
+function triggerSummary(trigger){
+  if (!trigger) return "—";
+  if (trigger.type === "after_previous") return trigger.delayEnabled
+    ? "After previous step + " + trigger.delayValue + " " + trigger.delayUnit
+    : "After previous step";
+  if (trigger.type === "manual") return "Manually run";
+  if (trigger.type === "event") return "On " + (TABLE_EVENTS.find(e=>e.value===trigger.event)||{label:"new row"}).label.toLowerCase() + (trigger.table ? " in " + trigger.table : "");
+  /* "multi": whatever schedules and table events the step actually has. A step with
+     neither can still be run by hand, which is what the editor explains. */
+  const sched = scheduleSummary(trigger.schedules);
+  const events = trigger.events || [];
+  const parts = [];
+  if (sched) parts.push(sched);
+  if (events.length === 1) parts.push(eventSummary(events[0]));
+  else if (events.length > 1) parts.push(events.length + " table events");
+  return parts.length ? parts.join(" + ") : "Manually run";
 }
 const automationTriggerText = (a) => a && a.steps && a.steps[0] ? triggerSummary(a.steps[0].trigger) : "—";
 /* Soonest upcoming day+time across the first step's schedule entries. Manual and
    table-event triggers have no next run. */
 function nextRunFromTrigger(trigger){
-  if (!trigger || trigger.type !== "schedule") return "—";
+  if (!trigger || trigger.type === "manual" || trigger.type === "event" || trigger.type === "after_previous") return "—";
   const list = trigger.schedules || [];
   const now = new Date();
   let best = null;
@@ -8537,7 +8554,8 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
     && (a.name || "").trim().toLowerCase() === v.trim().toLowerCase());
   const canSave = !!draft.name.trim() && !nameTaken;
   const [tab, setTab] = useState("steps");
-  const tableNames = (sources || []).filter(s => s.configured !== false).map(s => s.name);
+  const tableNames = (sources || []).filter(s => s.configured !== false).map(s => s.name)
+    .sort((a,b) => a.localeCompare(b));
   const pipeNames = (pipelines || []).map(p => p.name);
 
   const patchStep = (stepId, patch) => setDraft(d => ({ ...d,
@@ -8643,18 +8661,10 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                 </div>
                 <div className="step-card__body">
                   <div>
-                    <h6 style={{margin:"0 0 8px"}}>Trigger</h6>
-                    {isFirst ? (
-                      <div className="trigger-choice-row" style={{marginBottom:12}}>
-                        {[["manual","Manually run"],["schedule","Schedule"],["event","Table event"]].map(([v,label]) => (
-                          <label className="vds-choice" key={v}>
-                            <input type="radio" className="vds-radio" name={"trig-" + step.id} value={v}
-                              checked={tType === v} onChange={()=>patchTrigger(step.id, { type:v })} /> {label}
-                          </label>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="trigger-after-previous">
+                    <h5 style={{margin:"0 0 4px"}}>Trigger</h5>
+                    <div className="vds-b2 proto-muted" style={{marginBottom:12}}>Automations can always be manually run, even when triggered on a schedule or by a table event.</div>
+                    {!isFirst && (
+                      <div className="trigger-after-previous" style={{marginBottom:12}}>
                         <span className="vds-b2">After the previous step</span>
                         <label className="vds-choice">
                           <input type="checkbox" className="vds-checkbox" checked={!!step.trigger.delayEnabled}
@@ -8671,26 +8681,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                         </>)}
                       </div>
                     )}
-                    {isFirst && tType === "event" && (
-                      <div className="trigger-fields-row">
-                        <div className="field">
-                          <label className="vds-label">Data table</label>
-                          <select className="vds-select" value={step.trigger.table || ""}
-                            onChange={(e)=>patchTrigger(step.id, { table:e.target.value })}>
-                            <option value="">Select data table…</option>
-                            {tableNames.map(n => <option key={n} value={n}>{n}</option>)}
-                          </select>
-                        </div>
-                        <div className="field">
-                          <label className="vds-label">Event</label>
-                          <select className="vds-select" value={step.trigger.event}
-                            onChange={(e)=>patchTrigger(step.id, { event:e.target.value })}>
-                            {TABLE_EVENTS.map(ev => <option key={ev.value} value={ev.value}>{ev.label}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                    )}
-                    {isFirst && tType === "schedule" && (
+                    {isFirst && (
                       <div>
                         <div className="schedule-list">
                           {(step.trigger.schedules || []).map(sch => (
@@ -8709,24 +8700,51 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                                   onChange={(e)=>patchTrigger(step.id, { schedules: step.trigger.schedules.map(x =>
                                     x.id === sch.id ? { ...x, time:e.target.value } : x) })} />
                               </div>
-                              <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule"
-                                disabled={(step.trigger.schedules || []).length <= 1}
-                                title={(step.trigger.schedules || []).length <= 1 ? "At least one schedule is required" : "Remove schedule"}
+                              <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule" title="Remove schedule"
                                 onClick={()=>patchTrigger(step.id, { schedules: step.trigger.schedules.filter(x => x.id !== sch.id) })}>
                                 <Icon name="x" size={16} /></button>
                             </div>
                           ))}
+                          {(step.trigger.events || []).map(ev => (
+                            <div className="trigger-event-line" key={ev.id}>
+                              <span className="vds-b2">When a row is</span>
+                              <div className="field trigger-event-line__action">
+                                <select className="vds-select" value={ev.action} aria-label="Row action"
+                                  onChange={(e)=>patchTrigger(step.id, { events: step.trigger.events.map(x =>
+                                    x.id === ev.id ? { ...x, action:e.target.value } : x) })}>
+                                  {ROW_ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
+                                </select>
+                              </div>
+                              <span className="vds-b2">in table</span>
+                              <div className="field trigger-event-line__table">
+                                <select className="vds-select" value={ev.table} aria-label="Data table"
+                                  onChange={(e)=>patchTrigger(step.id, { events: step.trigger.events.map(x =>
+                                    x.id === ev.id ? { ...x, table:e.target.value } : x) })}>
+                                  {tableNames.length === 0 && <option value="">No data tables yet</option>}
+                                  {tableNames.map(n => <option key={n} value={n}>{n}</option>)}
+                                </select>
+                              </div>
+                              <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove table event" title="Remove table event"
+                                onClick={()=>patchTrigger(step.id, { events: step.trigger.events.filter(x => x.id !== ev.id) })}>
+                                <Icon name="x" size={16} /></button>
+                            </div>
+                          ))}
                         </div>
-                        <button className="vds-btn vds-btn--sm vds-btn--start-icon" style={{marginTop:8}}
-                          onClick={()=>patchTrigger(step.id, { schedules:[...(step.trigger.schedules||[]), newScheduleEntry()] })}>
-                          <Icon name="plus" size={16} />Add schedule</button>
+                        <div className="trigger-add-row">
+                          <button className="vds-btn vds-btn--sm vds-btn--start-icon"
+                            onClick={()=>patchTrigger(step.id, { schedules:[...(step.trigger.schedules||[]), newScheduleEntry()] })}>
+                            <Icon name="plus" size={16} />Add schedule</button>
+                          <button className="vds-btn vds-btn--sm vds-btn--start-icon"
+                            onClick={()=>patchTrigger(step.id, { events:[...(step.trigger.events||[]), newTriggerEvent(tableNames)] })}>
+                            <Icon name="plus" size={16} />Add table event</button>
+                        </div>
                       </div>
                     )}
                   </div>
 
                   <div>
                     <div className="auto-section-head" style={{marginBottom:8}}>
-                      <h6>Actions</h6>
+                      <h5>Actions</h5>
                       <span className="vds-b3 proto-muted vds-dotted-underline"
                         title="You may reorder these for your convenience and ease of understanding, but they are all performed at the same time, in no specific order.">performed all at the same time</span>
                     </div>
