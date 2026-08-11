@@ -8808,7 +8808,7 @@ function AutomationView({ automation, onBack, onEdit, onRun, onDelete }){
   );
 }
 
-function AutomationEditor({ automation, automations = [], sources, pipelines, onCancel, onSave, onRun, onDelete }){
+function AutomationEditor({ automation, automations = [], sources, pipelines, onCancel, onSave, onDelete }){
   const [draft, setDraft] = useState(automation);
   /* Uniqueness is checked on blur, against every other automation's name. */
   const [nameTaken, setNameTaken] = useState(false);
@@ -8816,12 +8816,8 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
     && (a.name || "").trim().toLowerCase() === v.trim().toLowerCase());
   const canSave = !!draft.name.trim() && !nameTaken;
   /* A new automation isn't in the list until it's saved, so there is nothing to
-     run or delete yet. */
+     delete yet. */
   const isSaved = automations.some(a => a.id === automation.id);
-  const actionIsSpecified = (a) => a.type === "notification"
-    || (a.type === "prompt" ? !!(a.prompt || "").trim() : !!a.refName);
-  const hasAction = draft.steps.some(st => (st.actions || []).some(actionIsSpecified));
-  const canRun = isSaved && hasAction;
   const [tab, setTab] = useState("steps");
   const tableNames = Array.from(new Set([
     ...(sources || []).filter(s => s.configured !== false).map(s => s.name),
@@ -8880,9 +8876,6 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
             onChange={(e)=>{ setNameTaken(false); setDraft(d => ({ ...d, name:e.target.value })); }}
             onBlur={(e)=>setNameTaken(nameIsTaken(e.target.value))} />
           <div className="auto-editor-actions">
-          <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Run now" disabled={!canRun}
-            title={canRun ? "Run now" : (isSaved ? "Add an action to run this" : "Save this automation before running it")}
-            onClick={()=>onRun && onRun(automation.id)}><Icon name="play" size={16} /></button>
           <button className="vds-btn" onClick={onCancel}>Cancel</button>
           <button className="vds-btn vds-btn--primary" disabled={!canSave}
             title={canSave ? undefined : "Enter a unique name to save"}
@@ -9556,7 +9549,6 @@ function App(){
     page = editing
       ? <AutomationEditor automation={editing} automations={automations} sources={sources} pipelines={pipelines}
           onCancel={closeEditor}
-          onRun={(id) => runAutomation(id)}
           onDelete={(id) => { if (!newAuto) deleteAutomation(id); closeEditor(); }}
           onSave={(a) => { upsertAutomation(a); closeEditor(); }} />
       : viewingAuto
