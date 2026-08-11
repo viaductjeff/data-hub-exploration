@@ -459,12 +459,13 @@
   .trigger-after-previous { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-form-gap); }
   .trigger-delay-value { width: 64px; }
   .trigger-delay-unit { width: 110px; }
-  .trigger-event-line { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-button-gap); }
+  /* Matches .schedule-entry's gap so the leading text lines up with the frequency picker. */
+  .trigger-event-line { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-dialog-gap); }
   .trigger-event-line .field { margin-bottom: 0; }
   .trigger-event-line__action { width: 130px; }
   .trigger-event-line__table { width: 220px; }
   .trigger-add-row { display: flex; flex-wrap: wrap; gap: var(--vds-button-gap); margin-top: var(--vds-button-gap); }
-  .schedule-list { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
+  .schedule-list { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
   .schedule-entry { display: flex; align-items: center; flex-wrap: wrap; gap: var(--vds-dialog-gap); }
   .schedule-entry__days { display: flex; gap: 4px; }
   .schedule-entry__time { width: 120px; }
@@ -8805,10 +8806,10 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                           ))}
                         </div>
                         <div className="trigger-add-row">
-                          <button className="vds-btn vds-btn--sm vds-btn--start-icon"
+                          <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
                             onClick={()=>patchTrigger(step.id, { schedules:[...(step.trigger.schedules||[]), newScheduleEntry()] })}>
                             <Icon name="plus" size={16} />Add schedule</button>
-                          <button className="vds-btn vds-btn--sm vds-btn--start-icon"
+                          <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
                             onClick={()=>patchTrigger(step.id, { events:[...(step.trigger.events||[]), newTriggerEvent(tableNames)] })}>
                             <Icon name="plus" size={16} />Add table event</button>
                         </div>
