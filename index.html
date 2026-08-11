@@ -1541,8 +1541,10 @@ function SimplePage({ item }){
 
 /* ---------------- Wizard ---------------- */
 const ORIGINS = [
-  { id:"files", icon:"upload", title:"Data Files", desc:"Upload CSV, Excel, JSON, or Parquet files from your computer." },
-  { id:"media", icon:"fileText", title:"Media", desc:"Upload images, video, or documents (JPG, PNG, MP4, PDF) stored in S3 and displayed in the app." },
+  { id:"files", icon:"upload", title:"Data Files", short:"CSV, Excel, JSON, Parquet",
+    desc:"Upload CSV, Excel, JSON, or Parquet files from your computer." },
+  { id:"media", icon:"fileText", title:"Media", short:"Images, video, documents",
+    desc:"Upload images, video, or documents (JPG, PNG, MP4, PDF) stored in S3 and displayed in the app." },
 ];
 const STEPS = [{n:1,label:"Select origin"},{n:2,label:"Upload"},{n:3,label:"Map & import"}];
 const CONNECTOR_STEPS = [{n:1,label:"Select connection"},{n:2,label:"Set up connection & data table"},{n:3,label:"Automate"}];
@@ -2633,8 +2635,8 @@ function OriginConnCard({ icon, name, group, priority, onClick }){
    they do rather than what they are. */
 const INGESTION_CONNECTOR_IDS = ["emailparse", "customscript"];
 const INGESTION_ORIGINS = [
-  { id:"emailparse", icon:"mail", title:"Parse emails", desc:"Read data out of inbound email and its attachments." },
-  { id:"customscript", icon:"terminal", title:"Custom ingestion", desc:"Run a hand-authored script that fetches and shapes the data." },
+  { id:"emailparse", icon:"mail", title:"Parse emails", short:"Inbound email and attachments" },
+  { id:"customscript", icon:"terminal", title:"Custom ingestion", short:"Hand-authored script" },
 ];
 
 function SelectOrigin({ onCancel, onPick, onPickConnector }){
@@ -2644,13 +2646,9 @@ function SelectOrigin({ onCancel, onPick, onPickConnector }){
     <Stepper current={1} />
 
     <div className="vds-h4 proto-section-title">Upload</div>
-    <div className="origin-grid">
+    <div className="conn-grid">
       {ORIGINS.map(o => (
-        <button key={o.id} className="vds-card proto-origin-card" onClick={() => onPick(o.id)}>
-          <span className="origin-icon"><Icon name={o.icon} size={26} /></span>
-          <span className="origin-title">{o.title}</span>
-          <span className="origin-desc">{o.desc}</span>
-        </button>
+        <OriginConnCard key={o.id} icon={o.icon} name={o.title} group={o.short} onClick={()=>onPick(o.id)} />
       ))}
     </div>
 
@@ -2665,7 +2663,7 @@ function SelectOrigin({ onCancel, onPick, onPickConnector }){
     <div className="vds-h4 proto-section-title origin-group-title">Ingestion process</div>
     <div className="conn-grid">
       {INGESTION_ORIGINS.map(o => (
-        <OriginConnCard key={o.id} icon={o.icon} name={o.title} group={o.desc}
+        <OriginConnCard key={o.id} icon={o.icon} name={o.title} group={o.short}
           onClick={()=>onPickConnector(o.id)} />
       ))}
     </div>
