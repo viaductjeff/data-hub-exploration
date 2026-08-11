@@ -1925,7 +1925,7 @@ function newAutomationAction(type){
 function newAutomationStep(){
   return {
     id:autoId("step"), name:"",
-    trigger:{ type:"multi", schedules:[newScheduleEntry()], events:[],
+    trigger:{ type:"multi", schedules:[], events:[],
               delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
     actions:[newAutomationAction("prompt")],
   };
@@ -8728,7 +8728,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                     )}
                     {isFirst && (
                       <div>
-                        <div className="schedule-list">
+                        {((step.trigger.schedules || []).length + (step.trigger.events || []).length) > 0 && <div className="schedule-list">
                           {(step.trigger.schedules || []).map(sch => {
                             const patchSch = (patch) => patchTrigger(step.id, { schedules: step.trigger.schedules.map(x =>
                               x.id === sch.id ? { ...x, ...patch } : x) });
@@ -8812,7 +8812,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                               </div>
                             </div>
                           ))}
-                        </div>
+                        </div>}
                         <div className="trigger-add-row">
                           <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
                             onClick={()=>patchTrigger(step.id, { schedules:[...(step.trigger.schedules||[]), newScheduleEntry()] })}>
