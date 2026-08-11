@@ -190,6 +190,18 @@
   .prio-filter-label { color: var(--vds-gray-500); }
   .conn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
   .origin-group-title { margin-top: var(--vds-main-gap); }
+  /* Three equal columns so the lone Define-from-scratch tile lines up with the two
+     Upload tiles, headings sitting over their own columns. */
+  .origin-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--vds-button-gap) 16px; }
+  .origin-row__head-a { grid-column: 1 / 3; }
+  /* Spans to the end so the heading row is full and the tiles start on the next row. */
+  .origin-row__head-b { grid-column: 3 / -1; }
+  @media (max-width: 900px){
+    .origin-row { grid-template-columns: 1fr; }
+    .origin-row__head-a, .origin-row__head-b { grid-column: 1 / -1; }
+    .origin-row__head-b { margin-top: var(--vds-form-gap); order: 1; }
+    .origin-row > .proto-conn-card:last-child { order: 2; }
+  }
   .proto-conn-card { position: relative; display: flex; align-items: center; gap: var(--vds-dialog-gap); text-align: left; cursor: pointer; font-family: inherit; }
   .proto-conn-card:hover { border-color: var(--vds-gray-400); box-shadow: var(--vds-shadow-sm); }
   .proto-conn-card.selected { border-color: var(--vds-info); background: var(--vds-alert-info-bg); }
@@ -1545,7 +1557,10 @@ const ORIGINS = [
     desc:"Upload CSV, Excel, JSON, or Parquet files from your computer." },
   { id:"media", icon:"fileText", title:"Media", short:"Images, video, documents",
     desc:"Upload images, video, or documents (JPG, PNG, MP4, PDF) stored in S3 and displayed in the app." },
+  { id:"custom", icon:"grid", title:"Custom Table", short:"Define your own table schema",
+    desc:"Declare the columns and types yourself, then load data into it later." },
 ];
+const UPLOAD_ORIGIN_IDS = ["files", "media"];
 const STEPS = [{n:1,label:"Select origin"},{n:2,label:"Upload"},{n:3,label:"Map & import"}];
 const CONNECTOR_STEPS = [{n:1,label:"Select connection"},{n:2,label:"Set up connection & data table"},{n:3,label:"Automate"}];
 const PIPELINE_STEPS = [{n:1,label:"Select type"},{n:2,label:"Configure"}];
@@ -2645,9 +2660,14 @@ function SelectOrigin({ onCancel, onPick, onPickConnector }){
     <PageHead title="New data table" onCancel={onCancel} />
     <Stepper current={1} />
 
-    <div className="vds-h4 proto-section-title">Upload</div>
-    <div className="conn-grid">
-      {ORIGINS.map(o => (
+    {/* Upload and Define from scratch share the first row: two tiles then one. */}
+    <div className="origin-row">
+      <div className="vds-h4 proto-section-title origin-row__head-a">Upload</div>
+      <div className="vds-h4 proto-section-title origin-row__head-b">Define from scratch</div>
+      {ORIGINS.filter(o => UPLOAD_ORIGIN_IDS.includes(o.id)).map(o => (
+        <OriginConnCard key={o.id} icon={o.icon} name={o.title} group={o.short} onClick={()=>onPick(o.id)} />
+      ))}
+      {ORIGINS.filter(o => o.id === "custom").map(o => (
         <OriginConnCard key={o.id} icon={o.icon} name={o.title} group={o.short} onClick={()=>onPick(o.id)} />
       ))}
     </div>
