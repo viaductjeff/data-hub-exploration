@@ -154,6 +154,8 @@
   .trow:hover { background: var(--vds-surface-hover); }
   .td { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 8px; }
   .td.right { text-align: right; padding-right: 0; }
+  /* Right-aligned but not the last column, so it keeps a gap from the next one. */
+  .th.right-mid, .td.right-mid { text-align: right; padding-right: 16px; }
   .td-name { font-weight: 500; }
   .td-flag { display: flex; justify-content: center; color: var(--vds-text-primary); }
   .td-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -601,6 +603,8 @@
 
   .run-strip { display: inline-flex; gap: 2px; align-items: center; }
   .run-seg { width: 8px; height: 16px; border-radius: 2px; background: var(--vds-gray-100); }
+  button.run-seg { border: none; padding: 0; cursor: pointer; }
+  button.run-seg:hover { outline: 2px solid var(--vds-gray-400); outline-offset: 1px; }
   .run-seg--ok { background: var(--vds-success); }
   .run-seg--warn { background: var(--vds-warning); }
   .run-seg--error { background: var(--vds-error); }
@@ -1098,7 +1102,7 @@ const HUB_PAGE = {
   automations:{ key:"automations", title:"Automations", icon:"bolt", newLabel:"New Automation",
     sub:"Run your connectors, saved prompts and data transformations on a trigger you define.",
     noun:"automations", filter:"Filter automations...", hidden:"Show paused automations",
-    cols:["Name","Steps","Trigger","Next scheduled run","Last run","History","Creator","Actions"],
+    cols:["Name","Steps","Trigger","Next scheduled run","History","Last run","Creator","Actions"],
     emptyTitle:"No automations yet", emptyBody:"An automation runs a sequence of steps on a trigger. Build one here, or automate a connector or data transformation from its wizard and it will appear in this list.", cta:"New automation" },
   directives:{ key:"directives", title:"Saved Prompts", icon:"terminal", newLabel:"New Saved Prompt",
     sub:"Named prompts you can reuse — in an automation, or to clean, map and route incoming records.",
@@ -1215,13 +1219,22 @@ function TopBar(){
 
 /* ---------------- Hub list page ---------------- */
 /* Ten run outcomes as a compact strip, oldest on the left. */
-function RunStrip({ history }){
-  const runs = history || [];
-  if (!runs.length) return <span className="proto-muted">—</span>;
-  const label = { ok:"Succeeded", warn:"Warning", error:"Failed" };
+/* Last ten runs, oldest first, so the newest sits nearest the right edge. Each
+   segment names its outcome and when it ran. */
+function RunStrip({ runs, onOpen }){
+  const shown = (runs || []).slice(0,10).reverse();
+  if (!shown.length) return <span className="proto-muted">—</span>;
+  const label = { ok:"Succeeded", warn:"Warning", error:"Failed", running:"Running" };
   return (
-    <span className="run-strip" title={runs.length + " most recent runs, oldest first"}>
-      {runs.map((r,i) => <span key={i} className={"run-seg run-seg--" + r} aria-label={label[r] || r} />)}
+    <span className="run-strip">
+      {shown.map((r,i) => {
+        const cls = "run-seg run-seg--" + (RUN_SEGMENT_CLASS[r.status] || "ok");
+        const text = (label[r.status] || r.status) + " · " + fmtRunAt(r.at);
+        return onOpen
+          ? <button key={r.id || i} type="button" className={cls} title={text} aria-label={text}
+              onClick={(e)=>{ e.stopPropagation(); onOpen(); }} />
+          : <span key={r.id || i} className={cls} title={text} aria-label={text} />;
+      })}
     </span>
   );
 }
@@ -1373,17 +1386,18 @@ function ConnectDataButton({ onPick, compact, connectors = [], label = "Connect 
   );
 }
 
-function HubPage({ cfg, onNew, onOpen, onEdit, onUpdate, onDelete, onOpenSource, onRunNow, onConfigure, onConnectData, lookupSource, records=[], tabsNode, allConnectors=[] }){
+function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete, onOpenSource, onRunNow, onConfigure, onConnectData, lookupSource, records=[], tabsNode, allConnectors=[] }){
   const isDS = cfg.key === "datasources";
   const isConn = cfg.key === "dataconnectors";
   const isAuto = cfg.key === "automations";
   const isPipe = cfg.key === "datapipelines";
   const isPrompt = cfg.key === "directives";
-  const tmpl = isConn ? "1.3fr 1fr 1.4fr 1.1fr 1.1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 0.9fr 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : (isPrompt ? "1.9fr 0.85fr 0.9fr 0.9fr 1.1fr 0.9fr 1.1fr 0.95fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`)));
+  const tmpl = isConn ? "1.3fr 1fr 1.4fr 1.1fr 1.1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 130px 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : (isPrompt ? "1.9fr 0.85fr 0.9fr 0.9fr 1.1fr 0.9fr 1.1fr 0.95fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`)));
   const fire = onNew || (() => {});
   const open = onOpen || (() => {});
   /* Automations open read-only from the row and editable from the pencil. */
   const edit = onEdit || open;
+  const openHistory = onOpenHistory || open;
   const upd = onUpdate || (() => {});
   const del = onDelete || (() => {});
   const openSrc = onOpenSource || (() => {});
@@ -1423,7 +1437,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onUpdate, onDelete, onOpenSource,
       <div className="vds-table-container">
         <div className="thead" style={{gridTemplateColumns:tmpl}}>
           {cfg.cols.map((c,i) => (
-            <div className={"th" + (i===cfg.cols.length-1 ? " right" : "") + (isPrompt && (i===1 || i===2) ? " center" : "")} key={c}>
+            <div className={"th" + (i===cfg.cols.length-1 ? " right" : "") + (isPrompt && (i===1 || i===2) ? " center" : "") + (isAuto && c === "History" ? " right-mid" : "")} key={c}>
               {c}
               {isDS && c === "Published" && (
                 <ColFilterPopover label="Published" options={["Published","Unpublished"]} selected={pubFilter} onChange={setPubFilter} />
@@ -1461,8 +1475,8 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onUpdate, onDelete, onOpenSource,
                 <div className="td" style={{textAlign:"center"}}>{(r.steps || []).length}</div>
                 <div className="td">{automationTriggerText(r)}</div>
                 <div className="td">{automationNextRun(r)}</div>
+                <div className="td right-mid"><RunStrip runs={r.runList} onOpen={()=>openHistory(r.id)} /></div>
                 <div className="td">{fmtAutoDate(r.lastRunAt)}</div>
-                <div className="td"><RunStrip history={stripFromRuns(r.runList)} /></div>
                 <div className="td">{r.createdBy || "—"}</div>
                 <div className="td right">
                   {/* Stops a click on an action from also opening the row. */}
@@ -2321,8 +2335,6 @@ const fmtRunDuration = (min) => Math.floor(min/60) + "h " + String(min%60).padSt
 const fmtRunAt = (ms) => new Date(ms).toLocaleString("en-US",
   { month:"short", day:"numeric", year:"numeric", hour:"numeric", minute:"2-digit" });
 const RUN_SEGMENT_CLASS = { ok:"ok", pending:"warn", warn:"warn", error:"error", running:"running" };
-/* Last ten outcomes, oldest first, for the list's History strip. */
-const stripFromRuns = (runs) => (runs || []).slice(0,10).map(r => RUN_SEGMENT_CLASS[r.status] || "ok").reverse();
 /* The Automate step in a wizard produces this trigger; it becomes the first
    step of the automation created for that connector or transformation. */
 /* The transformation wizard keeps its own cadence controls; this maps whatever it
@@ -8946,8 +8958,8 @@ function actionSentence(act){
   return act.refName ? label + ": " + act.refName : label + " — nothing selected yet";
 }
 
-function AutomationView({ automation, onBack, onEdit, onRun, onDelete }){
-  const [tab, setTab] = useState("steps");
+function AutomationView({ automation, initialTab, onBack, onEdit, onRun, onDelete }){
+  const [tab, setTab] = useState(initialTab || "steps");
   const steps = automation.steps || [];
   const actionIsSpecified = (a) => a.type === "notification"
     || (a.type === "prompt" ? !!(a.prompt || "").trim() : !!a.refName);
@@ -9133,7 +9145,7 @@ function PromptAutomationsCard({ prompt, automations, onOpenAutomation, onNewAut
               onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); onOpenAutomation && onOpenAutomation(a.id); } }}>
               <div className="prompt-auto-name">{a.name}</div>
               <div className="proto-muted">{automationTriggerText(a)}</div>
-              <div><RunStrip history={stripFromRuns(a.runList)} /></div>
+              <div><RunStrip runs={a.runList} /></div>
             </div>
           ))}
         </div>
@@ -9753,6 +9765,7 @@ function App(){
   const [automations, setAutomations] = useState(seedAutomations);
   const [editingAutoId, setEditingAutoId] = useState(null);
   const [viewingAutoId, setViewingAutoId] = useState(null);
+  const [viewingAutoTab, setViewingAutoTab] = useState("steps");
   const [newAuto, setNewAuto] = useState(null);
   const [savedPrompts, setSavedPrompts] = useState(seedSavedPrompts);
   const [editingPromptId, setEditingPromptId] = useState(null);
@@ -10069,19 +10082,21 @@ function App(){
           onDelete={(id) => { if (!newAuto) deleteAutomation(id); closeEditor(); }}
           onSave={(a) => { upsertAutomation(a); closeEditor(); }} />
       : viewingAuto
-      ? <AutomationView automation={viewingAuto} onBack={closeView}
+      ? <AutomationView automation={viewingAuto} key={viewingAuto.id + viewingAutoTab} initialTab={viewingAutoTab} onBack={closeView}
           onEdit={(id) => { closeView(); setEditingAutoId(id); }}
           onRun={(id) => runAutomation(id)}
           onDelete={(id) => { deleteAutomation(id); closeView(); }} />
       : <HubPage cfg={cfg} onNew={() => setNewAuto(newAutomation(""))}
-          onOpen={(id) => setViewingAutoId(id)} onEdit={(id) => setEditingAutoId(id)}
+          onOpen={(id) => { setViewingAutoTab("steps"); setViewingAutoId(id); }}
+          onEdit={(id) => setEditingAutoId(id)}
+          onOpenHistory={(id) => { setViewingAutoTab("history"); setViewingAutoId(id); }}
           onDelete={deleteAutomation} onRunNow={runAutomation} records={automations} />;
   } else if (activeId === "directives"){
     /* Same shape as automations: a new prompt is held here until it is saved, the
        row opens read-only, and the pencil opens the editor. */
     const editingSp = editingPrompt || newPrompt;
     const closePromptEditor = () => { setEditingPromptId(null); setNewPrompt(null); };
-    const openAutomation = (id) => { setViewingPromptId(null); closePromptEditor(); setActiveId("automations"); setViewingAutoId(id); };
+    const openAutomation = (id) => { setViewingPromptId(null); closePromptEditor(); setActiveId("automations"); setViewingAutoTab("steps"); setViewingAutoId(id); };
     page = editingSp
       ? <SavedPromptEditor prompt={editingSp} prompts={savedPrompts} automations={automations}
           onCancel={closePromptEditor}
