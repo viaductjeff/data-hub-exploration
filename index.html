@@ -603,8 +603,10 @@
 
   .run-strip { display: inline-flex; gap: 2px; align-items: center; }
   .run-seg { width: 8px; height: 16px; border-radius: 2px; background: var(--vds-gray-100); }
+  /* Clickable, but it reads as a chart, so no hover/focus/pressed treatment — the
+     title attribute is the only feedback. */
   button.run-seg { border: none; padding: 0; cursor: pointer; }
-  button.run-seg:hover { outline: 2px solid var(--vds-gray-400); outline-offset: 1px; }
+  button.run-seg:is(:hover, :focus, :focus-visible, :active) { outline: none; box-shadow: none; }
   .run-seg--ok { background: var(--vds-success); }
   .run-seg--warn { background: var(--vds-warning); }
   .run-seg--error { background: var(--vds-error); }
