@@ -2703,7 +2703,17 @@ const PRIMARY_OPTION_COLS = OPTION_COLS.filter(o => ["pk","req","orderBy"].inclu
 const ADVANCED_OPTION_COLS = OPTION_COLS.filter(o => ["lowCard","part"].includes(o.key));
 const ALL_OPTION_KEYS = OPTION_COLS.map(o => o.key);
 
+/* True when the wizard was entered with its subject already chosen — from the data
+   table wizard's tiles, say — so the picker step never appeared. */
+const SkipFirstStep = React.createContext(false);
 function Stepper({ current, steps = STEPS }){
+  /* Only the picker step goes — flows whose first step is real (naming the
+     connection, say) keep it, because that screen still shows. */
+  const skip = React.useContext(SkipFirstStep);
+  if (skip && steps.length && /^Select /.test(steps[0].label)){
+    steps = steps.slice(1).map((st,i) => ({ ...st, n:i+1 }));
+    current = current - 1;
+  }
   return (
     <div className="vds-stepper proto-stepper">
       {steps.map((s,i) => {
@@ -3690,7 +3700,14 @@ function ConfigureSource({ source, title, sub, submitLabel, onCancel, onSave, lo
   </div>);
 }
 
-function NewDataSource({ onCancel, onCreate, onPickConnector }){
+function NewDataSource(props){
+  return (
+    <SkipFirstStep.Provider value={true}>
+      <NewDataSourceSteps {...props} />
+    </SkipFirstStep.Provider>
+  );
+}
+function NewDataSourceSteps({ onCancel, onCreate, onPickConnector }){
   const [step, setStep] = useState(1);
   const [origin, setOrigin] = useState(null);
   const [parsed, setParsed] = useState(null);
@@ -6535,7 +6552,14 @@ function ScriptConnectorFlow({ conn, tmpl, editing, editInstance, existingSource
 }
 
 
-function NewConnector({ onCancel, onCreate, editInstance, existingSources=[], existingConnectors=[], onSave, onOpenSource, initialStep, presetConnectorId, presetTargetSourceId }){
+function NewConnector(props){
+  return (
+    <SkipFirstStep.Provider value={!!props.presetConnectorId}>
+      <ConnectorWizard {...props} />
+    </SkipFirstStep.Provider>
+  );
+}
+function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[], existingConnectors=[], onSave, onOpenSource, initialStep, presetConnectorId, presetTargetSourceId }){
   const editing = !!editInstance;
   const editConn = editing ? CONNECTORS.find(c => c.id === editInstance.connectorId) : null;
   const editTmpl = editConn ? CONNECTOR_TEMPLATES[editConn.id] : null;
