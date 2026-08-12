@@ -1489,11 +1489,11 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
                 value={query} onChange={(e)=>setQuery(e.target.value)} />
             </div>
           </div>
-          <MultiSelectFilter label="Contained actions" options={AUTO_ACTION_FILTERS.map(a => a.label)}
+          <MultiSelectFilter label="Contains actions" options={AUTO_ACTION_FILTERS.map(a => a.label)}
             selected={actionFilter} onChange={setActionFilter} />
-          <MultiSelectFilter label="Contained saved prompts" options={AUTO_PROMPT_FILTERS}
+          <MultiSelectFilter label="Contains saved prompts" options={AUTO_PROMPT_FILTERS}
             selected={promptFilter} onChange={setPromptFilter} />
-          <MultiSelectFilter label="Data Tables accessed" options={AUTO_TABLE_FILTERS}
+          <MultiSelectFilter label="Accesses Data Tables" options={AUTO_TABLE_FILTERS}
             selected={tableFilter} onChange={setTableFilter} />
         </div>
       )}
