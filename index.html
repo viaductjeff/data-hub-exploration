@@ -199,6 +199,7 @@
   .prio-filter-label { color: var(--vds-gray-500); }
   .conn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
   .origin-group-title { margin-top: var(--vds-main-gap); }
+  .origin-lede { margin: 20px 0 var(--vds-main-gap); }
   /* Three equal columns so the lone Define-from-scratch tile lines up with the two
      Upload tiles, headings sitting over their own columns. */
   .origin-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--vds-button-gap) 16px; }
@@ -2757,7 +2758,7 @@ function SelectOrigin({ onCancel, onPick, onPickConnector }){
   const connectors = CONNECTORS.filter(c => !INGESTION_CONNECTOR_IDS.includes(c.id));
   return (<>
     <PageHead title="New data table" onCancel={onCancel} />
-    <Stepper current={1} />
+    <div className="vds-b1 origin-lede">How do you want to create your table?</div>
 
     {/* Upload and Define from scratch share the first row: two tiles then one. */}
     <div className="origin-row">
@@ -2771,7 +2772,7 @@ function SelectOrigin({ onCancel, onPick, onPickConnector }){
       ))}
     </div>
 
-    <div className="vds-h4 proto-section-title origin-group-title">Application/Database connection</div>
+    <div className="vds-h4 proto-section-title origin-group-title">Import from Application/Database connection</div>
     <div className="conn-grid">
       {connectors.map(c => (
         <OriginConnCard key={c.id} icon={c.icon} name={c.name} group={c.group} priority={c.priority}
@@ -2779,7 +2780,7 @@ function SelectOrigin({ onCancel, onPick, onPickConnector }){
       ))}
     </div>
 
-    <div className="vds-h4 proto-section-title origin-group-title">Ingestion process</div>
+    <div className="vds-h4 proto-section-title origin-group-title">Specialized ingestion</div>
     <div className="conn-grid">
       {INGESTION_ORIGINS.map(o => (
         <OriginConnCard key={o.id} icon={o.icon} name={o.title} group={o.short}
