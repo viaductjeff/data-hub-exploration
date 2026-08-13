@@ -4402,10 +4402,10 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
   /* An existing connection has already proven itself; a new one has to be tested,
      and editing the key puts it back to untested. */
   const [tested, setTested] = useState(!!editing);
-  // "Start with only the first table being checked" — every other source begins unpicked.
+  // Nothing is picked to begin with — a connection stands on its own.
   const [picks, setPicks] = useState(() => editing
     ? Object.fromEntries(tmpl.sources.map(s => [s.name, !!existingByName[s.name]]))
-    : Object.fromEntries(tmpl.sources.map((s, i) => [s.name, i === 0])));
+    : {});
   const [configs, setConfigs] = useState({}); // source name -> "Customize" patch (column names + filters)
   const [configuring, setConfiguring] = useState(null);
   const [configuringOpenCol, setConfiguringOpenCol] = useState(null); // auto-expand this column's filter in Customize
@@ -4672,10 +4672,10 @@ function SnowflakeConnectorFlow({ conn, tmpl, editing, editInstance, existingSou
   const [creds, setCreds] = useState(editing ? (editInstance.creds || {}) : {});
   const setCred = (k, v) => setCreds(c => ({ ...c, [k]: v }));
   const [testing, setTesting] = useState(false);
-  // "Start with only the first table being checked" — same default as Samsara.
+  // Nothing is picked to begin with — same as the other connectors.
   const [picks, setPicks] = useState(() => editing
     ? Object.fromEntries(tmpl.sources.map(s => [s.name, !!existingByName[s.name]]))
-    : Object.fromEntries(tmpl.sources.map((s, i) => [s.name, i === 0])));
+    : {});
   // configs: table name -> the configured Data record (draft or, when editing, the real existing one)
   const [configs, setConfigs] = useState(() => {
     if (!editing) return {};
@@ -6703,7 +6703,7 @@ function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[],
     setCreds(t && t.kind === "pull" ? pullFormDefaults(t.form) : (t && t.kind === "s3" && t.connForm ? pullFormDefaults(t.connForm) : {}));
     setSftpTemplateId(null); setManagedName(""); setManagedNameEdited(false);
     setPushCreds(t && t.makeCreds ? t.makeCreds() : {});
-    setPicks(t && t.sources ? Object.fromEntries(t.sources.map(s => [s.name, true])) : {});
+    setPicks({});
     setStartDates(t && t.sources ? Object.fromEntries(t.sources.map(s => [s.name, s.firstDate])) : {});
     setStep(2);
   };
