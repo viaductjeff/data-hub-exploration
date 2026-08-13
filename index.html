@@ -512,6 +512,7 @@
   /* Matches the quiet trash icon button in the list's actions column, not the
      solid red confirm button in delete dialogs. */
   .proto-btn--danger-quiet:hover { color: var(--vds-alert-error-icon); border-color: var(--vds-alert-error-icon); }
+  :is(.proto-btn--tested, .proto-btn--tested:disabled) { background: var(--vds-alert-success-bg); border-color: var(--vds-alert-success-border); color: var(--vds-alert-success-icon); }
 
   /* Saved prompts. Two columns while there's room: the definition on the left,
      everything about how it's used stacked on the right. */
@@ -4398,6 +4399,9 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
   const [name, setName] = useState(editing ? editInstance.name : conn.name);
   const [apiKey, setApiKey] = useState(editing ? ((editInstance.creds && editInstance.creds.apiKey) || "") : "");
   const [testing, setTesting] = useState(false);
+  /* An existing connection has already proven itself; a new one has to be tested,
+     and editing the key puts it back to untested. */
+  const [tested, setTested] = useState(!!editing);
   // "Start with only the first table being checked" — every other source begins unpicked.
   const [picks, setPicks] = useState(() => editing
     ? Object.fromEntries(tmpl.sources.map(s => [s.name, !!existingByName[s.name]]))
@@ -4490,7 +4494,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
 
   // ---- Page 1: Authenticate ----
   if (page === "auth"){
-    const canContinue = !!name.trim() && !nameError && !!apiKey.trim();
+    const canTest = !!name.trim() && !nameError && !!apiKey.trim();
     return (
       <div className="vds-content">
         <PageHead title={"Set up " + conn.name + " connection"} sub={tmpl.tagline} onCancel={onCancel} />
@@ -4510,15 +4514,20 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
         {!editing && <div style={{marginBottom:12}}><CopyCredsButton existingConnectors={existingConnectors} connId={conn.id} onCopy={(copied)=>setApiKey(copied.apiKey || "")} /></div>}
         <div className="form-grid">
           <div className="field">
-            <input className="vds-input" placeholder="Paste your API key" value={apiKey} onChange={(e)=>setApiKey(e.target.value)} />
+            <input className="vds-input" placeholder="Paste your API key" value={apiKey}
+              onChange={(e)=>{ setTested(false); setApiKey(e.target.value); }} />
           </div>
         </div>
         <div className="wiz-footer">
           <button className="vds-btn" onClick={onBackToConnectors}><Icon name="arrowLeft" size={17} />Back</button>
-          <button className="vds-btn vds-btn--primary" disabled={!canContinue || testing}
-            onClick={()=>{ setTesting(true); setTimeout(()=>{ setTesting(false); setPage("data"); }, 700); }}>
-            {testing ? "Testing connection…" : (<>Continue<Icon name="arrowRight" size={17} /></>)}
-          </button>
+          {tested
+            ? <button className="vds-btn vds-btn--start-icon proto-btn--tested" disabled>
+                <Icon name="check" size={17} />Test connection</button>
+            : <button className="vds-btn vds-btn--primary" disabled={!canTest || testing}
+                onClick={()=>{ setTesting(true); setTimeout(()=>{ setTesting(false); setTested(true); }, 700); }}>
+                {testing ? "Testing connection…" : "Test connection"}</button>}
+          <button className={"vds-btn" + (tested ? " vds-btn--primary" : "")} disabled={!tested}
+            onClick={()=>setPage("data")}>Continue<Icon name="arrowRight" size={17} /></button>
         </div>
       </div>
     );
