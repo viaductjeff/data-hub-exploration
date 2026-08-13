@@ -143,6 +143,18 @@
   .filter .s-icon { position: absolute; left: 12px; display: inline-flex; color: var(--vds-text-placeholder); pointer-events: none; }
   .filter .vds-input { padding-left: 36px; }
   .pubfilter { display: inline-flex; }
+  /* Standing reminder that this is a prototype: sits behind the content and stays
+     put while the page scrolls. */
+  .proto-shell-main { position: relative; z-index: 0; }
+  .proto-shell-main::before {
+    content: "Exploration";
+    position: absolute; left: 0; right: 0; top: calc(50% + 30px);
+    text-align: center; white-space: nowrap;
+    font: 900 11vw/1 var(--vds-font-sans); letter-spacing: -0.03em;
+    color: var(--vds-gray-400); opacity: 0.06;
+    transform: translateY(-50%) rotate(-14deg);
+    pointer-events: none; z-index: 1;
+  }
   .filter-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--vds-dialog-gap); margin: 24px 0 0; }
   .multi-filter { position: relative; margin-bottom: 0; min-width: 200px; }
   .multi-filter--search { min-width: 340px; }
@@ -1478,7 +1490,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
         <div>
           <h1 className="vds-page-title">{cfg.title}</h1>
         </div>
-        {onNew && <button className="vds-btn vds-btn--primary" onClick={fire}><Icon name="plus" size={17} />{cfg.newLabel || "New"}</button>}
+        {onNew && <button className="vds-btn vds-btn--primary" onClick={fire}>{cfg.newLabel || "New"}</button>}
       </div>
       {tabsNode}
       {isAuto && (
@@ -1624,7 +1636,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
             <div className="empty-tile"><Icon name={cfg.icon} size={30} /></div>
             <h2>{cfg.emptyTitle}</h2>
             <p>{cfg.emptyBody}</p>
-            {onNew && <button className="vds-btn vds-btn--primary" onClick={fire}><Icon name="plus" size={17} />{cfg.cta}</button>}
+            {onNew && <button className="vds-btn vds-btn--primary" onClick={fire}>{cfg.cta}</button>}
           </div>
         )}
       </div>
@@ -3294,7 +3306,7 @@ function TableRelationsTab({ source, allSources, onUpdate }){
     <div>
       <div className="trel-head">
         <div className="vds-b2">Relate {source.name} to other tables</div>
-        <button className="vds-btn vds-btn--primary" onClick={startNew}><Icon name="plus" size={16} />Add New Relationship</button>
+        <button className="vds-btn vds-btn--primary" onClick={startNew}>Add New Relationship</button>
       </div>
       {outgoing.length === 0 ? (
         <div className="vds-alert vds-alert--info proto-note proto-plain-note">No relationships yet.</div>
@@ -10248,7 +10260,7 @@ function App(){
   return (
     <div className="vds-page">
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} activeId={activeId} setActiveId={goTo} openSections={openSections} toggleSection={toggleSection} />
-      <div className="vds-shell-main">
+      <div className="vds-shell-main proto-shell-main">
         <TopBar />
         <main className="main" style={{flex:"1 1 auto",display:"flex",minWidth:0,minHeight:0}}>{page}</main>
       </div>
