@@ -234,6 +234,7 @@
   .conn-meta { display: flex; flex-direction: column; min-width: 0; }
   .conn-name { font: 700 16px/24px var(--vds-font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .conn-group { color: var(--vds-text-placeholder); }
+  .conn-made { flex: none; gap: 4px; margin-right: 28px; }
 
   /* ---------- credentials / verify ---------- */
   .cred-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--vds-form-gap) 20px; margin-top: 4px; }
@@ -1115,7 +1116,7 @@ const HUB_PAGE = {
     sub:"Connected external systems that create and sync data tables on a schedule.",
     noun:"connections", filter:"Filter connectors...", hidden:"Show disabled connectors",
     cols:["Name","Connector","Number of Data Tables","Creation Date","Last Updated Date","Actions"],
-    emptyTitle:"No connectors configured", emptyBody:"Connect an external system to automatically create and sync data tables into Viaduct.", cta:"Create your first connector" },
+    emptyTitle:"No connections configured", emptyBody:"Connect an external system to automatically create and sync data tables into Viaduct.", cta:"Create your first connection" },
   datapipelines:{ key:"datapipelines", title:"Data Transformations", icon:"workflow",
     sub:"Move, shape, and act on data from your sources, automatically.",
     noun:"data transformations", filter:"Filter data transformations...", hidden:"Show disabled data transformations",
@@ -1686,6 +1687,13 @@ const PIPELINE_TYPES = [
     desc:"Detect tire-pressure (TPMS) issues from sensor and fault data, and open trackable issues for triage." },
 ];
 const CONN_GROUPS = ["All","Telematics","Fleet Management","Cloud Storage","Data Warehouse","Maintenance","Ingestion"];
+/* Every connector but these gets one connection, named after the connector itself —
+   nothing to name, and nothing to create twice. */
+const MULTI_INSTANCE_CONNECTORS = ["emailparse", "customscript"];
+const isSingleInstance = (connectorId) => !MULTI_INSTANCE_CONNECTORS.includes(connectorId);
+const existingInstanceFor = (connectors, connectorId) => isSingleInstance(connectorId)
+  ? (connectors || []).find(c => c.connectorId === connectorId) || null
+  : null;
 // Q3 prioritization: P0 is what the team builds now, P1-P3 fade in priority. This is a visual/
 // planning flag only — every connector stays fully functional (create/edit/delete all still work)
 // regardless of tier.
@@ -2755,14 +2763,16 @@ function PageHead({ title, sub, onCancel }){
 }
 
 /* Compact tile, same as the one in the connections wizard. */
-function OriginConnCard({ icon, name, group, priority, onClick }){
+function OriginConnCard({ icon, name, group, priority, connected, onClick }){
   return (
-    <button className={"vds-card proto-conn-card" + (priority === "P3" ? " p3" : "")} onClick={onClick}>
+    <button className={"vds-card proto-conn-card" + (priority === "P3" ? " p3" : "")} onClick={onClick}
+      title={connected ? "Already connected — open it to make changes" : undefined}>
       <span className="conn-ico"><Icon name={icon} size={20} /></span>
       <span className="conn-meta">
         <span className="conn-name">{name}</span>
         <span className="conn-group">{group}</span>
       </span>
+      {connected && <span className="vds-chip vds-chip--sm vds-chip--success conn-made"><Icon name="check" size={14} />Connected</span>}
       {priority && <span className={"vds-chip vds-chip--sm proto-corner-tag " + priority.toLowerCase()}>{priority}</span>}
     </button>
   );
@@ -2776,7 +2786,7 @@ const INGESTION_ORIGINS = [
   { id:"customscript", icon:"terminal", title:"Custom ingestion", short:"Hand-authored script" },
 ];
 
-function SelectOrigin({ onCancel, onPick, onPickConnector }){
+function SelectOrigin({ onCancel, onPick, onPickConnector, madeConnectors = [] }){
   const connectors = CONNECTORS.filter(c => !INGESTION_CONNECTOR_IDS.includes(c.id));
   return (<>
     <PageHead title="New data table" onCancel={onCancel} />
@@ -2798,6 +2808,7 @@ function SelectOrigin({ onCancel, onPick, onPickConnector }){
     <div className="conn-grid">
       {connectors.map(c => (
         <OriginConnCard key={c.id} icon={c.icon} name={c.name} group={c.group} priority={c.priority}
+          connected={!!existingInstanceFor(madeConnectors, c.id)}
           onClick={()=>onPickConnector(c.id)} />
       ))}
     </div>
@@ -3719,13 +3730,13 @@ function NewDataSource(props){
     </SkipFirstStep.Provider>
   );
 }
-function NewDataSourceSteps({ onCancel, onCreate, onPickConnector }){
+function NewDataSourceSteps({ onCancel, onCreate, onPickConnector, madeConnectors }){
   const [step, setStep] = useState(1);
   const [origin, setOrigin] = useState(null);
   const [parsed, setParsed] = useState(null);
   return (
     <div className="vds-content">
-      {step===1 && <SelectOrigin onCancel={onCancel} onPick={(o)=>{ setOrigin(o); setStep(2); }} onPickConnector={onPickConnector} />}
+      {step===1 && <SelectOrigin onCancel={onCancel} onPick={(o)=>{ setOrigin(o); setStep(2); }} onPickConnector={onPickConnector} madeConnectors={madeConnectors} />}
       {step===2 && <UploadStep origin={origin} onCancel={onCancel} onBack={()=>setStep(1)} onParsed={(p)=>{ setParsed(p); setStep(3); }} />}
       {step===3 && parsed && <MapImportStep parsed={parsed} origin={origin} onCancel={onCancel} onBack={()=>setStep(2)} onCreate={onCreate} />}
     </div>
@@ -4371,8 +4382,8 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
   const presetTarget = presetTargetId ? existingSources.find(s => s.id === presetTargetId) : null;
 
   const [page, setPage] = useState(editing ? "data" : "auth"); // auth -> data -> backfill -> schedule
-  /* No name field during setup, so start from one that is already unique. */
-  const [name, setName] = useState(editing ? editInstance.name : uniqueName(conn.name, (existingConnectors || []).map(c => c.name)));
+  /* The connector names the connection; there is only ever one of each. */
+  const [name, setName] = useState(editing ? editInstance.name : conn.name);
   const [apiKey, setApiKey] = useState(editing ? ((editInstance.creds && editInstance.creds.apiKey) || "") : "");
   const [testing, setTesting] = useState(false);
   // "Start with only the first table being checked" — every other source begins unpicked.
@@ -4635,8 +4646,8 @@ function SnowflakeConnectorFlow({ conn, tmpl, editing, editInstance, existingSou
   const presetTarget = presetTargetId ? existingSources.find(s => s.id === presetTargetId) : null;
 
   const [page, setPage] = useState(editing ? "data" : "auth"); // auth -> data -> schedule
-  /* No name field during setup, so start from one that is already unique. */
-  const [name, setName] = useState(editing ? editInstance.name : uniqueName(conn.name, (existingConnectors || []).map(c => c.name)));
+  /* The connector names the connection; there is only ever one of each. */
+  const [name, setName] = useState(editing ? editInstance.name : conn.name);
   const [creds, setCreds] = useState(editing ? (editInstance.creds || {}) : {});
   const setCred = (k, v) => setCreds(c => ({ ...c, [k]: v }));
   const [testing, setTesting] = useState(false);
@@ -5253,8 +5264,8 @@ function S3ChooseDataStep({ conn, editing, files, configs, onOpenSourceByPrefix,
 function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[], existingConnectors=[], onCancel, onBackToConnectors, onCreate, onSave, onOpenSource, presetTargetId }){
   const { useState } = React;
   const managed = !!tmpl.managed;
-  /* No name field during setup, so start from one that is already unique. */
-  const [name, setName] = useState(editing ? editInstance.name : uniqueName(conn.name, (existingConnectors || []).map(c => c.name)));
+  /* The connector names the connection; there is only ever one of each. */
+  const [name, setName] = useState(editing ? editInstance.name : conn.name);
   const [creds, setCreds] = useState(() => {
     if (managed) return editing ? (editInstance.creds || (tmpl.makeCreds ? tmpl.makeCreds() : {})) : (tmpl.makeCreds ? tmpl.makeCreds() : {});
     const base = pullFormDefaults(tmpl.connForm);
@@ -6590,7 +6601,8 @@ function NewConnector(props){
     </SkipFirstStep.Provider>
   );
 }
-function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[], existingConnectors=[], onSave, onOpenSource, initialStep, presetConnectorId, presetTargetSourceId }){
+function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[], existingConnectors=[], onSave, onOpenSource, onOpenInstance, initialStep, presetConnectorId, presetTargetSourceId }){
+  const openInstance = onOpenInstance || (() => {});
   const editing = !!editInstance;
   const editConn = editing ? CONNECTORS.find(c => c.id === editInstance.connectorId) : null;
   const editTmpl = editConn ? CONNECTOR_TEMPLATES[editConn.id] : null;
@@ -6836,16 +6848,22 @@ function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[],
           ))}
         </div>
         <div className="conn-grid">
-          {list.map(c => (
-            <button key={c.id} className={"vds-card proto-conn-card" + (selected===c.id ? " selected" : "") + (c.priority==="P3" ? " p3" : "")} onClick={()=>chooseConnector(c.id)}>
-              <span className="conn-ico"><Icon name={c.icon} size={20} /></span>
-              <span className="conn-meta">
-                <span className="conn-name">{c.name}</span>
-                <span className="conn-group">{c.group}</span>
-              </span>
-              <span className={"vds-chip vds-chip--sm proto-corner-tag " + c.priority.toLowerCase()}>{c.priority}</span>
-            </button>
-          ))}
+          {list.map(c => {
+            const made = existingInstanceFor(existingConnectors, c.id);
+            return (
+              <button key={c.id} className={"vds-card proto-conn-card" + (selected===c.id ? " selected" : "") + (c.priority==="P3" ? " p3" : "")}
+                title={made ? "Already connected — open it to make changes" : undefined}
+                onClick={()=> made ? openInstance(made.id) : chooseConnector(c.id)}>
+                <span className="conn-ico"><Icon name={c.icon} size={20} /></span>
+                <span className="conn-meta">
+                  <span className="conn-name">{c.name}</span>
+                  <span className="conn-group">{c.group}</span>
+                </span>
+                {made && <span className="vds-chip vds-chip--sm vds-chip--success conn-made"><Icon name="check" size={14} />Connected</span>}
+                <span className={"vds-chip vds-chip--sm proto-corner-tag " + c.priority.toLowerCase()}>{c.priority}</span>
+              </button>
+            );
+          })}
         </div>
         <div className="wiz-footer">
           <button className="vds-btn" onClick={onCancel}><Icon name="arrowLeft" size={17} />Back</button>
@@ -10147,9 +10165,15 @@ function App(){
     page = <UpdateDataSource source={updating} onCancel={() => setUpdatingId(null)} onDone={() => setUpdatingId(null)} onUpdate={updateSource} />;
   } else if (activeId === "datasources" && creating){
     page = <NewDataSource onCancel={() => setCreating(false)} onCreate={(rec) => { setSources(s => [rec, ...s]); setCreating(false); }}
-      onPickConnector={(id) => { setCreating(false); setConnPreset(id); setConnCreating(true); setActiveId("dataconnectors"); }} />;
+      madeConnectors={connectors}
+      onPickConnector={(id) => {
+        const made = existingInstanceFor(connectors, id);
+        setCreating(false);
+        if (made){ openConnector(made.id); return; }
+        setConnPreset(id); setConnCreating(true); setActiveId("dataconnectors");
+      }} />;
   } else if (activeId === "dataconnectors" && connDetailId && connDetail){
-    page = <NewConnector editInstance={connDetail} existingSources={sources} existingConnectors={connectors} onOpenSource={openSource} initialStep={connDetailStep} onCancel={() => setConnDetailId(null)}
+    page = <NewConnector key={"conn-" + connDetail.id} editInstance={connDetail} existingSources={sources} existingConnectors={connectors} onOpenSource={openSource} initialStep={connDetailStep} onCancel={() => setConnDetailId(null)}
       onSave={(updated, { newRecords, deleteIds, sourceUpdates }) => {
         setSources(s => {
           let next = mergeSourceRecords(s.filter(x => !(deleteIds||[]).includes(x.id)), newRecords||[]);
@@ -10164,7 +10188,8 @@ function App(){
         setConnDetailId(null);
       }} />;
   } else if (activeId === "dataconnectors" && connCreating){
-    page = <NewConnector existingSources={sources} existingConnectors={connectors} presetConnectorId={connPreset}
+    page = <NewConnector key={"conn-new-" + (connPreset || "pick")} existingSources={sources} existingConnectors={connectors} presetConnectorId={connPreset}
+      onOpenInstance={(id) => { setConnCreating(false); setConnPreset(null); openConnector(id); }}
       onCancel={() => { setConnCreating(false); setConnPreset(null); }} onCreate={(inst, dsRecords, sourceUpdates) => {
       setSources(s => {
         let next = mergeSourceRecords(s, dsRecords);
