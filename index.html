@@ -1112,11 +1112,11 @@ const HUB_PAGE = {
     noun:"data tables", filter:"Filter data tables...", hidden:"Show hidden data tables",
     cols:["Name","Origin","Type","Published","Records","Last synced","Actions"],
     emptyTitle:"No data tables yet", emptyBody:"Connect a file, connector, or content source to create a data table in Viaduct.", cta:"Create your first data table" },
-  dataconnectors:{ key:"dataconnectors", title:"Connections", icon:"plug",
+  dataconnectors:{ key:"dataconnectors", title:"Connections", icon:"plug", newLabel:"New connection",
     sub:"Connected external systems that create and sync data tables on a schedule.",
     noun:"connections", filter:"Filter connectors...", hidden:"Show disabled connectors",
-    cols:["Name","Connector","Number of Data Tables","Creation Date","Last Updated Date","Actions"],
-    emptyTitle:"No connections configured", emptyBody:"Connect an external system to automatically create and sync data tables into Viaduct.", cta:"Create your first connection" },
+    cols:["Connection","Number of Data Tables","Creation Date","Last Updated Date","Actions"],
+    emptyTitle:"No connections created yet", emptyBody:"Connect an external system to automatically create and sync data tables into Viaduct.", cta:"Create your first connection" },
   datapipelines:{ key:"datapipelines", title:"Data Transformations", icon:"workflow",
     sub:"Move, shape, and act on data from your sources, automatically.",
     noun:"data transformations", filter:"Filter data transformations...", hidden:"Show disabled data transformations",
@@ -1443,7 +1443,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
   const isAuto = cfg.key === "automations";
   const isPipe = cfg.key === "datapipelines";
   const isPrompt = cfg.key === "directives";
-  const tmpl = isConn ? "1.3fr 1fr 1.4fr 1.1fr 1.1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 130px 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : (isPrompt ? "1.9fr 0.85fr 0.9fr 0.9fr 1.1fr 0.9fr 1.1fr 0.95fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`)));
+  const tmpl = isConn ? "1.6fr 1.4fr 1.1fr 1.1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 130px 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : (isPrompt ? "1.9fr 0.85fr 0.9fr 0.9fr 1.1fr 0.9fr 1.1fr 0.95fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`)));
   const fire = onNew || (() => {});
   const open = onOpen || (() => {});
   /* Automations open read-only from the row and editable from the pencil. */
@@ -1575,14 +1575,16 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
                 </div>
               </div>
             ) : isConn ? (
-              <div className="trow" style={{gridTemplateColumns:tmpl}} key={r.id}>
-                <div className="td td-name"><button className="proto-name-link" onClick={()=>open(r.id)}>{r.name}</button></div>
-                <div className="td">{r.connectorName}</div>
+              <div className="trow clickable-row" style={{gridTemplateColumns:tmpl}} key={r.id}
+                onClick={()=>open(r.id)} role="button" tabIndex={0}
+                onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(r.id); } }}>
+                <div className="td td-name">{r.connectorName}</div>
                 <div className="td">{(r.dataSourceIds || []).filter(id => getSrc(id)).length}</div>
                 <div className="td">{r.createdAt}</div>
                 <div className="td">{r.updatedAt}</div>
                 <div className="td right">
-                  <div className="row-actions">
+                  {/* Stops a click on an action from also opening the row. */}
+                  <div className="row-actions" onClick={(e)=>e.stopPropagation()}>
                     <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>open(r.id)}><Icon name="pencil" size={17} /></button>
                     <DeleteButton onDelete={()=>del(r.id)} />
                   </div>
@@ -1663,7 +1665,7 @@ const ORIGINS = [
 ];
 const UPLOAD_ORIGIN_IDS = ["files", "media"];
 const STEPS = [{n:1,label:"Select origin"},{n:2,label:"Upload"},{n:3,label:"Map & import"}];
-const CONNECTOR_STEPS = [{n:1,label:"Select connection"},{n:2,label:"Set up connection & data table"},{n:3,label:"Automate"}];
+const CONNECTOR_STEPS = [{n:1,label:"Set up connection & data table"},{n:2,label:"Schedule"}];
 const PIPELINE_STEPS = [{n:1,label:"Select type"},{n:2,label:"Configure"}];
 const DIRECTIVES = [
   { id:"dir_summ", name:"/summarize-maintenance-notes", desc:"Read free-text technician notes and write a concise summary for each record.", outCol:"summary", outType:"string", pool:["Routine service completed","Part replaced under warranty","Escalated to supervisor","No action required","Follow-up inspection scheduled"] },
@@ -4187,7 +4189,7 @@ function ConfigureStep({ conn, tmpl, name, setName, creds, setCreds, verified, s
   return (
     <div className="vds-content">
       <PageHead title={(editing ? "Edit " : "Connect ") + conn.name} sub={tmpl.tagline} onCancel={onCancel} />
-      <Stepper current={2} steps={CONNECTOR_STEPS} />
+      <Stepper current={1} steps={CONNECTOR_STEPS} />
 
       <div className="form-grid">
         {/* Named after the connector when it's created; only shown once it exists. */}
@@ -4359,7 +4361,7 @@ function ScheduleStep({ conn, sched, setSched, tables = [], editing, onCancel, o
   return (
     <div className="vds-content">
       <PageHead title={(editing ? "Edit " : "Connect ") + conn.name} sub={"Origin: Connectors · " + conn.name} onCancel={onCancel} />
-      <Stepper current={3} steps={CONNECTOR_STEPS} />
+      <Stepper current={2} steps={CONNECTOR_STEPS} />
       <div className="vds-h4 proto-section-title">Automate</div>
       <AutomateTriggerFields trigger={sched} setTrigger={setSched} tables={tables} />
 
@@ -4371,7 +4373,7 @@ function ScheduleStep({ conn, sched, setSched, tables = [], editing, onCancel, o
   );
 }
 /* ---------------- Samsara connector: 3 distinct pages (Authenticate / Choose Data / Schedule) ---------------- */
-const CONNECTOR_WIZARD_STEPS = [{n:1,label:"Select connection"},{n:2,label:"Set up connection"},{n:3,label:"Set up data table"},{n:4,label:"Automate"}];
+const CONNECTOR_WIZARD_STEPS = [{n:1,label:"Set up connection"},{n:2,label:"Set up data table"},{n:3,label:"Schedule"}];
 
 function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[], existingConnectors=[], onOpenSource, onCancel, onBackToConnectors, onCreate, onSave, presetTargetId }){
   const { useState } = React;
@@ -4482,7 +4484,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
     return (
       <div className="vds-content">
         <PageHead title={"Set up " + conn.name + " connection"} sub={tmpl.tagline} onCancel={onCancel} />
-        <Stepper current={2} steps={CONNECTOR_WIZARD_STEPS} />
+        <Stepper current={1} steps={CONNECTOR_WIZARD_STEPS} />
         {editing && (
           <div className="form-grid">
             <div className="field">
@@ -4521,7 +4523,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
     return (
       <div className="vds-content">
         <PageHead title={"Set up " + conn.name + " connection"} sub={"Choose which " + conn.name + " tables become Viaduct data tables."} onCancel={onCancel} />
-        <Stepper current={3} steps={CONNECTOR_WIZARD_STEPS} />
+        <Stepper current={2} steps={CONNECTOR_WIZARD_STEPS} />
         <div className="sbs-wrap">
           <div className="sbs-title samsara">{conn.name} Data</div>
           <div className="sbs-title arrowcol"></div>
@@ -4622,7 +4624,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
   return (
     <div className="vds-content">
       <PageHead title={"Set up " + conn.name + " connection"} sub={"Choose how often " + conn.name + " should sync."} onCancel={onCancel} />
-      <Stepper current={4} steps={CONNECTOR_WIZARD_STEPS} />
+      <Stepper current={3} steps={CONNECTOR_WIZARD_STEPS} />
       <div className="vds-h4 proto-section-title">Automate</div>
       <AutomateTriggerFields trigger={sched} setTrigger={setSched} tables={allTableNames(existingSources)} />
 
@@ -4709,7 +4711,7 @@ function SnowflakeConnectorFlow({ conn, tmpl, editing, editInstance, existingSou
     return (
       <div className="vds-content">
         <PageHead title={"Set up " + conn.name + " connection"} sub={tmpl.tagline} onCancel={onCancel} />
-        <Stepper current={2} steps={CONNECTOR_WIZARD_STEPS} />
+        <Stepper current={1} steps={CONNECTOR_WIZARD_STEPS} />
 
 
         {editing && (
@@ -4754,7 +4756,7 @@ function SnowflakeConnectorFlow({ conn, tmpl, editing, editInstance, existingSou
     return (
       <div className="vds-content">
         <PageHead title={"Set up " + conn.name + " connection"} sub="Choose which Snowflake tables become Viaduct data tables." onCancel={onCancel} />
-        <Stepper current={3} steps={CONNECTOR_WIZARD_STEPS} />
+        <Stepper current={2} steps={CONNECTOR_WIZARD_STEPS} />
         <div className="filter" style={{maxWidth:340, marginBottom:12}}><span className="s-icon"><Icon name="search" size={16} /></span>
           <input className="vds-input" placeholder="Search tables…" value={tableSearch} onChange={(e)=>setTableSearch(e.target.value)} />
         </div>
@@ -4858,7 +4860,7 @@ function SnowflakeConnectorFlow({ conn, tmpl, editing, editInstance, existingSou
   return (
     <div className="vds-content">
       <PageHead title={"Set up " + conn.name + " connection"} sub="Choose how often this connection syncs." onCancel={onCancel} />
-      <Stepper current={4} steps={CONNECTOR_WIZARD_STEPS} />
+      <Stepper current={3} steps={CONNECTOR_WIZARD_STEPS} />
       <div className="vds-h4 proto-section-title">Automate</div>
       <AutomateTriggerFields trigger={sched} setTrigger={setSched} tables={allTableNames(existingSources)} />
 
@@ -4918,7 +4920,7 @@ function PushConfigureStep({ conn, tmpl, name, setName, sources, templateId, set
   return (
     <div className="vds-content">
       <PageHead title={(editing ? "Edit " : "Connect ") + conn.name} sub={tmpl.tagline} onCancel={onCancel} />
-      <Stepper current={2} steps={CONNECTOR_STEPS} />
+      <Stepper current={1} steps={CONNECTOR_STEPS} />
 
       <div className="form-grid">
         {/* Named after the connector when it's created; only shown once it exists. */}
@@ -4963,7 +4965,7 @@ function PushScheduleStep({ conn, editing, note, onCancel, onBack, onCreate }){
   return (
     <div className="vds-content">
       <PageHead title={editing ? ("Edit " + conn.name) : "New data table"} sub={"Origin: Connectors · " + conn.name} onCancel={onCancel} />
-      <Stepper current={3} steps={CONNECTOR_STEPS} />
+      <Stepper current={2} steps={CONNECTOR_STEPS} />
       <div className="vds-h4 proto-section-title">Automate</div>
       <div className="vds-alert vds-alert--info proto-note">{note || "Files are processed as soon as they arrive on Viaduct's servers — no schedule needed."}</div>
       <div className="wiz-footer">
@@ -4978,7 +4980,7 @@ function StreamConfigureStep({ conn, tmpl, name, setName, creds, editing, onCanc
   return (
     <div className="vds-content">
       <PageHead title={(editing ? "Edit " : "Connect ") + conn.name} sub={tmpl.tagline} onCancel={onCancel} />
-      <Stepper current={2} steps={CONNECTOR_STEPS} />
+      <Stepper current={1} steps={CONNECTOR_STEPS} />
 
       <div className="form-grid">
         {/* Named after the connector when it's created; only shown once it exists. */}
@@ -5060,7 +5062,7 @@ function PullConfigureStep({ conn, tmpl, name, setName, sources, templateId, set
   return (
     <div className="vds-content">
       <PageHead title={(editing ? "Edit " : "Connect ") + conn.name} sub={tmpl.tagline} onCancel={onCancel} />
-      <Stepper current={2} steps={CONNECTOR_STEPS} />
+      <Stepper current={1} steps={CONNECTOR_STEPS} />
 
       <div className="form-grid">
         {/* Named after the connector when it's created; only shown once it exists. */}
@@ -5143,7 +5145,7 @@ function S3AuthenticateStep({ conn, tmpl, editing, name, setName, creds, setFiel
   return (
     <div className="vds-content">
       <PageHead title={editing ? ("Edit " + conn.name) : ("Set up " + conn.name + " connection")} sub={tmpl.tagline} onCancel={onCancel} />
-      <Stepper current={2} steps={CONNECTOR_WIZARD_STEPS} />
+      <Stepper current={1} steps={CONNECTOR_WIZARD_STEPS} />
 
       <div className="form-grid">
         {/* Named after the connector when it's created; only shown once it exists. */}
@@ -5193,7 +5195,7 @@ function S3ChooseDataStep({ conn, editing, files, configs, onOpenSourceByPrefix,
   return (
     <div className="vds-content">
       <PageHead title={editing ? ("Edit " + conn.name) : ("Set up " + conn.name + " connection")} sub="Choose which files in the bucket become Viaduct data tables." onCancel={onCancel} />
-      <Stepper current={3} steps={CONNECTOR_WIZARD_STEPS} />
+      <Stepper current={2} steps={CONNECTOR_WIZARD_STEPS} />
 
       <div className="vds-h4 proto-section-title">Files found</div>
       <div className="vds-b2 proto-muted proto-section-note">A raw listing of what's in the bucket — a file doesn't map 1:1 to a data table. Pick one and Configure it to lock in a prefix; other files sharing that prefix load into the same data table.</div>
@@ -5415,7 +5417,7 @@ function S3TriggerStep({ conn, trigger, setTrigger, tables = [], editing, onCanc
   return (
     <div className="vds-content">
       <PageHead title={editing ? ("Edit " + conn.name) : ("Set up " + conn.name + " connection")} sub="Choose how this connection syncs." onCancel={onCancel} />
-      <Stepper current={4} steps={CONNECTOR_WIZARD_STEPS} />
+      <Stepper current={3} steps={CONNECTOR_WIZARD_STEPS} />
       <div className="vds-h4 proto-section-title">Automate</div>
       <div className="vds-b2 proto-muted proto-section-note">Configured once for the whole connection, not per data table.</div>
       <div className="vds-alert vds-alert--info proto-note">Every data table on this connection shares this automation. If you need a different trigger for a different dataset, create a separate connection.</div>
@@ -5753,7 +5755,7 @@ CONNECTOR_TEMPLATES.emailparse = {
 const EMAIL_STEPS = [
   { n:1, label:"Name connection" },
   { n:2, label:"Data" },
-  { n:3, label:"Automate" },
+  { n:3, label:"Schedule" },
 ];
 // Every email connection is fully isolated — its own inbox, its own composite pair of Data.
 // The inbox address is {local}@{tenant}.cloud.viaduct.ai; the local part defaults from the connection
@@ -6103,7 +6105,7 @@ const SCRIPT_STEPS = [
   { n:1, label:"Name & target" },
   { n:2, label:"Credentials" },
   { n:3, label:"Script" },
-  { n:4, label:"Automate" },
+  { n:4, label:"Schedule" },
   { n:5, label:"Data" },
 ];
 function scriptDefaultParentCols(){
@@ -6828,8 +6830,7 @@ function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[],
   if (step === 1){
     return (
       <div className="vds-content">
-        <PageHead title="Connectors" sub="Origin: Connectors" onCancel={onCancel} />
-        <Stepper current={1} steps={CONNECTOR_WIZARD_STEPS} />
+        <PageHead title="New connection" onCancel={onCancel} />
         <div className="vds-alert vds-alert--info proto-note">Connectors create data tables from external systems and keep them up to date by syncing on a schedule you define. Select a connector, configure the connection, and set its sync schedule.</div>
         <div className="vds-h4 proto-section-title">Choose a connector</div>
         <div className="vds-b2 proto-muted proto-section-note">Filter by group or Q3 priority — click multiple priorities to see them together — then select a connector.</div>
@@ -6921,7 +6922,7 @@ function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[],
       return (
         <div className="vds-content">
           <PageHead title={"Connect " + conn.name} sub={"Origin: Connectors · " + conn.name} onCancel={onCancel} />
-          <Stepper current={2} steps={CONNECTOR_STEPS} />
+          <Stepper current={1} steps={CONNECTOR_STEPS} />
           <div className="vds-h4 proto-section-title">Configure {conn.name}</div>
           <div className="vds-alert vds-alert--info proto-note proto-plain-note">The connection form for <strong>{conn.name}</strong> ({conn.group}) will be built next — each connector type has its own fields (credentials, endpoints, buckets, and so on).</div>
           <div className="wiz-footer"><button className="vds-btn" onClick={()=>setStep(1)}><Icon name="arrowLeft" size={17} />Back</button></div>
