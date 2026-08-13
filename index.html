@@ -4179,13 +4179,15 @@ function ConfigureStep({ conn, tmpl, name, setName, creds, setCreds, verified, s
       <Stepper current={2} steps={CONNECTOR_STEPS} />
 
       <div className="form-grid">
+        {/* Named after the connector when it's created; only shown once it exists. */}
+        {editing && (
         <div className="field">
           <label className="vds-label">Connector name</label>
-          <input className={"vds-input" + (editing ? " locked" : "")} value={name} readOnly={editing}
-            title={editing ? "The connection name can't be changed after it's configured" : undefined}
-            onChange={(e)=>{ if (editing) return; setName(e.target.value); }} />
-          <div className="vds-helper-text">{editing ? "Set when the connection was created — can't be changed." : "A label for this connection — you can create several instances of the same connector."}</div>
+          <input className="vds-input locked" value={name} readOnly
+            title="The connection name can't be changed after it's configured" />
+          <div className="vds-helper-text">Set when the connection was created — can't be changed.</div>
         </div>
+        )}
       </div>
 
       <div className="vds-h4 proto-section-title">{auth.title}</div>
@@ -4369,7 +4371,8 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
   const presetTarget = presetTargetId ? existingSources.find(s => s.id === presetTargetId) : null;
 
   const [page, setPage] = useState(editing ? "data" : "auth"); // auth -> data -> backfill -> schedule
-  const [name, setName] = useState(editing ? editInstance.name : conn.name);
+  /* No name field during setup, so start from one that is already unique. */
+  const [name, setName] = useState(editing ? editInstance.name : uniqueName(conn.name, (existingConnectors || []).map(c => c.name)));
   const [apiKey, setApiKey] = useState(editing ? ((editInstance.creds && editInstance.creds.apiKey) || "") : "");
   const [testing, setTesting] = useState(false);
   // "Start with only the first table being checked" — every other source begins unpicked.
@@ -4469,13 +4472,16 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
       <div className="vds-content">
         <PageHead title={"Set up " + conn.name + " connection"} sub={tmpl.tagline} onCancel={onCancel} />
         <Stepper current={2} steps={CONNECTOR_WIZARD_STEPS} />
-        <div className="form-grid">
-          <div className="field">
-            <label className="vds-label">Connection name</label>
-            <input className={"vds-input" + (nameError ? " err" : "")} value={name} onChange={(e)=>setName(e.target.value)} />
-            {nameError ? <div className="vds-helper-text vds-helper-text--error">{nameError}</div> : <div className="vds-helper-text">A unique label for this connection — you can create several instances of the same connector.</div>}
+        {editing && (
+          <div className="form-grid">
+            <div className="field">
+              <label className="vds-label">Connection name</label>
+              <input className="vds-input locked" value={name} readOnly
+                title="The connection name can't be changed after it's configured" />
+              <div className="vds-helper-text">Set when the connection was created — can't be changed.</div>
+            </div>
           </div>
-        </div>
+        )}
         <div className="vds-h4 proto-section-title">{tmpl.auth.title}</div>
         <div className="vds-b2 proto-muted proto-section-note">{tmpl.auth.note}</div>
         {!editing && <div style={{marginBottom:12}}><CopyCredsButton existingConnectors={existingConnectors} connId={conn.id} onCopy={(copied)=>setApiKey(copied.apiKey || "")} /></div>}
@@ -4629,7 +4635,8 @@ function SnowflakeConnectorFlow({ conn, tmpl, editing, editInstance, existingSou
   const presetTarget = presetTargetId ? existingSources.find(s => s.id === presetTargetId) : null;
 
   const [page, setPage] = useState(editing ? "data" : "auth"); // auth -> data -> schedule
-  const [name, setName] = useState(editing ? editInstance.name : conn.name);
+  /* No name field during setup, so start from one that is already unique. */
+  const [name, setName] = useState(editing ? editInstance.name : uniqueName(conn.name, (existingConnectors || []).map(c => c.name)));
   const [creds, setCreds] = useState(editing ? (editInstance.creds || {}) : {});
   const setCred = (k, v) => setCreds(c => ({ ...c, [k]: v }));
   const [testing, setTesting] = useState(false);
@@ -4693,14 +4700,17 @@ function SnowflakeConnectorFlow({ conn, tmpl, editing, editInstance, existingSou
         <PageHead title={"Set up " + conn.name + " connection"} sub={tmpl.tagline} onCancel={onCancel} />
         <Stepper current={2} steps={CONNECTOR_WIZARD_STEPS} />
 
-        <div className="form-grid">
-          <div className="field">
-            <label className="vds-label">Connection name</label>
-            <input className={"vds-input" + (nameError ? " err" : "")} value={name} onChange={(e)=>setName(e.target.value)} />
-            {nameError ? <div className="vds-helper-text vds-helper-text--error">{nameError}</div> : <div className="vds-helper-text">A unique label for this connection — you can create several instances of the same connector.</div>}
-          </div>
-        </div>
 
+        {editing && (
+          <div className="form-grid">
+            <div className="field">
+              <label className="vds-label">Connection name</label>
+              <input className="vds-input locked" value={name} readOnly
+                title="The connection name can't be changed after it's configured" />
+              <div className="vds-helper-text">Set when the connection was created — can't be changed.</div>
+            </div>
+          </div>
+        )}
         <div className="vds-h4 proto-section-title">{auth.title}</div>
         <div className="vds-b2 proto-muted proto-section-note">{auth.note}</div>
         {!editing && <div style={{marginBottom:12}}><CopyCredsButton existingConnectors={existingConnectors} connId={conn.id} onCopy={(copied)=>setCreds(c=>({ ...c, ...copied }))} /></div>}
@@ -4900,13 +4910,15 @@ function PushConfigureStep({ conn, tmpl, name, setName, sources, templateId, set
       <Stepper current={2} steps={CONNECTOR_STEPS} />
 
       <div className="form-grid">
+        {/* Named after the connector when it's created; only shown once it exists. */}
+        {editing && (
         <div className="field">
           <label className="vds-label">Connector name</label>
-          <input className={"vds-input" + (editing ? " locked" : "")} value={name} readOnly={editing}
-            title={editing ? "The connection name can't be changed after it's configured" : undefined}
-            onChange={(e)=>{ if (editing) return; setName(e.target.value); }} />
-          <div className="vds-helper-text">{editing ? "Set when the connection was created — can't be changed." : "A label for this connection — you can create several instances of the same connector."}</div>
+          <input className="vds-input locked" value={name} readOnly
+            title="The connection name can't be changed after it's configured" />
+          <div className="vds-helper-text">Set when the connection was created — can't be changed.</div>
         </div>
+        )}
       </div>
 
       <div className="vds-h4 proto-section-title">Template Data Table</div>
@@ -4958,13 +4970,15 @@ function StreamConfigureStep({ conn, tmpl, name, setName, creds, editing, onCanc
       <Stepper current={2} steps={CONNECTOR_STEPS} />
 
       <div className="form-grid">
+        {/* Named after the connector when it's created; only shown once it exists. */}
+        {editing && (
         <div className="field">
           <label className="vds-label">Connector name</label>
-          <input className={"vds-input" + (editing ? " locked" : "")} value={name} readOnly={editing}
-            title={editing ? "The connection name can't be changed after it's configured" : undefined}
-            onChange={(e)=>{ if (editing) return; setName(e.target.value); }} />
-          <div className="vds-helper-text">{editing ? "Set when the connection was created — can't be changed." : "A label for this connection — you can create several instances of the same connector."}</div>
+          <input className="vds-input locked" value={name} readOnly
+            title="The connection name can't be changed after it's configured" />
+          <div className="vds-helper-text">Set when the connection was created — can't be changed.</div>
         </div>
+        )}
       </div>
 
       <div className="vds-h4 proto-section-title">Device connection</div>
@@ -5038,13 +5052,15 @@ function PullConfigureStep({ conn, tmpl, name, setName, sources, templateId, set
       <Stepper current={2} steps={CONNECTOR_STEPS} />
 
       <div className="form-grid">
+        {/* Named after the connector when it's created; only shown once it exists. */}
+        {editing && (
         <div className="field">
           <label className="vds-label">Connector name</label>
-          <input className={"vds-input" + (editing ? " locked" : "")} value={name} readOnly={editing}
-            title={editing ? "The connection name can't be changed after it's configured" : undefined}
-            onChange={(e)=>{ if (editing) return; setName(e.target.value); }} />
-          <div className="vds-helper-text">{editing ? "Set when the connection was created — can't be changed." : "A label for this connection — you can create several instances of the same connector."}</div>
+          <input className="vds-input locked" value={name} readOnly
+            title="The connection name can't be changed after it's configured" />
+          <div className="vds-helper-text">Set when the connection was created — can't be changed.</div>
         </div>
+        )}
       </div>
 
       <div className="vds-h4 proto-section-title">Template Data Table</div>
@@ -5119,13 +5135,15 @@ function S3AuthenticateStep({ conn, tmpl, editing, name, setName, creds, setFiel
       <Stepper current={2} steps={CONNECTOR_WIZARD_STEPS} />
 
       <div className="form-grid">
+        {/* Named after the connector when it's created; only shown once it exists. */}
+        {editing && (
         <div className="field">
           <label className="vds-label">Connector name</label>
-          <input className={"vds-input" + (editing ? " locked" : "")} value={name} readOnly={editing}
-            title={editing ? "The connection name can't be changed after it's configured" : undefined}
-            onChange={(e)=>{ if (editing) return; setName(e.target.value); }} />
-          <div className="vds-helper-text">{editing ? "Set when the connection was created — can't be changed." : "A label for this connection — you can create several instances of the same connector."}</div>
+          <input className="vds-input locked" value={name} readOnly
+            title="The connection name can't be changed after it's configured" />
+          <div className="vds-helper-text">Set when the connection was created — can't be changed.</div>
         </div>
+        )}
       </div>
 
       {!editing && onCopyCreds && (
@@ -5235,7 +5253,8 @@ function S3ChooseDataStep({ conn, editing, files, configs, onOpenSourceByPrefix,
 function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[], existingConnectors=[], onCancel, onBackToConnectors, onCreate, onSave, onOpenSource, presetTargetId }){
   const { useState } = React;
   const managed = !!tmpl.managed;
-  const [name, setName] = useState(editing ? editInstance.name : conn.name);
+  /* No name field during setup, so start from one that is already unique. */
+  const [name, setName] = useState(editing ? editInstance.name : uniqueName(conn.name, (existingConnectors || []).map(c => c.name)));
   const [creds, setCreds] = useState(() => {
     if (managed) return editing ? (editInstance.creds || (tmpl.makeCreds ? tmpl.makeCreds() : {})) : (tmpl.makeCreds ? tmpl.makeCreds() : {});
     const base = pullFormDefaults(tmpl.connForm);
