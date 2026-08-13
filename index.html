@@ -1115,7 +1115,7 @@ const HUB_PAGE = {
   dataconnectors:{ key:"dataconnectors", title:"Connections", icon:"plug", newLabel:"New connection",
     sub:"Connected external systems that create and sync data tables on a schedule.",
     noun:"connections", filter:"Filter connectors...", hidden:"Show disabled connectors",
-    cols:["Connection","Number of Data Tables","Creation Date","Last Updated Date","Actions"],
+    cols:["Connection","Available Source tables","Mapped Data Tables","Creation Date","Last Updated Date","Actions"],
     emptyTitle:"No connections created yet", emptyBody:"Connect an external system to automatically create and sync data tables into Viaduct.", cta:"Create your first connection" },
   datapipelines:{ key:"datapipelines", title:"Data Transformations", icon:"workflow",
     sub:"Move, shape, and act on data from your sources, automatically.",
@@ -1443,7 +1443,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
   const isAuto = cfg.key === "automations";
   const isPipe = cfg.key === "datapipelines";
   const isPrompt = cfg.key === "directives";
-  const tmpl = isConn ? "1.6fr 1.4fr 1.1fr 1.1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 130px 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : (isPrompt ? "1.9fr 0.85fr 0.9fr 0.9fr 1.1fr 0.9fr 1.1fr 0.95fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`)));
+  const tmpl = isConn ? "1.5fr 1.1fr 1fr 1fr 1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 130px 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : (isPrompt ? "1.9fr 0.85fr 0.9fr 0.9fr 1.1fr 0.9fr 1.1fr 0.95fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`)));
   const fire = onNew || (() => {});
   const open = onOpen || (() => {});
   /* Automations open read-only from the row and editable from the pencil. */
@@ -1524,7 +1524,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
       <div className="vds-table-container">
         <div className="thead" style={{gridTemplateColumns:tmpl}}>
           {cfg.cols.map((c,i) => (
-            <div className={"th" + (i===cfg.cols.length-1 ? " right" : "") + (isPrompt && (i===1 || i===2) ? " center" : "") + (isAuto && c === "History" ? " right-mid" : "")} key={c}>
+            <div className={"th" + (i===cfg.cols.length-1 ? " right" : "") + (isPrompt && (i===1 || i===2) ? " center" : "") + (isAuto && c === "History" ? " right-mid" : "") + (isConn && (c === "Available Source tables" || c === "Mapped Data Tables") ? " right-mid" : "")} key={c}>
               {c}
               {isDS && c === "Published" && (
                 <ColFilterPopover label="Published" options={["Published","Unpublished"]} selected={pubFilter} onChange={setPubFilter} />
@@ -1579,7 +1579,8 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
                 onClick={()=>open(r.id)} role="button" tabIndex={0}
                 onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(r.id); } }}>
                 <div className="td td-name">{r.connectorName}</div>
-                <div className="td">{(r.dataSourceIds || []).filter(id => getSrc(id)).length}</div>
+                <div className="td right-mid">{sourceTableCount(r)}</div>
+                <div className="td right-mid">{(r.dataSourceIds || []).filter(id => getSrc(id)).length}</div>
                 <div className="td">{r.createdAt}</div>
                 <div className="td">{r.updatedAt}</div>
                 <div className="td right">
@@ -1693,6 +1694,15 @@ const CONN_GROUPS = ["All","Telematics","Fleet Management","Cloud Storage","Data
    nothing to name, and nothing to create twice. */
 const MULTI_INSTANCE_CONNECTORS = ["emailparse", "customscript"];
 const isSingleInstance = (connectorId) => !MULTI_INSTANCE_CONNECTORS.includes(connectorId);
+/* How many tables the far side offers. Connectors that discover their tables from
+   what you point them at — buckets, scripts, inboxes — only know once they're mapped. */
+function sourceTableCount(inst){
+  const t = CONNECTOR_TEMPLATES[inst.connectorId];
+  if (t && t.sources) return t.sources.length;
+  if (inst.sourceMappings) return inst.sourceMappings.length;
+  if (inst.targets) return inst.targets.length;
+  return (inst.dataSourceIds || []).length;
+}
 const existingInstanceFor = (connectors, connectorId) => isSingleInstance(connectorId)
   ? (connectors || []).find(c => c.connectorId === connectorId) || null
   : null;
