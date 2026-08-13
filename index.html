@@ -4603,7 +4603,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
         </div>
         <div className="wiz-footer">
           <button className="vds-btn" onClick={()=>setPage(editing ? "schedule" : "auth")}><Icon name="arrowLeft" size={17} />Back</button>
-          <button className="vds-btn vds-btn--primary" disabled={pickedList.length===0} onClick={()=>setPage("schedule")}>Continue<Icon name="arrowRight" size={17} /></button>
+          <button className="vds-btn vds-btn--primary" onClick={()=>setPage("schedule")}>Continue<Icon name="arrowRight" size={17} /></button>
         </div>
         {confirmRemove && (
           <ConfirmDialog title="Remove this data table?" danger
@@ -6851,7 +6851,7 @@ function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[],
       <div className="vds-content">
         <PageHead title="New connection" onCancel={onCancel} />
         <div className="vds-alert vds-alert--info proto-note">Connectors create data tables from external systems and keep them up to date by syncing on a schedule you define. Select a connector, configure the connection, and set its sync schedule.</div>
-        <div className="vds-h4 proto-section-title">Choose a connector</div>
+        <div className="vds-h4 proto-section-title">Choose an Application/Database connector</div>
         <div className="vds-b2 proto-muted proto-section-note">Filter by group or Q3 priority — click multiple priorities to see them together — then select a connector.</div>
         <div className="prio-filter-row">
           <span className="prio-filter-label">Q3 priority</span>
