@@ -67,7 +67,8 @@
   .form-grid .field { margin-bottom: 0; }
   /* Type and its publish toggle share a row. */
   .type-row { display: flex; align-items: center; gap: var(--vds-dialog-gap); }
-  .type-row .vds-select { flex: 0 1 200px; }
+  /* Sized to its longest option rather than a fixed track. */
+  .type-row .vds-select { flex: 0 0 auto; width: auto; min-width: 150px; padding-right: 36px; }
   .type-row__publish { flex: none; white-space: nowrap; }
   .form-grid .field:has(textarea, .vds-alert, table, .vds-table-container) { grid-column: 1 / -1; }
   :is(.meta-grid, .cred-grid, .colfilter-editor, .startdate-grid, .xf-row) > .form-grid { display: contents; }
@@ -417,8 +418,9 @@
   .cg-part-sel { height: 30px; width: auto; min-width: 80px; padding: 0 8px; }
   .cg-part-warn { display: inline-flex; color: var(--vds-alert-warning-icon); cursor: help; }
   .write-mode-value { padding: 6px 0; }
-  /* Matches an input's height so its text lines up with the field beside it. */
-  .source-table-value { display: flex; align-items: center; min-height: 44px; font-weight: 700; }
+  .source-table-block { margin-bottom: var(--vds-form-gap); }
+  .source-table-value { font-weight: 700; margin-top: 2px; }
+  .narrow-input { max-width: 280px; }
   .cg-filter-btn { display: inline-flex; align-items: center; gap: 4px; height: 30px; max-width: 100%; padding: 0 var(--vds-button-gap); border: 1px solid var(--vds-slate-300); border-radius: 4px; background: var(--vds-surface-default); font: 400 12px/16px var(--vds-font-sans); color: var(--vds-text-secondary); cursor: pointer; }
   .cg-filter-btn:hover { background: var(--vds-slate-20); }
   .cg-filter-btn.on { background: var(--vds-surface-selected); border-color: var(--vds-slate-300); color: var(--vds-text-primary); font-weight: 500; }
@@ -3705,16 +3707,16 @@ function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = fals
     <PageHead title={title || "Configure Data Table"} sub={sub || "Set column parameters for this table. It stays inactive until it is configured."} onCancel={onCancel} />
     {stepper}
 
+    {originalNameLabel && originalTableName && (
+      <div className="source-table-block">
+        <label className="vds-label">{originalNameLabel} table</label>
+        <div className="vds-b1 source-table-value">{originalTableName}</div>
+      </div>
+    )}
     <div className="form-grid">
-      {originalNameLabel && originalTableName && (
-        <div className="field">
-          <label className="vds-label">{originalNameLabel} table</label>
-          <div className="vds-b1 source-table-value">{originalTableName}</div>
-        </div>
-      )}
       <div className="field">
-        <label className="vds-label">Viaduct Data Table name</label>
-        <input className={"vds-input" + (lockName ? " locked" : "")} value={name} readOnly={lockName}
+        <label className="vds-label">Viaduct Data Table</label>
+        <input className={"vds-input narrow-input" + (lockName ? " locked" : "")} value={name} readOnly={lockName}
           title={lockName ? "The data table name can't be changed after it's configured" : undefined}
           onChange={(e)=>{ if (lockName) return; setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g,"_")); }} />
         <div className="vds-helper-text">{lockName ? "Set when the data table was created — can't be changed." : "Lowercase letters and underscores only."}</div>
@@ -3741,11 +3743,11 @@ function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = fals
     <div className="form-grid">
       <div className="field">
         <label className="vds-label">Singular form</label>
-        <input className="vds-input" placeholder="e.g. Driver" value={singular} onChange={(e)=>editSingular(e.target.value)} />
+        <input className="vds-input narrow-input" placeholder="e.g. Driver" value={singular} onChange={(e)=>editSingular(e.target.value)} />
       </div>
       <div className="field">
         <label className="vds-label">Plural form</label>
-        <input className="vds-input" placeholder="e.g. Drivers" value={plural} onChange={(e)=>editPlural(e.target.value)} />
+        <input className="vds-input narrow-input" placeholder="e.g. Drivers" value={plural} onChange={(e)=>editPlural(e.target.value)} />
       </div>
     </div>
     <div className="form-grid">
