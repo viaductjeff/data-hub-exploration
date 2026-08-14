@@ -886,6 +886,7 @@ function Icon({ name, size = 19, className }){
     trash:(<><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></>),
     swap:(<><path d="M4 8h13"/><path d="m14 5 3 3-3 3"/><path d="M20 16H7"/><path d="m10 13-3 3 3 3"/></>),
     chevronDown:(<path d="m6 9 6 6 6-6"/>),
+    gear:(<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9.4a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>),
     chevronUp:(<path d="m6 15 6-6 6 6"/>),
     folder:(<><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></>),
     truck:(<><path d="M14 18V6a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h1"/><path d="M14 9h4l3 3v5a1 1 0 0 1-1 1h-1"/><path d="M9 18h6"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/></>),
@@ -1470,18 +1471,21 @@ function ConnectDataButton({ onPick, compact, connectors = [], label = "Connect 
   );
 }
 
-function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete, onOpenSource, onRunNow, onConfigure, onConnectData, lookupSource, records=[], tabsNode, allConnectors=[] }){
+function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete, onOpenSource, onRunNow, onImport, onConfigure, onConnectData, lookupSource, records=[], tabsNode, allConnectors=[] }){
   const isDS = cfg.key === "datasources";
   const isConn = cfg.key === "dataconnectors";
   const isAuto = cfg.key === "automations";
   const isPipe = cfg.key === "datapipelines";
   const isPrompt = cfg.key === "directives";
-  const tmpl = isConn ? "1.5fr 1.1fr 1fr 1fr 1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 130px 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : (isPrompt ? "1.9fr 0.85fr 0.9fr 0.9fr 1.1fr 0.9fr 1.1fr 0.95fr" : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`)));
+  const tmpl = isConn ? "1.5fr 1.1fr 1fr 1fr 1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 130px 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : (isPrompt ? "1.9fr 0.85fr 0.9fr 0.9fr 1.1fr 0.9fr 1.1fr 0.95fr"
+    : (isDS ? `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}210px`
+    : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`))));
   const fire = onNew || (() => {});
   const open = onOpen || (() => {});
   /* Automations open read-only from the row and editable from the pencil. */
   const edit = onEdit || open;
   const openHistory = onOpenHistory || open;
+  const importNow = onImport || (() => {});
   const upd = onUpdate || (() => {});
   const del = onDelete || (() => {});
   const openSrc = onOpenSource || (() => {});
@@ -1650,10 +1654,12 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
                 <div className="td">{r.lastSynced}</div>
                 <div className="td right">
                   <div className="row-actions">
+                    <button className="vds-btn vds-btn--sm vds-btn--start-icon" title="Import now" onClick={()=>importNow(r.id)}>
+                      <Icon name="play" size={16} />Import</button>
                     {onConnectData && <ConnectDataButton compact connectors={allConnectors} onPick={(connId, instanceId)=>onConnectData(r.id, connId, instanceId)} />}
                     {r.fromConnector && r.configured === false
                       ? <button className="vds-btn vds-btn--sm proto-cfg-btn" onClick={()=>cfgSrc(r.id)}>Configure</button>
-                      : <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>open(r.id)}><Icon name="pencil" size={17} /></button>}
+                      : <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>open(r.id)}><Icon name="gear" size={17} /></button>}
                     <DeleteDataSourceButton name={r.name} onDelete={()=>del(r.id)} />
                   </div>
                 </div>
@@ -10538,6 +10544,7 @@ function App(){
       onRunNow={activeId==="schedules" ? runSchedule : undefined}
       onConfigure={activeId==="datasources" ? (id) => setConfiguringId(id) : undefined}
       onConnectData={activeId==="datasources" ? (id, connId, instanceId) => setConnectDataFor({ targetId:id, connId, instanceId }) : undefined}
+      onImport={activeId==="datasources" ? (id) => setSources(s => s.map(x => x.id===id ? { ...x, lastSynced:"Just now", status:"Ready" } : x)) : undefined}
       allConnectors={connectors}
       lookupSource={activeId==="dataconnectors" ? (id) => sources.find(s => s.id === id) : undefined}
       records={activeId==="datasources" ? sources : (activeId==="dataconnectors" ? connectors : (activeId==="datapipelines" ? pipelines : (activeId==="schedules" ? schedules : [])))} />;
