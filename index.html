@@ -238,6 +238,14 @@
   .src-tbl-wrap { max-width: 1100px; }
   .src-name-cell { font-weight: 500; text-align: left; }
   .src-desc-cell { color: var(--vds-text-secondary); text-align: left; }
+  .clamp { position: relative; display: block; }
+  /* Two lines at the table's 20px line height, with room kept for the ellipsis. */
+  .clamp__text { display: block; max-height: 40px; overflow: hidden; }
+  .clamp__more { position: absolute; right: 0; bottom: 0; padding-left: 10px; cursor: help;
+    background: var(--vds-surface-default); color: var(--vds-text-primary); font-weight: 500; }
+  .clamp__bubble { position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+    width: 360px; max-width: 60vw; white-space: normal; font-weight: 400;
+    color: var(--vds-text-secondary); line-height: 20px; padding: 10px 12px; text-align: left; }
   .src-viaduct-name { font-family: var(--vds-font-mono); font-size: 12px; }
   .import-card { margin-bottom: var(--vds-dialog-gap); }
 
@@ -2784,6 +2792,29 @@ function PageHead({ title, sub, onCancel }){
   );
 }
 
+/* Two lines of text, with the overflow behind a hoverable ellipsis. */
+function ClampedDescription({ text }){
+  const ref = useRef(null);
+  const [clipped, setClipped] = useState(false);
+  const [open, setOpen] = useState(false);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (el) setClipped(el.scrollHeight > el.clientHeight + 1);
+  });
+  return (
+    <span className="clamp">
+      <span className="clamp__text" ref={ref}>{text}</span>
+      {clipped && (
+        <span className="clamp__more" tabIndex={0} role="button" aria-label="Show the full description"
+          onMouseEnter={()=>setOpen(true)} onMouseLeave={()=>setOpen(false)}
+          onFocus={()=>setOpen(true)} onBlur={()=>setOpen(false)}>…
+          {open && <span className="vds-tooltip clamp__bubble">{text}</span>}
+        </span>
+      )}
+    </span>
+  );
+}
+
 /* Compact tile, same as the one in the connections wizard. */
 function OriginConnCard({ icon, name, group, priority, connected, onClick }){
   return (
@@ -4598,7 +4629,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
                           aria-label={"Include " + s.name} onChange={()=>requestToggleOff(s)} />
                       </td>
                       <td className="src-name-cell">{s.name}</td>
-                      <td className="src-desc-cell">{s.description}</td>
+                      <td className="src-desc-cell"><ClampedDescription text={s.description} /></td>
                       <td style={{textAlign:"center"}}>
                         {mapped ? <span className="src-viaduct-name">{dsNamePreview(s)}</span>
                           : picked ? <span className="vds-chip vds-chip--sm vds-chip--error">Not mapped</span>
@@ -4619,7 +4650,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
             {nextUnmapped
               ? <button className="vds-btn vds-btn--primary"
                   onClick={()=>{ setConfiguring(nextUnmapped.name); setConfiguringOpenCol(null); }}>Map new table(s)</button>
-              : <button className="vds-btn vds-btn--primary" onClick={()=>setPage("schedule")}>Automate table import</button>}
+              : <button className="vds-btn vds-btn--primary" onClick={()=>setPage("schedule")}>Schedule import</button>}
           </div>
         </div>
       );
