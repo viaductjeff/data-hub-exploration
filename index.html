@@ -247,7 +247,10 @@
     width: 360px; max-width: 60vw; white-space: normal; font-weight: 400;
     color: var(--vds-text-secondary); line-height: 20px; padding: 10px 12px; text-align: left; }
   .src-viaduct-name { font-family: var(--vds-font-mono); font-size: 12px; }
-  .import-card { margin-bottom: var(--vds-dialog-gap); }
+  .prompt-card.import-card { margin-bottom: var(--vds-dialog-gap); gap: 4px; }
+  .prompt-card__head.import-card__head { justify-content: flex-start; gap: var(--vds-main-gap); }
+  /* 4px under the title it follows, same as every other section note. */
+  .automate-lede { margin: 0 0 16px; }
 
   /* ---------- credentials / verify ---------- */
   .cred-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--vds-form-gap) 20px; margin-top: 4px; }
@@ -3087,8 +3090,8 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
   };
   return (
     <div>
-      <div className="vds-h4 proto-section-title" style={{marginTop:0}}>Column mapping</div>
-      <p className="vds-b2 proto-muted proto-cols-instr">Check the columns to import, set the type, and configure key options.{enableFilter ? " Use Filter to keep only the records that match a column's criteria." : ""}{lockColType ? " Type and key options are set by the API and can't be changed here — only the column name and filter." : (hasLocked ? " Primary Key and Order By are set by the API and can't be changed here." : "")}{noRenameRemove ? (forceNameEditable ? " This schema is a fixed platform contract — columns can't be added, removed, or restructured. Only the column name can be renamed." : (lockColType ? " Columns can't be renamed, removed, or added — only filters can change." : " Existing columns can be re-typed and filtered but not renamed or removed — use Add column for new fields.")) : ""}</p>
+      <div className="vds-h4 proto-section-title" style={{marginTop:0}}>Column selection</div>
+      <p className="vds-b2 proto-muted proto-cols-instr">Select columns from the source table to include. Set filters to optionally limit the source data to import.</p>
       <div className="colgrid-wrap">
         <button type="button" className={"cg-advanced-toggle" + (advancedOpen ? " on" : "")} onClick={()=>setAdvancedOpen(v=>!v)}>
           <Icon name="arrowRight" size={13} />Advanced (Low Cardinality, Partition)
@@ -4784,9 +4787,9 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
           ? <div className="vds-alert vds-alert--info proto-note">No source tables were selected, so there is nothing to schedule yet.</div>
           : pickedList.map(s => (
               <div className="vds-card prompt-card import-card" key={s.name}>
-                <div className="prompt-card__head prompt-card__head--center">
+                <div className="prompt-card__head prompt-card__head--center import-card__head">
                   <h5 className="prompt-card__title">{s.name}</h5>
-                  <span className="vds-b3 proto-mono proto-muted">{dsNamePreview(s)}</span>
+                  <span className="vds-b3 proto-mono proto-muted">({dsNamePreview(s)})</span>
                 </div>
                 <AutomateTriggerFields trigger={triggerFor(s.name)} setTrigger={setTriggerFor(s.name)}
                   tables={allTableNames(existingSources)} />
@@ -5587,7 +5590,7 @@ function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = 
   if (lockedNote) return <div className="vds-alert vds-alert--info proto-note">{lockedNote}</div>;
   return (
     <div>
-      <div className="vds-b2 proto-muted" style={{margin:"12px 0"}}>Automations can always be manually run, even when triggered on a schedule or by a table event.</div>
+      <div className="vds-b2 proto-muted proto-section-note automate-lede">Automations can always be manually run, even when triggered on a schedule or by a table event.</div>
       <TriggerRows trigger={trigger} onChange={set} tables={tables} />
     </div>
   );
