@@ -69,6 +69,8 @@
      beside the type selector. */
   .field-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--vds-main-gap); margin-bottom: var(--vds-main-gap); }
   .field-row .field { margin-bottom: 0; }
+  /* A label with its explanation alongside, one --vds-main-gap apart. */
+  .label-row { display: flex; align-items: baseline; gap: var(--vds-main-gap); }
   .type-row { display: flex; align-items: center; gap: var(--vds-main-gap); }
   /* Sized to its longest option rather than a fixed track. */
   .type-row .vds-select { flex: 0 0 auto; width: auto; min-width: 150px; padding-right: 36px; }
@@ -3755,9 +3757,11 @@ function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = fals
     </div>
     <div className="form-grid">
       <div className="field">
-        <label className="vds-label">Description</label>
+        <div className="label-row">
+          <label className="vds-label">Description</label>
+          <span className="vds-b3 proto-muted">Used by the ViaDuck agent to decide when to access this table</span>
+        </div>
         <textarea className="vds-textarea" placeholder="Describe what this data table contains…" value={desc} onChange={(e)=>setDesc(e.target.value)} />
-        <div className="vds-helper-text">The ViaDuck agent uses this to decide when to query this data table.</div>
       </div>
       <div className="field">
         <label className="vds-label">{writeModeLocked ? "Write behavior (set by the source system)" : "Write behavior"}</label>
