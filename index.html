@@ -259,8 +259,9 @@
     width: 360px; max-width: 60vw; white-space: normal; font-weight: 400;
     color: var(--vds-text-secondary); line-height: 20px; padding: 10px 12px; text-align: left; }
   .src-viaduct-name { font-family: var(--vds-font-mono); font-size: 12px; }
-  .prompt-card.import-card { margin-bottom: var(--vds-dialog-gap); gap: 4px; }
-  .prompt-card__head.import-card__head { justify-content: flex-start; gap: var(--vds-main-gap); }
+  .prompt-card.import-card { margin-bottom: var(--vds-dialog-gap); }
+  .prompt-card__head.import-card__head { justify-content: flex-start; gap: var(--vds-button-gap); }
+  .import-card__to { margin: 0 var(--vds-dialog-gap); }
   /* 4px under the title it follows, same as every other section note. */
   .automate-lede { margin: 0 0 16px; }
 
@@ -4820,8 +4821,11 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
           : pickedList.map(s => (
               <div className="vds-card prompt-card import-card" key={s.name}>
                 <div className="prompt-card__head prompt-card__head--center import-card__head">
-                  <h5 className="prompt-card__title">{s.name}</h5>
-                  <span className="vds-b3 proto-mono proto-muted">({dsNamePreview(s)})</span>
+                  <span className="vds-h5">{s.name}</span>
+                  <span className="vds-b2">({conn.name})</span>
+                  <span className="vds-b2 import-card__to">to</span>
+                  <span className="vds-h5">{dsNamePreview(s)}</span>
+                  <span className="vds-b2">(Viaduct)</span>
                 </div>
                 <AutomateTriggerFields trigger={triggerFor(s.name)} setTrigger={setTriggerFor(s.name)}
                   tables={allTableNames(existingSources)} showLede={false} />
