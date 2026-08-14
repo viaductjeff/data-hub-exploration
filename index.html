@@ -416,13 +416,11 @@
   .cg-part { display: flex; justify-content: center; gap: 4px; }
   .cg-part-sel { height: 30px; width: auto; min-width: 80px; padding: 0 8px; }
   .cg-part-warn { display: inline-flex; color: var(--vds-alert-warning-icon); cursor: help; }
+  .write-mode-value { padding: 6px 0; }
   .cg-filter-btn { display: inline-flex; align-items: center; gap: 4px; height: 30px; max-width: 100%; padding: 0 var(--vds-button-gap); border: 1px solid var(--vds-slate-300); border-radius: 4px; background: var(--vds-surface-default); font: 400 12px/16px var(--vds-font-sans); color: var(--vds-text-secondary); cursor: pointer; }
   .cg-filter-btn:hover { background: var(--vds-slate-20); }
   .cg-filter-btn.on { background: var(--vds-surface-selected); border-color: var(--vds-slate-300); color: var(--vds-text-primary); font-weight: 500; }
   .cg-filter-txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cg-advanced-toggle { display: inline-flex; align-items: center; gap: 4px; background: none; border: none; padding: 0 0 var(--vds-form-gap); font: 500 14px/20px var(--vds-font-sans); color: var(--vds-text-primary); cursor: pointer; }
-  .cg-advanced-toggle svg { transition: transform 0.15s ease; }
-  .cg-advanced-toggle.on svg { transform: rotate(90deg); }
   .colfilter-editor { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--vds-form-gap); margin: 4px 0 var(--vds-button-gap); padding: var(--vds-card-pad-v) var(--vds-card-pad-h); background: var(--vds-slate-50); border: 1px solid var(--vds-gray-100); border-radius: 8px; }
   .colfilter-editor .field { margin: 0; }
   .colfilter-title { flex-basis: 100%; font: 700 14px/20px var(--vds-font-sans); }
@@ -3064,12 +3062,11 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
   const upd = (i, patch) => setCols(cs => cs.map((c,idx) => idx===i ? {...c, ...patch} : c));
   const { useState } = React;
   const [openFilter, setOpenFilter] = useState(() => initialOpenFilterCol ? cols.findIndex(c => c.name === initialOpenFilterCol) : -1);
-  const [advancedOpen, setAdvancedOpen] = useState(false);
   const isLocked = (key) => lockedKeys.indexOf(key) !== -1;
   const hasLocked = lockedKeys.length > 0;
   const numDateInputType = (t) => t === "number" ? "number" : (t === "datetime" ? "datetime-local" : "date");
   const isTimeType = (t) => t === "date" || t === "datetime";
-  const visibleOptionCols = PRIMARY_OPTION_COLS.concat(advancedOpen ? ADVANCED_OPTION_COLS : []);
+  const visibleOptionCols = PRIMARY_OPTION_COLS.concat(ADVANCED_OPTION_COLS);
   const addColumn = () => setCols(cs => {
     let n = cs.length + 1, nm = "new_column_" + n; const names = cs.map(c => c.name);
     while (names.indexOf(nm) !== -1){ n++; nm = "new_column_" + n; }
@@ -3099,12 +3096,9 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
   };
   return (
     <div>
-      <div className="vds-h4 proto-section-title" style={{marginTop:0}}>Column selection</div>
+      <div className="vds-h4 proto-section-title" style={{marginTop:0}}>Column mappings</div>
       <p className="vds-b2 proto-muted proto-cols-instr">Select columns from the source table to include. Set filters to optionally limit the source data to import.</p>
       <div className="colgrid-wrap">
-        <button type="button" className={"cg-advanced-toggle" + (advancedOpen ? " on" : "")} onClick={()=>setAdvancedOpen(v=>!v)}>
-          <Icon name="arrowRight" size={13} />Advanced (Low Cardinality, Partition)
-        </button>
         <table className={"vds-table cols-table" + (enableFilter ? " cg-filter-on" : "")}>
           <thead>
             <tr>
@@ -3112,8 +3106,8 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
                 <input className="vds-checkbox" type="checkbox" checked={allSel} disabled={noRenameRemove}
                   onChange={noRenameRemove ? undefined : toggleAll} aria-label="Select all columns" />
               </th>
-              {originalNameLabel && <th className="cols-table__left">{originalNameLabel} Column Name</th>}
-              <th className="cols-table__left">{originalNameLabel ? "Viaduct Column Name" : "Column Name"}</th>
+              {originalNameLabel && <th className="cols-table__left">{originalNameLabel} Column</th>}
+              <th className="cols-table__left">{originalNameLabel ? "Viaduct Column" : "Column"}</th>
               <th className={"cols-table__left" + (lockColType ? " locked" : "")}>Type{lockColType && <Icon name="lock" size={11} />}</th>
               {enableFilter && <th style={{width:150}}>Filter</th>}
               {visibleOptionCols.map(o => <th style={{width:110}} className={isLocked(o.key) ? "locked" : undefined} key={o.key}>{o.label}{isLocked(o.key) && <Icon name="lock" size={11} />}</th>)}
@@ -3753,9 +3747,9 @@ function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = fals
         <div className="vds-helper-text">The ViaDuck agent uses this to decide when to query this data table.</div>
       </div>
       <div className="field">
-        <label className="vds-label">Write behavior</label>
+        <label className="vds-label">{writeModeLocked ? "Write behavior (set by the source system)" : "Write behavior"}</label>
         {writeModeLocked ? (
-          <div className="vds-input locked" style={{display:"flex", alignItems:"center", height:44}}>{writeModeReadOnly || writeMode}</div>
+          <div className="vds-b2 write-mode-value">{writeModeReadOnly || writeMode}</div>
         ) : (
           <select className="vds-select" value={writeMode} onChange={(e)=>setWriteMode(e.target.value)}>
             <option value="Replace">Replace — delete all existing data and replace it with fresh data</option>
@@ -3763,7 +3757,7 @@ function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = fals
             <option value="Update">Update — update existing rows with fresh data, and create new rows for new primary keys</option>
           </select>
         )}
-        <div className="vds-helper-text">{writeModeLocked ? "Set by the API and can't be changed here." : "How each sync should reconcile new data against what's already here."}</div>
+        {!writeModeLocked && <div className="vds-helper-text">How each sync should reconcile new data against what's already here.</div>}
       </div>
     </div>
 
