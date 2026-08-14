@@ -3721,14 +3721,17 @@ function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = fals
         <label className="vds-label">Type</label>
         <div className="type-row">
           <select className="vds-select" value={type} onChange={(e)=>setType(e.target.value)}>
-            <option>Asset</option><option>Event</option><option>Table</option><option>Media</option>
+            {/* The stored value stays "Table" — only what people read changed. */}
+            <option value="Table">Generic table</option>
+            <option value="Asset">Asset</option>
+            <option value="Event">Event</option>
+            <option value="Media">Media</option>
           </select>
           <label className="vds-choice type-row__publish">
             <input type="checkbox" className="vds-checkbox" checked={published} onChange={(e)=>setPublished(e.target.checked)} />
             Publish mapped Viaduct table
           </label>
         </div>
-        <div className="vds-helper-text">Published tables are visible to the rest of the app once configured.</div>
       </div>
     </div>
     {afterNameSection}
@@ -3747,7 +3750,7 @@ function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = fals
       <div className="field">
         <label className="vds-label">Description</label>
         <textarea className="vds-textarea" placeholder="Describe what this data table contains…" value={desc} onChange={(e)=>setDesc(e.target.value)} />
-        <div className="vds-helper-text">Agents use this to decide when to query this data table.</div>
+        <div className="vds-helper-text">The ViaDuck agent uses this to decide when to query this data table.</div>
       </div>
       <div className="field">
         <label className="vds-label">Write behavior</label>
