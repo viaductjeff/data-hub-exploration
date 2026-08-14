@@ -580,6 +580,9 @@
   .prompt-slash { font-family: var(--vds-font-mono); background: var(--vds-alert-info-bg); color: var(--vds-alert-info-icon); }
   .prompt-read-text { white-space: pre-wrap; }
   .prompt-avail-line { display: flex; align-items: center; justify-content: space-between; gap: var(--vds-dialog-gap); }
+  .cfg-card { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); }
+  .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); }
+  .cfg-readonly { padding-top: 6px; }
   .prompt-auto-table { border: 1px solid var(--vds-gray-100); border-radius: 4px; overflow: hidden; }
   .prompt-auto-row { display: grid; grid-template-columns: 1.4fr 1.2fr 124px; gap: var(--vds-form-gap);
     align-items: center; padding: 10px 14px; border-top: 1px solid var(--vds-gray-100); }
@@ -3939,12 +3942,22 @@ function EmailViewerModal({ row, attachments = [], onOpenAttachment, onClose }){
 
 /* What a data table holds, on its own page — the row click from the list lands
    here, while the gear opens the configuration page below. */
-function DataTableDataPage({ source, onBack, onConfigure }){
+function DataTableDataPage({ source, allSources = [], onBack, onConfigure }){
   const p = source.parsed;
-  const rows = p ? p.rows : [];
+  // Connector-created tables carry generated preview rows instead of parsed file rows.
+  const rows = p ? (p.rows && p.rows.length ? p.rows : (p.previewRows || [])) : [];
   const cols = (source.columns && source.columns.length)
     ? source.columns.filter(c => c.imp !== false).map(c => ({ key:c.name, label:c.display || c.name }))
     : (p ? p.columns.map(c => ({ key:c, label:c })) : []);
+  const isEmailParent = source.emailKind === "parent";
+  const isEmailChild = source.emailKind === "child";
+  const childSchemaName = (source.relations && source.relations.outgoing && source.relations.outgoing[0]) ? source.relations.outgoing[0].schema : null;
+  const childEmailSource = isEmailParent ? allSources.find(s => s.name === childSchemaName) : null;
+  const attachmentsForMessage = (messageId) => (childEmailSource && childEmailSource.parsed ? childEmailSource.parsed.rows.filter(r => r.message_id === messageId) : []);
+  const [viewerRow, setViewerRow] = useState(null);
+  const [viewerAttachment, setViewerAttachment] = useState(null);
+  const rowClickable = isEmailParent || isEmailChild;
+  const onRowClick = isEmailParent ? setViewerRow : isEmailChild ? setViewerAttachment : null;
   return (
     <div className="vds-content">
       <div className="proto-sticky-head">
@@ -3965,213 +3978,21 @@ function DataTableDataPage({ source, onBack, onConfigure }){
         <div className="vds-alert vds-alert--info proto-note">This data table hasn't been imported yet, so there are no rows to show.</div>
       ) : (<>
         <div className="vds-b2 proto-muted proto-section-note">
-          {Number(source.recordCount || rows.length).toLocaleString()} records · {cols.length} columns · showing the first {rows.length.toLocaleString()}
+          {Number(source.recordCount || rows.length).toLocaleString()} records · {cols.length} columns · showing the first {rows.length.toLocaleString()}{rowClickable ? " · click a row to open it" : ""}
         </div>
         <div className="vds-table-container proto-scroll-wrap proto-data-wrap">
           <table className="vds-table proto-preview-table">
             <thead><tr>{cols.map(c => <th key={c.key}>{c.label}</th>)}</tr></thead>
             <tbody>
-              {rows.map((r,i) => <tr key={i}>{cols.map(c => <td key={c.key}>{cellText(r[c.key])}</td>)}</tr>)}
+              {rows.map((r,i) => (
+                <tr key={i} className={rowClickable ? "clickable-row" : undefined} onClick={rowClickable ? ()=>onRowClick(r) : undefined}>
+                  {cols.map(c => <td key={c.key}>{cellText(r[c.key])}</td>)}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </>)}
-    </div>
-  );
-}
-
-function DataSourceDetails({ source, allSources = [], connectors = [], automations = [], onBack, onUpdate, onConnectData }){
-  const [tab, setTab] = useState("data");
-  const p = source.parsed;
-  const rows = p ? p.rows : [];
-  const lockStructure = !!source.fromConnector;   // configured connections: column schema fixed
-  const lockName = lockStructure && source.tableNameLocked !== false;   // Email connections explicitly allow renaming the table
-  const filterable = lockStructure && source.filterable !== false;   // Email's schema is a fixed platform contract — no filters
-  const ingested = (source.recordCount || rows.length || 0) > 0;
-  const isEmailParent = source.emailKind === "parent";
-  const isEmailChild = source.emailKind === "child";
-  const childSchemaName = (source.relations && source.relations.outgoing && source.relations.outgoing[0]) ? source.relations.outgoing[0].schema : null;
-  const childEmailSource = isEmailParent ? allSources.find(s => s.name === childSchemaName) : null;
-  const attachmentsForMessage = (messageId) => (childEmailSource && childEmailSource.parsed ? childEmailSource.parsed.rows.filter(r => r.message_id === messageId) : []);
-  const [viewerRow, setViewerRow] = useState(null);
-  const [viewerAttachment, setViewerAttachment] = useState(null);
-  const rowClickable = isEmailParent || isEmailChild;
-  const onRowClick = isEmailParent ? setViewerRow : isEmailChild ? setViewerAttachment : null;
-  const buildInitCols = () => (source.columns && source.columns.length)
-    ? source.columns.map(c => ({ ...c }))
-    : ((p && p.columns) ? p.columns.map(nm => ({ name:nm, display:nm, type:(p.typeByCol && p.typeByCol[nm]) || "string", imp:true })) : []);
-  const [name, setName] = useState(source.name || "");
-  const [singular, setSingular] = useState(source.singular || "");
-  const [plural, setPlural] = useState(source.plural || "");
-  const [desc, setDesc] = useState(source.description || "");
-  const [published, setPublished] = useState(source.published !== false);
-  const [cols, setCols] = useState(buildInitCols);
-  const [confirmFilterChange, setConfirmFilterChange] = useState(false);
-  const dataCols = (cols && cols.length)
-    ? cols.filter(c => c.imp !== false).map(c => ({ key:c.name, label:c.display || c.name }))
-    : (p ? p.columns.map(c => ({ key:c, label:c })) : []);
-
-  const editName = (v) => { if (lockName) return; setName(v.toLowerCase().replace(/[^a-z0-9_]/g, "_")); };
-  const editSingular = (v) => setSingular(v);
-  const editPlural = (v) => setPlural(v);
-  const editDesc = (v) => setDesc(v);
-  const editPublished = (v) => setPublished(v);
-  const origColsJSON = JSON.stringify(buildInitCols());
-  const colsDirty = JSON.stringify(cols) !== origColsJSON;
-  const dirty = name !== (source.name || "") || singular !== (source.singular || "") || plural !== (source.plural || "")
-    || desc !== (source.description || "") || published !== (source.published !== false)
-    || colsDirty;
-  const doSave = () => {
-    onUpdate(source.id, { name: lockName ? source.name : (name || source.name), singular, plural, description: desc, published, columns: cols });
-    setConfirmFilterChange(false);
-  };
-  const requestSave = () => {
-    if (lockName && colsDirty) setConfirmFilterChange(true);
-    else doSave();
-  };
-  const cancelEdits = () => {
-    setName(source.name || ""); setSingular(source.singular || ""); setPlural(source.plural || "");
-    setDesc(source.description || ""); setPublished(source.published !== false); setCols(buildInitCols());
-  };
-  const relColumns = cols.filter(c => c.imp !== false).map(c => c.display);
-  const tabClick = useScrollStableTabs(tab);
-
-  return (
-    <div className="vds-content">
-      <button className="vds-btn vds-btn--text vds-btn--sm proto-back-link" onClick={onBack}><Icon name="arrowLeft" size={16} />Data Tables</button>
-      <div className="vds-page-header proto-sticky-head">
-        <div>
-          <h1 className="vds-page-title">{source.name}</h1>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:10,flex:"0 0 auto"}}>
-          <span className={"vds-chip vds-chip--sm proto-pub-pill " + (published ? "yes" : "no")}>{published ? "Published" : "Unpublished"}</span>
-          <span className={"vds-chip vds-chip--sm proto-status-pill" + (source.status === "Needs configuration" ? " cfg" : (source.status === "Waiting for data" || source.status === "Not built yet") ? " wait" : "")}><span className="dot"></span>{source.status}</span>
-        </div>
-      </div>
-
-      <div className="form-grid">
-        <div className="field">
-          <label className="vds-label">Data table name</label>
-          <input className={"vds-input" + (lockName ? " locked" : "")} value={name} readOnly={lockName}
-            title={lockName ? "Managed by a connector — the data table name can't be changed" : undefined}
-            onChange={(e)=>editName(e.target.value)} />
-          <div className="vds-helper-text">{lockName ? "Managed by a connector — the name can't be changed." : "Lowercase letters and underscores only (e.g. asset_list)."}</div>
-        </div>
-      </div>
-      <div className="meta-grid">
-        <div className="form-grid">
-          <div className="field">
-            <label className="vds-label">Display Name Singular</label>
-            <input className="vds-input" placeholder="e.g. Repair" value={singular} onChange={(e)=>editSingular(e.target.value)} />
-          </div>
-          <div className="field">
-            <label className="vds-label">Display Name Plural</label>
-            <input className="vds-input" placeholder="e.g. Repairs" value={plural} onChange={(e)=>editPlural(e.target.value)} />
-          </div>
-        </div>
-      </div>
-      <div className="form-grid">
-        <div className="field" style={{marginTop:20}}>
-          <label className="vds-label">Description</label>
-          <textarea className="vds-textarea" placeholder="Describe what this data table contains…" value={desc} onChange={(e)=>editDesc(e.target.value)} />
-        </div>
-        <div className="field">
-          <label className="vds-label">Published</label>
-          <select className="vds-select" value={published ? "True" : "False"} onChange={(e)=>editPublished(e.target.value === "True")}>
-            <option>True</option><option>False</option>
-          </select>
-        </div>
-      </div>
-
-      {dirty && (
-        <div className="vds-alert vds-alert--info proto-save-bar">
-          <span className="save-note">You have unsaved changes</span>
-          <div style={{display:"flex", gap:10}}>
-            <button className="vds-btn" onClick={cancelEdits}>Cancel</button>
-            <button className="vds-btn vds-btn--primary vds-btn--sm" onClick={requestSave}><Icon name="check" size={16} />Save changes</button>
-          </div>
-        </div>
-      )}
-
-      {confirmFilterChange && (
-        <ConfirmDialog
-          title="Re-ingest this data table?"
-          body="We must delete the existing data table and re-ingest it. This may take minutes to hours and it won't be available in between. Do you want to proceed?"
-          confirmLabel="Proceed" cancelLabel="Cancel" danger
-          onConfirm={doSave}
-          onCancel={()=>setConfirmFilterChange(false)}
-        />
-      )}
-
-      <div className="vds-tabs">
-        <button className={"vds-tab" + (tab==="data" ? " vds-tab--selected" : "")} onClick={tabClick("data", setTab)}>Data</button>
-        <button className={"vds-tab" + (tab==="columns" ? " vds-tab--selected" : "")} onClick={tabClick("columns", setTab)}>Columns</button>
-        <button className={"vds-tab" + (tab==="connections" ? " vds-tab--selected" : "")} onClick={tabClick("connections", setTab)}>Connections</button>
-        <button className={"vds-tab" + (tab==="relations" ? " vds-tab--selected" : "")} onClick={tabClick("relations", setTab)}>Relations</button>
-      </div>
-      <div className="tab-body">
-        {tab==="data" ? (
-          <div>
-            <div className="vds-b2 proto-muted proto-section-note">{Number(source.recordCount||rows.length).toLocaleString()} records · {dataCols.length} columns{rowClickable ? " · click a row to open it" : ""}</div>
-            <div className="vds-table-container proto-scroll-wrap proto-data-wrap">
-              <table className="vds-table proto-preview-table">
-                <thead><tr>{dataCols.map(c => <th key={c.key}>{c.label}</th>)}</tr></thead>
-                <tbody>
-                  {rows.map((r,i) => <tr key={i} className={rowClickable ? "clickable-row" : undefined} onClick={rowClickable ? ()=>onRowClick(r) : undefined}>{dataCols.map(c => <td key={c.key}>{cellText(r[c.key])}</td>)}</tr>)}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : tab==="columns" ? (
-          <div>
-            <p className="vds-b2 proto-muted proto-cols-instr" style={{marginTop:-6}}>{source.colNameEditable
-              ? "This schema is a fixed platform contract. Column types, keys, and selection can't be changed — only the column name can be renamed."
-              : filterable
-              ? "This data table is managed by a connector. Column names, types, and key options are fixed — you can still adjust filters (changing one re-ingests the data) and add filters to control which records are imported."
-              : "Columns are fixed once the data table is created. Column names, types, and selection can't be changed here."}</p>
-            <ColumnsTab cols={cols} setCols={setCols} enableFilter={filterable} rows={rows} noRenameRemove={true} allowAdd={false} lockedKeys={ALL_OPTION_KEYS} lockColType={true} forceNameEditable={!!source.colNameEditable} />
-          </div>
-        ) : tab==="connections" ? (
-          <div>
-            <div className="conns-toolbar">{onConnectData && <ConnectDataButton connectors={connectors} onPick={onConnectData} label="Add connection" />}</div>
-            {(() => {
-              // A data can be fed by more than one connection at once (e.g. a Samsara connection that
-              // created it, plus an AWS S3 connection later mapped onto it) — each connector instance
-              // tracks its own dataSourceIds independently, so show every instance that lists this one.
-              const insts = connectors.filter(c => (c.dataSourceIds || []).includes(source.id));
-              if (insts.length === 0){
-                return <div className="vds-alert vds-alert--info proto-note proto-plain-note">No connection currently populates this data table. Use "Add connection" above to add one.</div>;
-              }
-              return (
-                <div className="vds-table-container">
-                  <div className="conns-head">
-                    <div className="dscreate-h">Name</div>
-                    <div className="dscreate-h">Connector</div>
-                    <div className="dscreate-h">Creation date</div>
-                    <div className="dscreate-h">Last updated</div>
-                    <div className="dscreate-h">Schedule</div>
-                  </div>
-                  {insts.map(inst => {
-                    const typeInfo = CONNECTORS.find(c => c.id === inst.connectorId);
-                    const sched = automations.find(a => a.connectorId === inst.id);
-                    return (
-                      <div className="conns-row" key={inst.id}>
-                        <span className="conns-name"><Icon name={(typeInfo && typeInfo.icon) || "link"} size={16} />{inst.name}</span>
-                        <span className="dscreate-num">{(typeInfo && typeInfo.name) || inst.connectorId}</span>
-                        <span className="dscreate-num">{inst.createdAt}</span>
-                        <span className="dscreate-num">{inst.updatedAt}</span>
-                        <span className="dscreate-num">{sched ? sched.scheduleText : "—"}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-          </div>
-        ) : (
-          <TableRelationsTab source={source} allSources={allSources} onUpdate={onUpdate} />
-        )}
-      </div>
 
       {viewerAttachment ? (
         <AttachmentViewerModal row={viewerAttachment}
@@ -4181,6 +4002,187 @@ function DataSourceDetails({ source, allSources = [], connectors = [], automatio
         <EmailViewerModal row={viewerRow} attachments={attachmentsForMessage(viewerRow.message_id)}
           onOpenAttachment={setViewerAttachment} onClose={()=>setViewerRow(null)} />
       ) : null}
+    </div>
+  );
+}
+
+/* The configuration page, laid out like the data tables prototype: what the table
+   is, where it comes from, how its columns map, and what automates it. */
+function DataTableConfigPage({ source, allSources = [], connectors = [], automations = [], onBack, onUpdate, onImport, onConnectData, onOpenAutomation }){
+  const [published, setPublished] = useState(source.published !== false);
+  const [singular, setSingular] = useState(source.singular || "");
+  const [plural, setPlural] = useState(source.plural || "");
+  const [desc, setDesc] = useState(source.description || "");
+  const [cols, setCols] = useState(() => (source.columns || []).map(c => ({ ...c })));
+  const manual = isManualUploadSource(source);
+  const feeds = connectors.filter(c => (c.dataSourceIds || []).includes(source.id));
+  const srcRows = feeds.length
+    ? feeds.map(inst => {
+        const type = CONNECTORS.find(c => c.id === inst.connectorId);
+        return { key:inst.id, origin:(type && type.name) || inst.connectorId, table:source.templateSourceKey || source.name, connection:inst.name };
+      })
+    : [{ key:"manual", origin:source.origin || "Upload", table:source.templateSourceKey || "—", connection:"—" }];
+  const [srcIdx, setSrcIdx] = useState(0);
+  const picked = srcRows[Math.min(srcIdx, srcRows.length - 1)];
+  const used = (automations || []).filter(a => (a.steps || []).some(st =>
+    (st.actions || []).some(act => act.refName === source.name)
+    || ((st.trigger && st.trigger.events) || []).some(ev => ev.table === source.name)));
+  const save = () => {
+    onUpdate(source.id, { published, singular, plural, description: desc, columns: cols });
+    onBack();
+  };
+  const setCol = (i, patch) => setCols(cs => cs.map((c,idx) => idx===i ? { ...c, ...patch } : c));
+  const yesOrDash = (on) => on ? <Icon name="check" size={17} /> : <span className="proto-muted">—</span>;
+
+  return (
+    <div className="vds-content">
+      <div className="proto-sticky-head">
+        <nav className="vds-breadcrumbs">
+          <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Data Tables</a>
+          <span className="vds-breadcrumbs__sep">/</span>
+          <span>{source.name}</span>
+        </nav>
+        <div className="proto-detail-head">
+          <div><h1 className="vds-page-title">{source.name}</h1></div>
+          <div className="auto-editor-actions">
+            <button className="vds-btn" onClick={onBack}>Cancel</button>
+            <button className="vds-btn vds-btn--primary" onClick={save}>Save changes</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="vds-card prompt-card cfg-card">
+        <h5 className="prompt-card__title">Table details</h5>
+        <div className="field-row">
+          <div className="field">
+            <label className="vds-label">Viaduct Data Table</label>
+            <div className="vds-b2 proto-mono cfg-readonly">{source.name}</div>
+          </div>
+          <div className="field">
+            <label className="vds-label">Type</label>
+            <div className="vds-b2 cfg-readonly">{source.type === "Table" ? "Generic table" : source.type}</div>
+          </div>
+          <div className="field">
+            <label className="vds-label">Published</label>
+            <label className="vds-choice cfg-readonly">
+              <input type="checkbox" className="vds-checkbox" checked={published} onChange={(e)=>setPublished(e.target.checked)} />
+              Publish this table
+            </label>
+          </div>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label className="vds-label">Singular form</label>
+            <input className="vds-input narrow-input" value={singular} onChange={(e)=>setSingular(e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="vds-label">Plural form</label>
+            <input className="vds-input narrow-input" value={plural} onChange={(e)=>setPlural(e.target.value)} />
+          </div>
+        </div>
+        <div className="field">
+          <div className="label-row">
+            <label className="vds-label">Description</label>
+            <span className="vds-b3 proto-muted">Used by the ViaDuck agent to decide when to access this table</span>
+          </div>
+          <textarea className="vds-textarea" value={desc} onChange={(e)=>setDesc(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="vds-card prompt-card cfg-card">
+        <h5 className="prompt-card__title">Data sources</h5>
+        <div className="vds-table-container">
+          <table className="vds-table">
+            <thead><tr>
+              {srcRows.length > 1 && <th style={{width:44}}></th>}
+              <th className="cols-table__left">Source</th>
+              <th className="cols-table__left">Source table</th>
+              <th className="cols-table__left">Connection</th>
+              <th>Records</th><th>Last synced</th>
+              <th style={{width:140}}></th><th style={{width:150}}></th>
+            </tr></thead>
+            <tbody>
+              {srcRows.map((r,i) => (
+                <tr key={r.key}>
+                  {srcRows.length > 1 && (
+                    <td style={{textAlign:"center"}}>
+                      <input type="radio" className="vds-radio" name="cfg-source" checked={i === srcIdx}
+                        aria-label={"Show column mappings for " + r.connection} onChange={()=>setSrcIdx(i)} />
+                    </td>
+                  )}
+                  <td className="cols-table__left">{r.origin}</td>
+                  <td className="cols-table__left proto-mono">{r.table}</td>
+                  <td className="cols-table__left">{r.connection}</td>
+                  <td style={{textAlign:"center"}}>{Number(source.recordCount || 0).toLocaleString()}</td>
+                  <td style={{textAlign:"center"}}>{source.lastSynced || "Not synced yet"}</td>
+                  <td style={{textAlign:"center"}}>
+                    <button className="vds-btn vds-btn--sm vds-btn--start-icon" onClick={()=>onImport(source.id)}>
+                      <Icon name={manual ? "upload" : "refresh"} size={16} />{manual ? "Upload" : "Sync now"}</button>
+                  </td>
+                  <td style={{textAlign:"center"}}>
+                    {onConnectData && <ConnectDataButton connectors={connectors} onPick={onConnectData} label="Change source" />}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="vds-card prompt-card cfg-card">
+        <h5 className="prompt-card__title">{srcRows.length > 1 ? picked.origin + " " + picked.table + " column mappings" : "Column mappings"}</h5>
+        <div className="vds-table-container">
+          <table className="vds-table cols-table">
+            <thead><tr>
+              <th className="cols-table__left">Source column</th>
+              <th className="cols-table__left">Viaduct column</th>
+              <th>Type</th><th>Filter imported records</th><th>Primary key</th><th>Required</th><th>Order by</th>
+            </tr></thead>
+            <tbody>
+              {cols.map((c,i) => (
+                <tr key={c.name + i} className={c.imp !== false ? "is-selected" : ""}>
+                  <td className="cols-table__left proto-mono">{c.name}</td>
+                  <td className="cols-table__left">
+                    <input className="vds-input vds-input--sm" value={c.display || c.name}
+                      aria-label={"Viaduct name for " + c.name} onChange={(e)=>setCol(i,{ display:e.target.value })} />
+                  </td>
+                  <td>{c.type}</td>
+                  <td>{colFilterActive(c) ? "Set" : <span className="proto-muted">—</span>}</td>
+                  <td>{yesOrDash(!!c.pk)}</td>
+                  <td>{yesOrDash(!!c.req)}</td>
+                  <td>{yesOrDash(!!c.orderBy)}</td>
+                </tr>
+              ))}
+              {cols.length === 0 && <tr><td colSpan={7} className="proto-muted">No columns yet.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="vds-card prompt-card cfg-card">
+        <h5 className="prompt-card__title">Automation</h5>
+        {used.length === 0
+          ? <div className="vds-alert vds-alert--info proto-note">Nothing automates this data table yet.</div>
+          : (
+            <div className="prompt-auto-table">
+              <div className="prompt-auto-row prompt-auto-row--head"><div>Name</div><div>Trigger</div><div>History</div></div>
+              {used.map(a => (
+                <div className="prompt-auto-row clickable-row" key={a.id} role="button" tabIndex={0}
+                  onClick={()=>onOpenAutomation && onOpenAutomation(a.id)}
+                  onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); onOpenAutomation && onOpenAutomation(a.id); } }}>
+                  <div className="prompt-auto-name">{a.name}</div>
+                  <div className="proto-muted">{automationTriggerText(a)}</div>
+                  <div><RunStrip runs={a.runList} /></div>
+                </div>
+              ))}
+            </div>
+          )}
+      </div>
+
+      <div className="vds-card prompt-card cfg-card">
+        <h5 className="prompt-card__title">Relations</h5>
+        <TableRelationsTab source={source} allSources={allSources} onUpdate={onUpdate} />
+      </div>
     </div>
   );
 }
@@ -10441,11 +10443,14 @@ function App(){
       onCancel={() => setConfiguringId(null)}
       onSave={(patch) => { updateSource(configuringId, patch); setConfiguringId(null); }} />;
   } else if (activeId === "datasources" && dataViewId && sources.find(s => s.id === dataViewId)){
-    page = <DataTableDataPage source={sources.find(s => s.id === dataViewId)}
+    page = <DataTableDataPage source={sources.find(s => s.id === dataViewId)} allSources={sources}
       onBack={() => setDataViewId(null)}
       onConfigure={(id) => { setDataViewId(null); setDetailId(id); }} />;
   } else if (activeId === "datasources" && detailId && selected){
-    page = <DataSourceDetails source={selected} allSources={sources} connectors={connectors} automations={automations} onBack={() => setDetailId(null)} onUpdate={updateSource}
+    page = <DataTableConfigPage source={selected} allSources={sources} connectors={connectors} automations={automations}
+      onBack={() => setDetailId(null)} onUpdate={updateSource}
+      onImport={(id) => setSources(s => s.map(x => x.id===id ? { ...x, lastSynced:"Just now", status:"Ready" } : x))}
+      onOpenAutomation={(id) => { setDetailId(null); setActiveId("automations"); setViewingAutoId(id); setViewingAutoTab("steps"); }}
       onConnectData={(connId, instanceId) => setConnectDataFor({ targetId: selected.id, connId, instanceId })} />;
   } else if (activeId === "datasources" && updatingId && updating){
     page = <UpdateDataSource source={updating} onCancel={() => setUpdatingId(null)} onDone={() => setUpdatingId(null)} onUpdate={updateSource} />;
