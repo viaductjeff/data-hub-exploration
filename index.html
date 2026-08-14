@@ -235,9 +235,10 @@
   .conn-name { font: 700 16px/24px var(--vds-font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .conn-group { color: var(--vds-text-placeholder); }
   .conn-made { flex: none; gap: 4px; margin-right: 28px; }
-  .src-tbl { grid-template-columns: 44px 1.1fr 2.4fr 1.3fr 130px; }
-  .src-tbl__check { display: flex; justify-content: center; }
-  .src-tbl__desc { color: var(--vds-text-secondary); }
+  .src-tbl-wrap { max-width: 1100px; }
+  .src-name-cell { font-weight: 500; text-align: left; }
+  .src-desc-cell { color: var(--vds-text-secondary); text-align: left; }
+  .src-viaduct-name { font-family: var(--vds-font-mono); font-size: 12px; }
   .import-card { margin-bottom: var(--vds-dialog-gap); }
 
   /* ---------- credentials / verify ---------- */
@@ -4417,6 +4418,9 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
   const triggerFor = (name) => tableTriggers[name] || newWizardTrigger();
   const setTriggerFor = (name) => (updater) =>
     setTableTriggers(m => ({ ...m, [name]: updater(m[name] || newWizardTrigger()) }));
+  /* The next selected table still waiting to be mapped, ignoring the one in hand. */
+  const nextToMap = (exceptName) => tmpl.sources.find(s =>
+    s.name !== exceptName && picks[s.name] && !configs[s.name] && !existingNames.includes(s.name)) || null;
   // Nothing is picked to begin with — a connection stands on its own.
   const [picks, setPicks] = useState(() => editing
     ? Object.fromEntries(tmpl.sources.map(s => [s.name, !!existingByName[s.name]]))
@@ -4498,13 +4502,21 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
     return <ConfigureSource source={draft}
       title="Customize Data Table"
       sub={"This is customize ingestion — the data table name and filters can be changed here, but column names, type, and key options are fixed by " + conn.name + "'s API. (File-based sources allow customizing more.)"}
-      submitLabel="Save customization"
+      submitLabel={fromDataTables ? (nextToMap(configuring) ? "Next mapping" : "Schedule import") : "Save customization"}
       lockName={false} lockedKeys={ALL_OPTION_KEYS} lockColType={true} noRenameRemove={true} forceNameEditable={true} allowAddColumns={false}
       writeModeLocked={true} writeModeReadOnly={opinionatedWrite === "Append" ? "Append — new rows only, no deletion (event data)" : "Update — upsert on primary key (table data)"}
       originalNameLabel={conn.name} showRelationsTab={false}
       initialOpenFilterCol={configuringOpenCol}
       onCancel={()=>{ setConfiguring(null); setConfiguringOpenCol(null); }}
-      onSave={(patch)=>{ setConfigs(c => ({ ...c, [configuring]: patch })); setConfiguring(null); setConfiguringOpenCol(null); }} />;
+      onSave={(patch)=>{
+        setConfigs(c => ({ ...c, [configuring]: patch }));
+        setConfiguringOpenCol(null);
+        /* Mapping runs table by table: straight on to the next one, or to the schedules. */
+        const next = fromDataTables ? nextToMap(configuring) : null;
+        if (next){ setConfiguring(next.name); return; }
+        setConfiguring(null);
+        if (fromDataTables) setPage("schedule");
+      }} />;
   }
 
   // ---- Page 1: Authenticate ----
@@ -4564,47 +4576,50 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
           <Stepper current={2} steps={CONNECTOR_WIZARD_STEPS} />
           <div className="vds-h4 proto-section-title">Select source table(s)</div>
           <div className="vds-b2 proto-muted proto-section-note">Pick the {conn.name} tables to bring in, then map each one to a Viaduct data table.</div>
-          <div className="vds-table-container">
-            <div className="thead src-tbl">
-              <div className="th"></div>
-              <div className="th">{conn.name} table</div>
-              <div className="th">Description</div>
-              <div className="th">Viaduct table</div>
-              <div className="th"></div>
-            </div>
-            <div className="tbody">
-              {tmpl.sources.map(s => {
-                const picked = !!picks[s.name];
-                const mapped = isMapped(s);
-                return (
-                  <div className="trow src-tbl" key={s.name}>
-                    <div className="td src-tbl__check">
-                      <input type="checkbox" className="vds-checkbox" checked={picked}
-                        aria-label={"Include " + s.name} onChange={()=>requestToggleOff(s)} />
-                    </div>
-                    <div className="td td-name">{s.name}</div>
-                    <div className="td src-tbl__desc" title={s.description}>{s.description}</div>
-                    <div className="td">
-                      {mapped ? <span className="proto-mono">{dsNamePreview(s)}</span>
-                        : picked ? <span className="vds-chip vds-chip--sm vds-chip--error">Not mapped</span>
-                        : null}
-                    </div>
-                    <div className="td right">
-                      <button className={"vds-btn vds-btn--sm" + (picked && !mapped ? " vds-btn--tertiary" : "")}
-                        disabled={!picked} onClick={()=>{ setConfiguring(s.name); setConfiguringOpenCol(null); }}>
-                        {mapped ? "Edit mapping" : "Map"}</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="vds-table-container src-tbl-wrap">
+            <table className="vds-table">
+              <thead>
+                <tr>
+                  <th style={{width:40}}></th>
+                  <th style={{textAlign:"left"}}>{conn.name} table</th>
+                  <th style={{textAlign:"left"}}>Description</th>
+                  <th style={{width:230}}>Viaduct table</th>
+                  <th style={{width:130}}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {tmpl.sources.map(s => {
+                  const picked = !!picks[s.name];
+                  const mapped = isMapped(s);
+                  return (
+                    <tr key={s.name}>
+                      <td style={{textAlign:"center"}}>
+                        <input type="checkbox" className="vds-checkbox" checked={picked}
+                          aria-label={"Include " + s.name} onChange={()=>requestToggleOff(s)} />
+                      </td>
+                      <td className="src-name-cell">{s.name}</td>
+                      <td className="src-desc-cell">{s.description}</td>
+                      <td style={{textAlign:"center"}}>
+                        {mapped ? <span className="src-viaduct-name">{dsNamePreview(s)}</span>
+                          : picked ? <span className="vds-chip vds-chip--sm vds-chip--error">Not mapped</span>
+                          : null}
+                      </td>
+                      <td style={{textAlign:"center"}}>
+                        <button className={"vds-btn vds-btn--sm" + (picked && !mapped ? " vds-btn--tertiary" : "")}
+                          disabled={!picked} onClick={()=>{ setConfiguring(s.name); setConfiguringOpenCol(null); }}>Map</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
           <div className="wiz-footer">
             <button className="vds-btn" onClick={()=>setPage(editing ? "schedule" : "auth")}><Icon name="arrowLeft" size={17} />Back</button>
             {nextUnmapped
               ? <button className="vds-btn vds-btn--primary"
                   onClick={()=>{ setConfiguring(nextUnmapped.name); setConfiguringOpenCol(null); }}>Map new table(s)</button>
-              : <button className="vds-btn vds-btn--primary" onClick={()=>setPage("schedule")}>Continue<Icon name="arrowRight" size={17} /></button>}
+              : <button className="vds-btn vds-btn--primary" onClick={()=>setPage("schedule")}>Automate table import</button>}
           </div>
         </div>
       );
