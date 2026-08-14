@@ -65,6 +65,10 @@
   .field { display: flex; flex-direction: column; gap: var(--vds-label-gap); margin-bottom: var(--vds-main-gap); }
   .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--vds-form-gap) 20px; margin-bottom: var(--vds-main-gap); }
   .form-grid .field { margin-bottom: 0; }
+  /* Type and its publish toggle share a row. */
+  .type-row { display: flex; align-items: center; gap: var(--vds-dialog-gap); }
+  .type-row .vds-select { flex: 0 1 200px; }
+  .type-row__publish { flex: none; white-space: nowrap; }
   .form-grid .field:has(textarea, .vds-alert, table, .vds-table-container) { grid-column: 1 / -1; }
   :is(.meta-grid, .cred-grid, .colfilter-editor, .startdate-grid, .xf-row) > .form-grid { display: contents; }
   .meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--vds-dialog-gap) 20px; margin-top: var(--vds-main-gap); }
@@ -3713,34 +3717,37 @@ function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = fals
           onChange={(e)=>{ if (lockName) return; setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g,"_")); }} />
         <div className="vds-helper-text">{lockName ? "Set when the data table was created — can't be changed." : "Lowercase letters and underscores only."}</div>
       </div>
+      <div className="field">
+        <label className="vds-label">Type</label>
+        <div className="type-row">
+          <select className="vds-select" value={type} onChange={(e)=>setType(e.target.value)}>
+            <option>Asset</option><option>Event</option><option>Table</option><option>Media</option>
+          </select>
+          <label className="vds-choice type-row__publish">
+            <input type="checkbox" className="vds-checkbox" checked={published} onChange={(e)=>setPublished(e.target.checked)} />
+            Publish mapped Viaduct table
+          </label>
+        </div>
+        <div className="vds-helper-text">Published tables are visible to the rest of the app once configured.</div>
+      </div>
     </div>
     {afterNameSection}
+    <div className="vds-h4 proto-section-title">Display names</div>
     <div className="form-grid">
       <div className="field">
-        <label className="vds-label">Display Name Singular</label>
+        <label className="vds-label">Singular form</label>
         <input className="vds-input" placeholder="e.g. Driver" value={singular} onChange={(e)=>editSingular(e.target.value)} />
       </div>
       <div className="field">
-        <label className="vds-label">Display Name Plural</label>
+        <label className="vds-label">Plural form</label>
         <input className="vds-input" placeholder="e.g. Drivers" value={plural} onChange={(e)=>editPlural(e.target.value)} />
       </div>
+    </div>
+    <div className="form-grid">
       <div className="field">
         <label className="vds-label">Description</label>
         <textarea className="vds-textarea" placeholder="Describe what this data table contains…" value={desc} onChange={(e)=>setDesc(e.target.value)} />
         <div className="vds-helper-text">Agents use this to decide when to query this data table.</div>
-      </div>
-      <div className="field">
-        <label className="vds-label">Type</label>
-        <select className="vds-select" value={type} onChange={(e)=>setType(e.target.value)}>
-          <option>Asset</option><option>Event</option><option>Table</option><option>Media</option>
-        </select>
-      </div>
-      <div className="field">
-        <label className="vds-label">Published</label>
-        <select className="vds-select" value={published ? "True" : "False"} onChange={(e)=>setPublished(e.target.value === "True")}>
-          <option>True</option><option>False</option>
-        </select>
-        <div className="vds-helper-text">Published sources are visible to the rest of the app once configured.</div>
       </div>
       <div className="field">
         <label className="vds-label">Write behavior</label>
