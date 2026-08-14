@@ -3652,7 +3652,7 @@ function MapImportStep({ parsed, origin, onCancel, onBack, onCreate }){
 }
 
 /* ---------------- Configure data (column parameters) ---------------- */
-function ConfigureSource({ source, title, sub, submitLabel, onCancel, onSave, lockedKeys = [], stepper = null, extraSection = null, afterNameSection = null, lockName = false, allowAddColumns = false, noRenameRemove = false, lockColType = false, forceNameEditable = false, enableFilter = true, writeModeLocked = false, writeModeReadOnly = "", initialOpenFilterCol = null, showRelationsTab = true, originalNameLabel = null }){
+function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = false, onCancel, onSave, lockedKeys = [], stepper = null, extraSection = null, afterNameSection = null, lockName = false, allowAddColumns = false, noRenameRemove = false, lockColType = false, forceNameEditable = false, enableFilter = true, writeModeLocked = false, writeModeReadOnly = "", initialOpenFilterCol = null, showRelationsTab = true, originalNameLabel = null }){
   const p = source.parsed || { columns:[], typeByCol:{}, rows:[] };
   const [name, setName] = useState(source.name || "");
   const initNames = displayNamesFromName(source.name || "");
@@ -3781,7 +3781,11 @@ function ConfigureSource({ source, title, sub, submitLabel, onCancel, onSave, lo
 
     <div className="wiz-footer">
       <button className="vds-btn" onClick={onCancel}><Icon name="arrowLeft" size={17} />Cancel</button>
-      <button className="vds-btn vds-btn--primary" onClick={save}><Icon name="check" size={17} />{submitLabel || "Save configuration"}</button>
+      <button className="vds-btn vds-btn--primary" onClick={save}>
+        {submitAdvance
+          ? (<>{submitLabel}<Icon name="arrowRight" size={17} /></>)
+          : (<><Icon name="check" size={17} />{submitLabel || "Save configuration"}</>)}
+      </button>
     </div>
   </div>);
 }
@@ -4544,6 +4548,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
       title="Customize Data Table"
       sub={"This is customize ingestion — the data table name and filters can be changed here, but column names, type, and key options are fixed by " + conn.name + "'s API. (File-based sources allow customizing more.)"}
       submitLabel={fromDataTables ? (nextToMap(configuring) ? "Next mapping" : "Schedule import") : "Save customization"}
+      submitAdvance={!!fromDataTables}
       lockName={false} lockedKeys={ALL_OPTION_KEYS} lockColType={true} noRenameRemove={true} forceNameEditable={true} allowAddColumns={false}
       writeModeLocked={true} writeModeReadOnly={opinionatedWrite === "Append" ? "Append — new rows only, no deletion (event data)" : "Update — upsert on primary key (table data)"}
       originalNameLabel={conn.name} showRelationsTab={false}
@@ -4659,8 +4664,8 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
             <button className="vds-btn" onClick={()=>setPage(editing ? "schedule" : "auth")}><Icon name="arrowLeft" size={17} />Back</button>
             {nextUnmapped
               ? <button className="vds-btn vds-btn--primary"
-                  onClick={()=>{ setConfiguring(nextUnmapped.name); setConfiguringOpenCol(null); }}>Map new table(s)</button>
-              : <button className="vds-btn vds-btn--primary" onClick={()=>setPage("schedule")}>Schedule import</button>}
+                  onClick={()=>{ setConfiguring(nextUnmapped.name); setConfiguringOpenCol(null); }}>Map new table(s)<Icon name="arrowRight" size={17} /></button>
+              : <button className="vds-btn vds-btn--primary" onClick={()=>setPage("schedule")}>Schedule import<Icon name="arrowRight" size={17} /></button>}
           </div>
         </div>
       );
