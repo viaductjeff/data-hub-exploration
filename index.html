@@ -583,6 +583,10 @@
   .cfg-card { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); }
   .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); }
   .cfg-readonly { padding-top: 6px; }
+  .cfg-card__head { cursor: pointer; }
+  .colfilter-dialog { width: min(640px, 92vw); max-width: min(640px, 92vw); }
+  .colfilter-dialog .vds-dialog__content { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
+  .colfilter-dialog__actions .colfilter-clear { margin-right: auto; }
   .prompt-auto-table { border: 1px solid var(--vds-gray-100); border-radius: 4px; overflow: hidden; }
   .prompt-auto-row { display: grid; grid-template-columns: 1.4fr 1.2fr 124px; gap: var(--vds-form-gap);
     align-items: center; padding: 10px 14px; border-top: 1px solid var(--vds-gray-100); }
@@ -3080,6 +3084,108 @@ function ChipsInput({ values, onChange, suggestions, placeholder }){
     </div>
   );
 }
+const filterInputType = (t) => t === "number" ? "number" : (t === "datetime" ? "datetime-local" : "date");
+function columnFilterLabel(c){
+  if (!colFilterActive(c)) return "Filter";
+  const op = c.filter.op, kind = filterOpKind(op), v = c.filter.values || [];
+  if (kind === "novalue") return op;
+  if (kind === "single") return op + " " + (v[0] || "");
+  if (kind === "range") return "is between " + (v[0] || "…") + " and " + (v[1] || "…");
+  if (kind === "period") return "within the last " + (v[0] || "") + " " + (v[1] || "days");
+  const vs = colFilterValues(c); const shown = vs.slice(0,2).join(", ");
+  return op + " " + shown + (vs.length > 2 ? " +" + (vs.length - 2) : "");
+}
+/* Operator and value controls for one column's import filter — shared by the wizard's
+   column table and the configuration page's filter dialog. */
+function ColumnFilterFields({ col, onChange }){
+  const c = col;
+  const ops = filterOpsFor(c.type);
+  const f = c.filter || { op: ops[0], values: [] };
+  const kind = filterOpKind(f.op);
+  const upd = (patch) => onChange(patch);
+  return (<>
+        <div className="field" style={{width:210}}>
+          <label className="vds-label">Operator</label>
+          <select className="vds-select" value={f.op} onChange={(e)=>{
+            const op = e.target.value; const nk = filterOpKind(op), ok = filterOpKind(f.op);
+            const values = (nk === ok) ? (f.values || []) : (nk === "period" ? ["", "days"] : []);
+            upd({ filter:{ op, values } });
+          }}>
+            {ops.map(o => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+        {kind === "novalue" ? (
+          <div className="form-grid">
+            <div className="field" style={{flex:"1 1 auto"}}>
+              <label className="vds-label">Value</label>
+              <div className="colfilter-novalue">No value needed for “{f.op}”.</div>
+            </div>
+          </div>
+        ) : kind === "set" ? (
+          <div className="form-grid">
+            <div className="field" style={{minWidth:280, flex:"1 1 280px"}}>
+              <label className="vds-label">Values</label>
+              <ChipsInput values={f.values || []}
+                onChange={(vals)=>upd({ filter:{ op:f.op, values:vals } })}
+                placeholder="Type a value, press Enter…" />
+              <div className="vds-helper-text">Add one or more values — press Enter or comma after each. Matches against the full ingested data set, not just the sample shown in this preview.</div>
+            </div>
+          </div>
+        ) : kind === "single" ? (
+          <div className="field" style={{width:230}}>
+            <label className="vds-label">Value</label>
+            <input className="vds-input" type={filterInputType(c.type)} value={(f.values && f.values[0]) || ""}
+              onChange={(e)=>upd({ filter:{ op:f.op, values:[e.target.value] } })} />
+          </div>
+        ) : kind === "range" ? (
+          <div className="form-grid">
+            <div className="field" style={{flex:"1 1 auto"}}>
+              <label className="vds-label">Range (inclusive)</label>
+              <div className="range-row">
+                <input className="vds-input" style={{maxWidth:210}} type={filterInputType(c.type)} value={(f.values && f.values[0]) || ""}
+                  onChange={(e)=>upd({ filter:{ op:f.op, values:[e.target.value, (f.values && f.values[1]) || ""] } })} />
+                <span className="range-sep">and</span>
+                <input className="vds-input" style={{maxWidth:210}} type={filterInputType(c.type)} value={(f.values && f.values[1]) || ""}
+                  onChange={(e)=>upd({ filter:{ op:f.op, values:[(f.values && f.values[0]) || "", e.target.value] } })} />
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="form-grid">
+            <div className="field" style={{flex:"1 1 auto"}}>
+              <label className="vds-label">Within the last</label>
+              <div className="range-row">
+                <input className="vds-input" style={{maxWidth:130}} type="number" min="1" placeholder="e.g. 30" value={(f.values && f.values[0]) || ""}
+                  onChange={(e)=>upd({ filter:{ op:f.op, values:[e.target.value, (f.values && f.values[1]) || "days"] } })} />
+                <select className="vds-select" style={{maxWidth:170}} value={(f.values && f.values[1]) || "days"}
+                  onChange={(e)=>upd({ filter:{ op:f.op, values:[(f.values && f.values[0]) || "", e.target.value] } })}>
+                  {FILTER_PERIOD_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+              <div className="vds-helper-text">Keeps records dated within the last {(f.values && f.values[0]) || "N"} {(f.values && f.values[1]) || "days"} up to today.</div>
+            </div>
+          </div>
+        )}
+  </>);
+}
+function ColumnFilterDialog({ col, onApply, onClose }){
+  const [draft, setDraft] = useState(col);
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="vds-dialog proto-modal-card colfilter-dialog" onClick={(e)=>e.stopPropagation()}>
+        <div className="vds-dialog__title">Filter <span className="vds-b2 proto-muted">· only import records where <b>{col.display || col.name}</b>…</span></div>
+        <div className="vds-dialog__content">
+          <ColumnFilterFields col={draft} onChange={(patch)=>setDraft(d => ({ ...d, ...patch }))} />
+        </div>
+        <div className="vds-dialog__actions colfilter-dialog__actions">
+          {colFilterActive(draft) && <button className="colfilter-clear" onClick={()=>{ onApply({ filter:null }); onClose(); }}>Clear filter</button>}
+          <button className="vds-btn" onClick={onClose}>Cancel</button>
+          <button className="vds-btn vds-btn--primary" onClick={()=>{ onApply({ filter: draft.filter || null }); onClose(); }}>Apply filter</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRenameRemove = false, allowAdd = false, lockColType = false, forceNameEditable = false, initialOpenFilterCol = null, originalNameLabel = null }){
   const allSel = cols.length>0 && cols.every(c => c.imp);
   const toggleAll = () => setCols(cs => cs.map(c => ({...c, imp: !allSel})));
@@ -3088,7 +3194,6 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
   const [openFilter, setOpenFilter] = useState(() => initialOpenFilterCol ? cols.findIndex(c => c.name === initialOpenFilterCol) : -1);
   const isLocked = (key) => lockedKeys.indexOf(key) !== -1;
   const hasLocked = lockedKeys.length > 0;
-  const numDateInputType = (t) => t === "number" ? "number" : (t === "datetime" ? "datetime-local" : "date");
   const isTimeType = (t) => t === "date" || t === "datetime";
   const visibleOptionCols = PRIMARY_OPTION_COLS.concat(ADVANCED_OPTION_COLS);
   const addColumn = () => setCols(cs => {
@@ -3097,16 +3202,6 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
     return [...cs, { name:nm, display:nm, type:"string", imp:true, pk:false, req:false, orderBy:false, lowCard:false, part:false, _added:true }];
   });
   const removeColumn = (i) => { setOpenFilter(-1); setCols(cs => cs.filter((_,idx) => idx !== i)); };
-  const filterLabel = (c) => {
-    if (!colFilterActive(c)) return "Filter";
-    const op = c.filter.op, kind = filterOpKind(op), v = c.filter.values || [];
-    if (kind === "novalue") return op;
-    if (kind === "single") return op + " " + (v[0] || "");
-    if (kind === "range") return "is between " + (v[0] || "…") + " and " + (v[1] || "…");
-    if (kind === "period") return "within the last " + (v[0] || "") + " " + (v[1] || "days");
-    const vs = colFilterValues(c); const shown = vs.slice(0,2).join(", ");
-    return op + " " + shown + (vs.length > 2 ? " +" + (vs.length - 2) : "");
-  };
   // Partition guardrail: a non-blocking warning, not a hard stop.
   // - Timestamp columns partitioned by Month can produce 100+ partitions across a few years of data.
   // - String columns without Low Cardinality checked are a proxy for high-cardinality — partitioning
@@ -3139,9 +3234,6 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
           </thead>
           <tbody>
           {cols.map((c,i) => {
-            const ops = filterOpsFor(c.type);
-            const f = c.filter || { op: ops[0], values: [] };
-            const kind = filterOpKind(f.op);
             const nameLocked = noRenameRemove && !c._added && !forceNameEditable;
             const importLocked = noRenameRemove && !c._added;
             const partWarn = partitionWarning(c);
@@ -3174,7 +3266,7 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
               {enableFilter && (
                 <td>
                   <button type="button" className={"cg-filter-btn" + (colFilterActive(c) ? " on" : "")} onClick={()=>setOpenFilter(openFilter===i ? -1 : i)} title={colFilterActive(c) ? "Edit filter" : "Add filter"}>
-                    <Icon name="filter" size={15} /><span className="cg-filter-txt">{filterLabel(c)}</span>
+                    <Icon name="filter" size={15} /><span className="cg-filter-txt">{columnFilterLabel(c)}</span>
                   </button>
                 </td>
               )}
@@ -3214,68 +3306,7 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
               <tr><td colSpan={colCount}>
               <div className="colfilter-editor">
                 <div className="colfilter-title">Filter <span>· only import records where <b>{c.display || c.name}</b>…</span></div>
-                <div className="field" style={{width:210}}>
-                  <label className="vds-label">Operator</label>
-                  <select className="vds-select" value={f.op} onChange={(e)=>{
-                    const op = e.target.value; const nk = filterOpKind(op), ok = filterOpKind(f.op);
-                    const values = (nk === ok) ? (f.values || []) : (nk === "period" ? ["", "days"] : []);
-                    upd(i,{ filter:{ op, values } });
-                  }}>
-                    {ops.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </div>
-                {kind === "novalue" ? (
-                  <div className="form-grid">
-                    <div className="field" style={{flex:"1 1 auto"}}>
-                      <label className="vds-label">Value</label>
-                      <div className="colfilter-novalue">No value needed for “{f.op}”.</div>
-                    </div>
-                  </div>
-                ) : kind === "set" ? (
-                  <div className="form-grid">
-                    <div className="field" style={{minWidth:280, flex:"1 1 280px"}}>
-                      <label className="vds-label">Values</label>
-                      <ChipsInput values={f.values || []}
-                        onChange={(vals)=>upd(i,{ filter:{ op:f.op, values:vals } })}
-                        placeholder="Type a value, press Enter…" />
-                      <div className="vds-helper-text">Add one or more values — press Enter or comma after each. Matches against the full ingested data set, not just the sample shown in this preview.</div>
-                    </div>
-                  </div>
-                ) : kind === "single" ? (
-                  <div className="field" style={{width:230}}>
-                    <label className="vds-label">Value</label>
-                    <input className="vds-input" type={numDateInputType(c.type)} value={(f.values && f.values[0]) || ""}
-                      onChange={(e)=>upd(i,{ filter:{ op:f.op, values:[e.target.value] } })} />
-                  </div>
-                ) : kind === "range" ? (
-                  <div className="form-grid">
-                    <div className="field" style={{flex:"1 1 auto"}}>
-                      <label className="vds-label">Range (inclusive)</label>
-                      <div className="range-row">
-                        <input className="vds-input" style={{maxWidth:210}} type={numDateInputType(c.type)} value={(f.values && f.values[0]) || ""}
-                          onChange={(e)=>upd(i,{ filter:{ op:f.op, values:[e.target.value, (f.values && f.values[1]) || ""] } })} />
-                        <span className="range-sep">and</span>
-                        <input className="vds-input" style={{maxWidth:210}} type={numDateInputType(c.type)} value={(f.values && f.values[1]) || ""}
-                          onChange={(e)=>upd(i,{ filter:{ op:f.op, values:[(f.values && f.values[0]) || "", e.target.value] } })} />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="form-grid">
-                    <div className="field" style={{flex:"1 1 auto"}}>
-                      <label className="vds-label">Within the last</label>
-                      <div className="range-row">
-                        <input className="vds-input" style={{maxWidth:130}} type="number" min="1" placeholder="e.g. 30" value={(f.values && f.values[0]) || ""}
-                          onChange={(e)=>upd(i,{ filter:{ op:f.op, values:[e.target.value, (f.values && f.values[1]) || "days"] } })} />
-                        <select className="vds-select" style={{maxWidth:170}} value={(f.values && f.values[1]) || "days"}
-                          onChange={(e)=>upd(i,{ filter:{ op:f.op, values:[(f.values && f.values[0]) || "", e.target.value] } })}>
-                          {FILTER_PERIOD_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                        </select>
-                      </div>
-                      <div className="vds-helper-text">Keeps records dated within the last {(f.values && f.values[0]) || "N"} {(f.values && f.values[1]) || "days"} up to today.</div>
-                    </div>
-                  </div>
-                )}
+                <ColumnFilterFields col={c} onChange={(patch)=>upd(i,patch)} />
                 <div className="colfilter-actions">
                   {colFilterActive(c) && <button type="button" className="colfilter-clear" onClick={()=>{ upd(i,{ filter:null }); setOpenFilter(-1); }}>Clear filter</button>}
                   <button type="button" className="vds-btn vds-btn--primary vds-btn--sm" onClick={()=>setOpenFilter(-1)}>Done</button>
@@ -4023,6 +4054,8 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
       })
     : [{ key:"manual", origin:source.origin || "Upload", table:source.templateSourceKey || "—", connection:"—" }];
   const [srcIdx, setSrcIdx] = useState(0);
+  const [filterIdx, setFilterIdx] = useState(-1);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const picked = srcRows[Math.min(srcIdx, srcRows.length - 1)];
   const used = (automations || []).filter(a => (a.steps || []).some(st =>
     (st.actions || []).some(act => act.refName === source.name)
@@ -4032,6 +4065,13 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
     onBack();
   };
   const setCol = (i, patch) => setCols(cs => cs.map((c,idx) => idx===i ? { ...c, ...patch } : c));
+  const parsed = source.parsed || { rows:[], previewRows:[] };
+  const isSample = !((parsed.rows || []).length) && !!((parsed.previewRows || []).length);
+  const baseRows = (parsed.rows && parsed.rows.length) ? parsed.rows : (parsed.previewRows || []);
+  const hasFilter = cols.some(colFilterActive);
+  const filteredRows = applyColumnFilters(baseRows, cols);
+  const previewRows = filteredRows.slice(0,100);
+  const previewCols = cols.filter(c => c.imp !== false).map(c => ({ key:c.name, label:c.display || c.name }));
   const yesOrDash = (on) => on ? <Icon name="check" size={17} /> : <span className="proto-muted">—</span>;
 
   return (
@@ -4147,7 +4187,12 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
                       aria-label={"Viaduct name for " + c.name} onChange={(e)=>setCol(i,{ display:e.target.value })} />
                   </td>
                   <td>{c.type}</td>
-                  <td>{colFilterActive(c) ? "Set" : <span className="proto-muted">—</span>}</td>
+                  <td>
+                    <button className={"cg-filter-btn" + (colFilterActive(c) ? " on" : "")} onClick={()=>setFilterIdx(i)}
+                      title={colFilterActive(c) ? "Edit filter" : "Add filter"}>
+                      <Icon name="filter" size={15} /><span className="cg-filter-txt">{columnFilterLabel(c)}</span>
+                    </button>
+                  </td>
                   <td>{yesOrDash(!!c.pk)}</td>
                   <td>{yesOrDash(!!c.req)}</td>
                   <td>{yesOrDash(!!c.orderBy)}</td>
@@ -4157,6 +4202,34 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
             </tbody>
           </table>
         </div>
+      </div>
+
+      {filterIdx >= 0 && cols[filterIdx] && (
+        <ColumnFilterDialog col={cols[filterIdx]}
+          onApply={(patch)=>setCol(filterIdx, patch)}
+          onClose={()=>setFilterIdx(-1)} />
+      )}
+
+      <div className="vds-card prompt-card cfg-card">
+        <div className="prompt-card__head prompt-card__head--center cfg-card__head" role="button" tabIndex={0}
+          aria-expanded={previewOpen} onClick={()=>setPreviewOpen(v=>!v)}
+          onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); setPreviewOpen(v=>!v); } }}>
+          <h5 className="prompt-card__title">Preview data</h5>
+          <button className="vds-icon-btn vds-icon-btn--sm" aria-label={previewOpen ? "Collapse preview data" : "Expand preview data"}
+            onClick={(e)=>{ e.stopPropagation(); setPreviewOpen(v=>!v); }}>
+            <Icon name={previewOpen ? "chevronUp" : "chevronDown"} size={18} /></button>
+        </div>
+        {previewOpen && (previewRows.length > 0 ? (<>
+          <div className="vds-b2 proto-muted">{isSample ? "Sample data to help guide column configuration — this connector hasn't synced yet, so these rows aren't real records. " : ""}{hasFilter ? ("Filtered sample — " + filteredRows.length + " of " + baseRows.length + " sample rows match the current filters.") : ("First " + previewRows.length + " rows.")}</div>
+          <div className="vds-table-container proto-scroll-wrap">
+            <table className="vds-table proto-preview-table">
+              <thead><tr>{previewCols.map(c => <th key={c.key}>{c.label}</th>)}</tr></thead>
+              <tbody>{previewRows.map((r,i) => <tr key={i}>{previewCols.map(c => <td key={c.key}>{cellText(r[c.key])}</td>)}</tr>)}</tbody>
+            </table>
+          </div>
+        </>) : (
+          <div className="vds-b2 proto-muted">{hasFilter ? "No sample rows match the current filters. Loosen a filter to include records." : "No rows to preview yet."}</div>
+        ))}
       </div>
 
       <div className="vds-card prompt-card cfg-card">
