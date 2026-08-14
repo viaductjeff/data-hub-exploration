@@ -1645,21 +1645,24 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
                 </div>
               </div>
             ) : (
-              <div className="trow" style={{gridTemplateColumns:tmpl}} key={r.id}>
-                <div className="td td-name"><button className="proto-name-link" onClick={()=>open(r.id)}>{r.name}</button></div>
+              <div className="trow clickable-row" style={{gridTemplateColumns:tmpl}} key={r.id}
+                onClick={()=>open(r.id)} role="button" tabIndex={0}
+                onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(r.id); } }}>
+                <div className="td td-name">{r.name}</div>
                 <div className="td">{r.origin}</div>
                 <div className="td">{r.type}</div>
                 <div className="td"><span className={"vds-chip vds-chip--sm proto-pub-pill " + (r.published !== false ? "yes" : "no")}>{r.published !== false ? "Published" : "Unpublished"}</span></div>
                 <div className="td">{r.records}</div>
                 <div className="td">{r.lastSynced}</div>
                 <div className="td right">
-                  <div className="row-actions">
+                  {/* Stops a click on an action from also opening the row. */}
+                  <div className="row-actions" onClick={(e)=>e.stopPropagation()}>
                     <button className="vds-btn vds-btn--sm vds-btn--start-icon" title="Import now" onClick={()=>importNow(r.id)}>
                       <Icon name="play" size={16} />Import</button>
                     {onConnectData && <ConnectDataButton compact connectors={allConnectors} onPick={(connId, instanceId)=>onConnectData(r.id, connId, instanceId)} />}
                     {r.fromConnector && r.configured === false
                       ? <button className="vds-btn vds-btn--sm proto-cfg-btn" onClick={()=>cfgSrc(r.id)}>Configure</button>
-                      : <button className="vds-icon-btn vds-icon-btn--sm" title="Configure" aria-label="Configure" onClick={()=>open(r.id)}><Icon name="gear" size={17} /></button>}
+                      : <button className="vds-icon-btn vds-icon-btn--sm" title="Configure" aria-label="Configure" onClick={()=>edit(r.id)}><Icon name="gear" size={17} /></button>}
                     <DeleteDataSourceButton name={r.name} onDelete={()=>del(r.id)} />
                   </div>
                 </div>
@@ -3933,6 +3936,49 @@ function EmailViewerModal({ row, attachments = [], onOpenAttachment, onClose }){
   );
 }
 
+
+/* What a data table holds, on its own page — the row click from the list lands
+   here, while the gear opens the configuration page below. */
+function DataTableDataPage({ source, onBack, onConfigure }){
+  const p = source.parsed;
+  const rows = p ? p.rows : [];
+  const cols = (source.columns && source.columns.length)
+    ? source.columns.filter(c => c.imp !== false).map(c => ({ key:c.name, label:c.display || c.name }))
+    : (p ? p.columns.map(c => ({ key:c, label:c })) : []);
+  return (
+    <div className="vds-content">
+      <div className="proto-sticky-head">
+        <nav className="vds-breadcrumbs">
+          <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Data Tables</a>
+          <span className="vds-breadcrumbs__sep">/</span>
+          <span>{source.name}</span>
+        </nav>
+        <div className="proto-detail-head">
+          <div><h1 className="vds-page-title">{source.name}</h1></div>
+          <div className="auto-editor-actions">
+            <button className="vds-btn vds-btn--start-icon" onClick={()=>onConfigure(source.id)}>
+              <Icon name="gear" size={17} />Configure</button>
+          </div>
+        </div>
+      </div>
+      {rows.length === 0 ? (
+        <div className="vds-alert vds-alert--info proto-note">This data table hasn't been imported yet, so there are no rows to show.</div>
+      ) : (<>
+        <div className="vds-b2 proto-muted proto-section-note">
+          {Number(source.recordCount || rows.length).toLocaleString()} records · {cols.length} columns · showing the first {rows.length.toLocaleString()}
+        </div>
+        <div className="vds-table-container proto-scroll-wrap proto-data-wrap">
+          <table className="vds-table proto-preview-table">
+            <thead><tr>{cols.map(c => <th key={c.key}>{c.label}</th>)}</tr></thead>
+            <tbody>
+              {rows.map((r,i) => <tr key={i}>{cols.map(c => <td key={c.key}>{cellText(r[c.key])}</td>)}</tr>)}
+            </tbody>
+          </table>
+        </div>
+      </>)}
+    </div>
+  );
+}
 
 function DataSourceDetails({ source, allSources = [], connectors = [], automations = [], onBack, onUpdate, onConnectData }){
   const [tab, setTab] = useState("data");
@@ -10147,6 +10193,8 @@ function App(){
   const [creating, setCreating] = useState(false);
   const [sources, setSources] = useState([]);
   const [detailId, setDetailId] = useState(null);
+  /* The list row opens the data; the gear opens the configuration page. */
+  const [dataViewId, setDataViewId] = useState(null);
   const [updatingId, setUpdatingId] = useState(null);
   const [connCreating, setConnCreating] = useState(false);
   /* Set when the connector was chosen from the data table wizard, so the connections
@@ -10173,7 +10221,7 @@ function App(){
   const [runs, setRuns] = useState([]);
   const [connectDataFor, setConnectDataFor] = useState(null); // { targetId, connId } while launching a preset "Connect data table" flow
   const toggleSection = (k) => setOpenSections(s => ({ ...s, [k]: s[k] === false ? true : false }));
-  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setConnPreset(null); setConnFromDataTables(false); setEditingAutoId(null); setViewingAutoId(null); setNewAuto(null); setEditingPromptId(null); setViewingPromptId(null); setNewPrompt(null); setConnectDataFor(null); setActiveId(id); };
+  const goTo = (id) => { setCreating(false); setDetailId(null); setDataViewId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setConnPreset(null); setConnFromDataTables(false); setEditingAutoId(null); setViewingAutoId(null); setNewAuto(null); setEditingPromptId(null); setViewingPromptId(null); setNewPrompt(null); setConnectDataFor(null); setActiveId(id); };
   const updateSource = (id, patch) => setSources(ss => ss.map(s => s.id===id ? {...s, ...patch} : s));
   const deleteSource = (id) => { setSources(ss => ss.filter(s => s.id !== id)); setDetailId(d => d===id ? null : d); setUpdatingId(u => u===id ? null : u); setConfiguringId(c => c===id ? null : c); };
   const updateConnector = (id, patch) => {
@@ -10392,6 +10440,10 @@ function App(){
       submitLabel="Save configuration"
       onCancel={() => setConfiguringId(null)}
       onSave={(patch) => { updateSource(configuringId, patch); setConfiguringId(null); }} />;
+  } else if (activeId === "datasources" && dataViewId && sources.find(s => s.id === dataViewId)){
+    page = <DataTableDataPage source={sources.find(s => s.id === dataViewId)}
+      onBack={() => setDataViewId(null)}
+      onConfigure={(id) => { setDataViewId(null); setDetailId(id); }} />;
   } else if (activeId === "datasources" && detailId && selected){
     page = <DataSourceDetails source={selected} allSources={sources} connectors={connectors} automations={automations} onBack={() => setDetailId(null)} onUpdate={updateSource}
       onConnectData={(connId, instanceId) => setConnectDataFor({ targetId: selected.id, connId, instanceId })} />;
@@ -10537,7 +10589,7 @@ function App(){
   } else if (cfg){
     page = <HubPage cfg={cfg}
       onNew={activeId==="datasources" ? () => setCreating(true) : (activeId==="dataconnectors" ? () => setConnCreating(true) : (activeId==="datapipelines" ? () => setPipeCreating(true) : undefined))}
-      onOpen={activeId==="datasources" ? (id) => setDetailId(id) : (activeId==="dataconnectors" ? (id) => { setConnDetailId(id); setConnDetailStep(null); } : (activeId==="datapipelines" ? openPipeline : (activeId==="schedules" ? editSchedule : undefined)))}
+      onOpen={activeId==="datasources" ? (id) => setDataViewId(id) : (activeId==="dataconnectors" ? (id) => { setConnDetailId(id); setConnDetailStep(null); } : (activeId==="datapipelines" ? openPipeline : (activeId==="schedules" ? editSchedule : undefined)))}
       onUpdate={activeId==="datasources" ? (id) => setUpdatingId(id) : undefined}
       onDelete={activeId==="datasources" ? deleteSource : (activeId==="dataconnectors" ? deleteConnector : (activeId==="datapipelines" ? deletePipeline : (activeId==="schedules" ? deleteSchedule : undefined)))}
       onOpenSource={(activeId==="dataconnectors" || activeId==="schedules") ? openSource : undefined}
@@ -10545,6 +10597,7 @@ function App(){
       onConfigure={activeId==="datasources" ? (id) => setConfiguringId(id) : undefined}
       onConnectData={activeId==="datasources" ? (id, connId, instanceId) => setConnectDataFor({ targetId:id, connId, instanceId }) : undefined}
       onImport={activeId==="datasources" ? (id) => setSources(s => s.map(x => x.id===id ? { ...x, lastSynced:"Just now", status:"Ready" } : x)) : undefined}
+      onEdit={activeId==="datasources" ? (id) => setDetailId(id) : undefined}
       allConnectors={connectors}
       lookupSource={activeId==="dataconnectors" ? (id) => sources.find(s => s.id === id) : undefined}
       records={activeId==="datasources" ? sources : (activeId==="dataconnectors" ? connectors : (activeId==="datapipelines" ? pipelines : (activeId==="schedules" ? schedules : [])))} />;
