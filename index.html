@@ -1659,7 +1659,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
                     {onConnectData && <ConnectDataButton compact connectors={allConnectors} onPick={(connId, instanceId)=>onConnectData(r.id, connId, instanceId)} />}
                     {r.fromConnector && r.configured === false
                       ? <button className="vds-btn vds-btn--sm proto-cfg-btn" onClick={()=>cfgSrc(r.id)}>Configure</button>
-                      : <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>open(r.id)}><Icon name="gear" size={17} /></button>}
+                      : <button className="vds-icon-btn vds-icon-btn--sm" title="Configure" aria-label="Configure" onClick={()=>open(r.id)}><Icon name="gear" size={17} /></button>}
                     <DeleteDataSourceButton name={r.name} onDelete={()=>del(r.id)} />
                   </div>
                 </div>
