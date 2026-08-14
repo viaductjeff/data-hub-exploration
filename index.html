@@ -584,6 +584,8 @@
   .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); }
   .cfg-readonly { padding-top: 6px; }
   .cfg-card__head { cursor: pointer; }
+  .vds-table.cfg-src-table :is(th, td) { text-align: left; }
+  .vds-table.cfg-src-table :is(th, td).cfg-num { text-align: right; }
   .colfilter-dialog { width: min(640px, 92vw); max-width: min(640px, 92vw); }
   .colfilter-dialog .vds-dialog__content { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
   .colfilter-dialog__actions .colfilter-clear { margin-right: auto; }
@@ -1402,7 +1404,6 @@ function DeleteDataSourceButton({ name, onDelete }){
 const POPULATE_EXISTING_CONNECTORS = ["caws"];
 // Data is eligible to be populated by a connector only if a human uploaded it directly —
 // not one already owned by a connector or produced by a pipeline.
-function isManualUploadSource(s){ return !!s && !s.connectorInstanceId && !s.fromPipeline; }
 
 // "Connect data table" action: lets a manually uploaded data table be handed off to a connector (e.g.
 // Customer AWS S3) to keep feeding it going forward, without losing its schema, pipelines, or history.
@@ -4045,7 +4046,6 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
   const [plural, setPlural] = useState(source.plural || "");
   const [desc, setDesc] = useState(source.description || "");
   const [cols, setCols] = useState(() => (source.columns || []).map(c => ({ ...c })));
-  const manual = isManualUploadSource(source);
   const feeds = connectors.filter(c => (c.dataSourceIds || []).includes(source.id));
   const srcRows = feeds.length
     ? feeds.map(inst => {
@@ -4132,34 +4132,35 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
       <div className="vds-card prompt-card cfg-card">
         <h5 className="prompt-card__title">Data sources</h5>
         <div className="vds-table-container">
-          <table className="vds-table">
+          <table className="vds-table cfg-src-table">
             <thead><tr>
               {srcRows.length > 1 && <th style={{width:44}}></th>}
-              <th className="cols-table__left">Source</th>
-              <th className="cols-table__left">Source table</th>
-              <th className="cols-table__left">Connection</th>
-              <th>Records</th><th>Last synced</th>
+              <th>Source</th>
+              <th>Source table</th>
+              <th>Connection</th>
+              <th className="cfg-num">Records</th>
+              <th>Last synced</th>
               <th style={{width:140}}></th><th style={{width:150}}></th>
             </tr></thead>
             <tbody>
               {srcRows.map((r,i) => (
                 <tr key={r.key}>
                   {srcRows.length > 1 && (
-                    <td style={{textAlign:"center"}}>
+                    <td>
                       <input type="radio" className="vds-radio" name="cfg-source" checked={i === srcIdx}
                         aria-label={"Show column mappings for " + r.connection} onChange={()=>setSrcIdx(i)} />
                     </td>
                   )}
-                  <td className="cols-table__left">{r.origin}</td>
-                  <td className="cols-table__left proto-mono">{r.table}</td>
-                  <td className="cols-table__left">{r.connection}</td>
-                  <td style={{textAlign:"center"}}>{Number(source.recordCount || 0).toLocaleString()}</td>
-                  <td style={{textAlign:"center"}}>{source.lastSynced || "Not synced yet"}</td>
-                  <td style={{textAlign:"center"}}>
-                    <button className="vds-btn vds-btn--sm vds-btn--start-icon" onClick={()=>onImport(source.id)}>
-                      <Icon name={manual ? "upload" : "refresh"} size={16} />{manual ? "Upload" : "Sync now"}</button>
+                  <td>{r.origin}</td>
+                  <td className="proto-mono">{r.table}</td>
+                  <td>{r.connection}</td>
+                  <td className="cfg-num">{Number(source.recordCount || 0).toLocaleString()}</td>
+                  <td>{source.lastSynced || "Not synced yet"}</td>
+                  <td>
+                    <button className="vds-btn vds-btn--sm vds-btn--start-icon" title="Import now" onClick={()=>onImport(source.id)}>
+                      <Icon name="play" size={16} />Import</button>
                   </td>
-                  <td style={{textAlign:"center"}}>
+                  <td>
                     {onConnectData && <ConnectDataButton connectors={connectors} onPick={onConnectData} label="Change source" />}
                   </td>
                 </tr>
