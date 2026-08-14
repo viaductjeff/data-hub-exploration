@@ -2758,6 +2758,11 @@ const ALL_OPTION_KEYS = OPTION_COLS.map(o => o.key);
    table wizard's tiles, say — so the picker step never appeared. */
 const SkipFirstStep = React.createContext(false);
 function Stepper({ current, steps = STEPS }){
+  /* Making data tables, the last step schedules the imports rather than the
+     connection's sync. */
+  if (React.useContext(DataTableEntry)){
+    steps = steps.map(st => st.label === "Schedule" ? { ...st, label:"Schedule import" } : st);
+  }
   /* Only the picker step goes — flows whose first step is real (naming the
      connection, say) keep it, because that screen still shows. */
   const skip = React.useContext(SkipFirstStep);
@@ -4463,9 +4468,12 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
      mapped one at a time, and each gets its own schedule. */
   const fromDataTables = React.useContext(DataTableEntry);
   const [tableTriggers, setTableTriggers] = useState({});
-  const triggerFor = (name) => tableTriggers[name] || newWizardTrigger();
+  /* An import starts on a weekday morning schedule; it can be changed or removed. */
+  const defaultImportTrigger = () => ({ ...newWizardTrigger(),
+    schedules:[newScheduleEntry(WEEKDAY_DEFAULT, "06:00", "Weekly")] });
+  const triggerFor = (name) => tableTriggers[name] || defaultImportTrigger();
   const setTriggerFor = (name) => (updater) =>
-    setTableTriggers(m => ({ ...m, [name]: updater(m[name] || newWizardTrigger()) }));
+    setTableTriggers(m => ({ ...m, [name]: updater(m[name] || defaultImportTrigger()) }));
   /* The next selected table still waiting to be mapped, ignoring the one in hand. */
   const nextToMap = (exceptName) => tmpl.sources.find(s =>
     s.name !== exceptName && picks[s.name] && !configs[s.name] && !existingNames.includes(s.name)) || null;
@@ -4783,6 +4791,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
         <PageHead title={"Set up " + conn.name + " connection"} onCancel={onCancel} />
         <Stepper current={3} steps={CONNECTOR_WIZARD_STEPS} />
         <div className="vds-h4 proto-section-title">Schedule import</div>
+        <div className="vds-b2 proto-muted proto-section-note">Imports can always be manually run, even when triggered on a schedule or by a table event.</div>
         {pickedList.length === 0
           ? <div className="vds-alert vds-alert--info proto-note">No source tables were selected, so there is nothing to schedule yet.</div>
           : pickedList.map(s => (
@@ -4792,14 +4801,14 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
                   <span className="vds-b3 proto-mono proto-muted">({dsNamePreview(s)})</span>
                 </div>
                 <AutomateTriggerFields trigger={triggerFor(s.name)} setTrigger={setTriggerFor(s.name)}
-                  tables={allTableNames(existingSources)} />
+                  tables={allTableNames(existingSources)} showLede={false} />
               </div>
             ))}
 
         <div className="wiz-footer">
           <button className="vds-btn" onClick={()=>setPage("data")}><Icon name="arrowLeft" size={17} />Back</button>
           <button className="vds-btn" onClick={()=>finish(false)}>Finish</button>
-          <button className="vds-btn vds-btn--primary" onClick={()=>finish(true)}><Icon name="play" size={17} />Run now and finish</button>
+          <button className="vds-btn vds-btn--primary" onClick={()=>finish(true)}>Finish and import now</button>
         </div>
       </div>
     );
@@ -5585,12 +5594,12 @@ function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[]
 }
 /* The Automate step's trigger picker — the same model the automation editor
    uses, so whatever a wizard captures here becomes the automation's first step. */
-function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = null }){
+function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = null, showLede = true }){
   const set = (patch) => setTrigger(t => ({ ...t, ...patch }));
   if (lockedNote) return <div className="vds-alert vds-alert--info proto-note">{lockedNote}</div>;
   return (
     <div>
-      <div className="vds-b2 proto-muted proto-section-note automate-lede">Automations can always be manually run, even when triggered on a schedule or by a table event.</div>
+      {showLede && <div className="vds-b2 proto-muted proto-section-note automate-lede">Automations can always be manually run, even when triggered on a schedule or by a table event.</div>}
       <TriggerRows trigger={trigger} onChange={set} tables={tables} />
     </div>
   );
