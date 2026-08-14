@@ -235,6 +235,10 @@
   .conn-name { font: 700 16px/24px var(--vds-font-sans); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .conn-group { color: var(--vds-text-placeholder); }
   .conn-made { flex: none; gap: 4px; margin-right: 28px; }
+  .src-tbl { grid-template-columns: 44px 1.1fr 2.4fr 1.3fr 130px; }
+  .src-tbl__check { display: flex; justify-content: center; }
+  .src-tbl__desc { color: var(--vds-text-secondary); }
+  .import-card { margin-bottom: var(--vds-dialog-gap); }
 
   /* ---------- credentials / verify ---------- */
   .cred-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--vds-form-gap) 20px; margin-top: 4px; }
@@ -4406,6 +4410,13 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
   /* An existing connection has already proven itself; a new one has to be tested,
      and editing the key puts it back to untested. */
   const [tested, setTested] = useState(!!editing);
+  /* Coming from the data table wizard, tables are the subject: they are picked and
+     mapped one at a time, and each gets its own schedule. */
+  const fromDataTables = React.useContext(DataTableEntry);
+  const [tableTriggers, setTableTriggers] = useState({});
+  const triggerFor = (name) => tableTriggers[name] || newWizardTrigger();
+  const setTriggerFor = (name) => (updater) =>
+    setTableTriggers(m => ({ ...m, [name]: updater(m[name] || newWizardTrigger()) }));
   // Nothing is picked to begin with — a connection stands on its own.
   const [picks, setPicks] = useState(() => editing
     ? Object.fromEntries(tmpl.sources.map(s => [s.name, !!existingByName[s.name]]))
@@ -4543,6 +4554,61 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
   // row and can never drift out of alignment, even when a row's content wraps to two lines.
   if (page === "data"){
     const lastIdx = tmpl.sources.length - 1;
+    if (fromDataTables){
+      /* Picking tables comes first; each one is mapped before the wizard moves on. */
+      const isMapped = (s) => !!configs[s.name] || existingNames.includes(s.name);
+      const nextUnmapped = tmpl.sources.find(s => picks[s.name] && !isMapped(s));
+      return (
+        <div className="vds-content">
+          <PageHead title={"Set up " + conn.name + " connection"} onCancel={onCancel} />
+          <Stepper current={2} steps={CONNECTOR_WIZARD_STEPS} />
+          <div className="vds-h4 proto-section-title">Select source table(s)</div>
+          <div className="vds-b2 proto-muted proto-section-note">Pick the {conn.name} tables to bring in, then map each one to a Viaduct data table.</div>
+          <div className="vds-table-container">
+            <div className="thead src-tbl">
+              <div className="th"></div>
+              <div className="th">{conn.name} table</div>
+              <div className="th">Description</div>
+              <div className="th">Viaduct table</div>
+              <div className="th"></div>
+            </div>
+            <div className="tbody">
+              {tmpl.sources.map(s => {
+                const picked = !!picks[s.name];
+                const mapped = isMapped(s);
+                return (
+                  <div className="trow src-tbl" key={s.name}>
+                    <div className="td src-tbl__check">
+                      <input type="checkbox" className="vds-checkbox" checked={picked}
+                        aria-label={"Include " + s.name} onChange={()=>requestToggleOff(s)} />
+                    </div>
+                    <div className="td td-name">{s.name}</div>
+                    <div className="td src-tbl__desc" title={s.description}>{s.description}</div>
+                    <div className="td">
+                      {mapped ? <span className="proto-mono">{dsNamePreview(s)}</span>
+                        : picked ? <span className="vds-chip vds-chip--sm vds-chip--error">Not mapped</span>
+                        : null}
+                    </div>
+                    <div className="td right">
+                      <button className={"vds-btn vds-btn--sm" + (picked && !mapped ? " vds-btn--tertiary" : "")}
+                        disabled={!picked} onClick={()=>{ setConfiguring(s.name); setConfiguringOpenCol(null); }}>
+                        {mapped ? "Edit mapping" : "Map"}</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div className="wiz-footer">
+            <button className="vds-btn" onClick={()=>setPage(editing ? "schedule" : "auth")}><Icon name="arrowLeft" size={17} />Back</button>
+            {nextUnmapped
+              ? <button className="vds-btn vds-btn--primary"
+                  onClick={()=>{ setConfiguring(nextUnmapped.name); setConfiguringOpenCol(null); }}>Map new table(s)</button>
+              : <button className="vds-btn vds-btn--primary" onClick={()=>setPage("schedule")}>Continue<Icon name="arrowRight" size={17} /></button>}
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="vds-content">
         <PageHead title={"Set up " + conn.name + " connection"} sub={"Choose which " + conn.name + " tables become Viaduct data tables."} onCancel={onCancel} />
@@ -4634,6 +4700,8 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
     const instance = {
       id: instId, name: name || conn.name, connectorId: conn.id, connectorName: conn.name, group: conn.group,
       creds: { apiKey }, automationTrigger: sched, ...triggerToSyncFields(sched),
+      /* One trigger per table when the tables were the point of the visit. */
+      tableTriggers: fromDataTables ? Object.fromEntries(pickedList.map(s => [s.name, triggerFor(s.name)])) : null,
       startDates: Object.fromEntries(pickedList.map(s => [s.name, s.firstDate])),
       status: "Ready", lastChecked: "Just now",
       createdAt: editing ? editInstance.createdAt : day, updatedAt: day,
@@ -4643,6 +4711,35 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
     if (editing) onSave(instance, { newRecords: dsRecords, deleteIds: removedExistingIds, sourceUpdates: [] });
     else onCreate(instance, dsRecords);
   };
+
+  if (fromDataTables){
+    /* One schedule per table — each import runs on its own terms. */
+    return (
+      <div className="vds-content">
+        <PageHead title={"Set up " + conn.name + " connection"} onCancel={onCancel} />
+        <Stepper current={3} steps={CONNECTOR_WIZARD_STEPS} />
+        <div className="vds-h4 proto-section-title">Schedule import</div>
+        {pickedList.length === 0
+          ? <div className="vds-alert vds-alert--info proto-note">No source tables were selected, so there is nothing to schedule yet.</div>
+          : pickedList.map(s => (
+              <div className="vds-card prompt-card import-card" key={s.name}>
+                <div className="prompt-card__head prompt-card__head--center">
+                  <h5 className="prompt-card__title">{s.name}</h5>
+                  <span className="vds-b3 proto-mono proto-muted">{dsNamePreview(s)}</span>
+                </div>
+                <AutomateTriggerFields trigger={triggerFor(s.name)} setTrigger={setTriggerFor(s.name)}
+                  tables={allTableNames(existingSources)} />
+              </div>
+            ))}
+
+        <div className="wiz-footer">
+          <button className="vds-btn" onClick={()=>setPage("data")}><Icon name="arrowLeft" size={17} />Back</button>
+          <button className="vds-btn" onClick={()=>finish(false)}>Finish</button>
+          <button className="vds-btn vds-btn--primary" onClick={()=>finish(true)}><Icon name="play" size={17} />Run now and finish</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="vds-content">
@@ -10232,7 +10329,16 @@ function App(){
         return next;
       });
       setConnectors(c => [inst, ...c]);
-      if (!inst.noSchedule) setAutomations(as => [automationFromConnector(inst, inst.automationTrigger, inst.dataSourceIds, (id)=>(dsRecords.find(r=>r.id===id)||{}).name), ...as]);
+      if (!inst.noSchedule) setAutomations(as => {
+        const lookup = (id)=>(dsRecords.find(r=>r.id===id)||{}).name;
+        /* A per-table schedule means a per-table automation. */
+        if (inst.tableTriggers && dsRecords.length){
+          const made = dsRecords.map(rec =>
+            automationFromConnector(inst, inst.tableTriggers[rec.templateSourceKey || rec.name], [rec.id], lookup));
+          return [...made, ...as];
+        }
+        return [automationFromConnector(inst, inst.automationTrigger, inst.dataSourceIds, lookup), ...as];
+      });
       /* Started from Data Tables, so finish there. */
       const backToTables = connFromDataTables;
       leaveConnWizard();
