@@ -417,6 +417,8 @@
   .cg-part-sel { height: 30px; width: auto; min-width: 80px; padding: 0 8px; }
   .cg-part-warn { display: inline-flex; color: var(--vds-alert-warning-icon); cursor: help; }
   .write-mode-value { padding: 6px 0; }
+  /* Matches an input's height so its text lines up with the field beside it. */
+  .source-table-value { display: flex; align-items: center; min-height: 44px; font-weight: 700; }
   .cg-filter-btn { display: inline-flex; align-items: center; gap: 4px; height: 30px; max-width: 100%; padding: 0 var(--vds-button-gap); border: 1px solid var(--vds-slate-300); border-radius: 4px; background: var(--vds-surface-default); font: 400 12px/16px var(--vds-font-sans); color: var(--vds-text-secondary); cursor: pointer; }
   .cg-filter-btn:hover { background: var(--vds-slate-20); }
   .cg-filter-btn.on { background: var(--vds-surface-selected); border-color: var(--vds-slate-300); color: var(--vds-text-primary); font-weight: 500; }
@@ -3658,7 +3660,7 @@ function MapImportStep({ parsed, origin, onCancel, onBack, onCreate }){
 }
 
 /* ---------------- Configure data (column parameters) ---------------- */
-function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = false, onCancel, onSave, lockedKeys = [], stepper = null, extraSection = null, afterNameSection = null, lockName = false, allowAddColumns = false, noRenameRemove = false, lockColType = false, forceNameEditable = false, enableFilter = true, writeModeLocked = false, writeModeReadOnly = "", initialOpenFilterCol = null, showRelationsTab = true, originalNameLabel = null }){
+function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = false, originalTableName = null, onCancel, onSave, lockedKeys = [], stepper = null, extraSection = null, afterNameSection = null, lockName = false, allowAddColumns = false, noRenameRemove = false, lockColType = false, forceNameEditable = false, enableFilter = true, writeModeLocked = false, writeModeReadOnly = "", initialOpenFilterCol = null, showRelationsTab = true, originalNameLabel = null }){
   const p = source.parsed || { columns:[], typeByCol:{}, rows:[] };
   const [name, setName] = useState(source.name || "");
   const initNames = displayNamesFromName(source.name || "");
@@ -3704,6 +3706,12 @@ function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = fals
     {stepper}
 
     <div className="form-grid">
+      {originalNameLabel && originalTableName && (
+        <div className="field">
+          <label className="vds-label">{originalNameLabel} table</label>
+          <div className="vds-b1 source-table-value">{originalTableName}</div>
+        </div>
+      )}
       <div className="field">
         <label className="vds-label">Viaduct Data Table name</label>
         <input className={"vds-input" + (lockName ? " locked" : "")} value={name} readOnly={lockName}
@@ -4566,7 +4574,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
       submitAdvance={!!fromDataTables}
       lockName={false} lockedKeys={ALL_OPTION_KEYS} lockColType={true} noRenameRemove={true} forceNameEditable={true} allowAddColumns={false}
       writeModeLocked={true} writeModeReadOnly={opinionatedWrite === "Append" ? "Append — new rows only, no deletion (event data)" : "Update — upsert on primary key (table data)"}
-      originalNameLabel={conn.name} showRelationsTab={false}
+      originalNameLabel={conn.name} originalTableName={configuring} showRelationsTab={false}
       initialOpenFilterCol={configuringOpenCol}
       onCancel={()=>{ setConfiguring(null); setConfiguringOpenCol(null); }}
       onSave={(patch)=>{
