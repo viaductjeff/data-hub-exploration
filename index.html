@@ -387,24 +387,26 @@
 
   /* ---------- columns configuration grid ---------- */
   .colgrid-wrap { overflow-x: auto; }
-  .colgrid { min-width: 1040px; }
-  .colgrid.cg-filter-on { min-width: 1160px; }
-  .colgrid-head, .colgrid-row { display: grid; align-items: center; column-gap: var(--vds-dialog-gap); }
-  .colgrid-head { padding-bottom: var(--vds-button-gap); }
-  .colgrid-row { padding: 8px 0; }
+  .cg-box { display: flex; justify-content: center; }
+  .cg-box.cg-first { justify-content: flex-start; }
+  .cols-table { min-width: 1040px; }
+  .cols-table.cg-filter-on { min-width: 1160px; }
+  .cols-table th, .cols-table td { text-align: center; }
+  .cols-table :is(th, td).cols-table__left { text-align: left; }
+  .cols-table th.locked { color: var(--vds-gray-500); }
+  .cols-table tbody tr.is-selected { background: var(--vds-surface-selected); }
+  .cols-table td .vds-select { width: 100%; }
   .proto-cg-h { line-height: 16px; font-size: 12px; }
   .proto-cg-h.center { text-align: center; }
   .proto-cg-h.locked { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; color: var(--vds-gray-500); }
   .proto-cg-h.locked.row-locked { flex-direction: row; align-items: center; justify-content: flex-start; gap: 4px; }
   .cg-master { display: flex; align-items: flex-start; gap: var(--vds-button-gap); }
   .cg-master span { white-space: normal; }
-  .cg-box { display: flex; justify-content: center; }
-  .cg-box.cg-first { justify-content: flex-start; }
   .cg-namecell { display: flex; align-items: center; gap: 4px; min-width: 0; }
   .cg-namecell .vds-input { flex: 1; min-width: 0; }
   .cg-orig { display: flex; align-items: center; min-width: 0; color: var(--vds-text-secondary); }
   .cg-orig span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .cg-part { display: flex; gap: 4px; }
+  .cg-part { display: flex; justify-content: center; gap: 4px; }
   .cg-part-sel { height: 30px; width: auto; min-width: 80px; padding: 0 8px; }
   .cg-part-warn { display: inline-flex; color: var(--vds-alert-warning-icon); cursor: help; }
   .cg-filter-btn { display: inline-flex; align-items: center; gap: 4px; height: 30px; max-width: 100%; padding: 0 var(--vds-button-gap); border: 1px solid var(--vds-slate-300); border-radius: 4px; background: var(--vds-surface-default); font: 400 12px/16px var(--vds-font-sans); color: var(--vds-text-secondary); cursor: pointer; }
@@ -414,7 +416,7 @@
   .cg-advanced-toggle { display: inline-flex; align-items: center; gap: 4px; background: none; border: none; padding: 0 0 var(--vds-form-gap); font: 500 14px/20px var(--vds-font-sans); color: var(--vds-text-primary); cursor: pointer; }
   .cg-advanced-toggle svg { transition: transform 0.15s ease; }
   .cg-advanced-toggle.on svg { transform: rotate(90deg); }
-  .colfilter-editor { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--vds-form-gap); margin: 4px 0 var(--vds-button-gap); padding: var(--vds-card-pad-v) var(--vds-card-pad-h); background: var(--vds-slate-50); border: 1px solid var(--vds-gray-100); border-radius: 8px; }
+  .colfilter-editor { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--vds-form-gap); margin: 4px 0 var(--vds-button-gap); padding: var(--vds-card-pad-v) var(--vds-card-pad-h); background: var(--vds-slate-50); border: 1px solid var(--vds-gray-100); border-radius: 8px; }
   .colfilter-editor .field { margin: 0; }
   .colfilter-title { flex-basis: 100%; font: 700 14px/20px var(--vds-font-sans); }
   .colfilter-title span { color: var(--vds-text-secondary); font-weight: 400; }
@@ -3056,7 +3058,6 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
   const numDateInputType = (t) => t === "number" ? "number" : (t === "datetime" ? "datetime-local" : "date");
   const isTimeType = (t) => t === "date" || t === "datetime";
   const visibleOptionCols = PRIMARY_OPTION_COLS.concat(advancedOpen ? ADVANCED_OPTION_COLS : []);
-  const gridTemplate = "112px" + (originalNameLabel ? " minmax(150px,1.3fr)" : "") + " minmax(170px,1.7fr) minmax(130px,1fr)" + (enableFilter ? " 104px" : "") + " repeat(" + visibleOptionCols.length + ",minmax(74px,0.9fr))";
   const addColumn = () => setCols(cs => {
     let n = cs.length + 1, nm = "new_column_" + n; const names = cs.map(c => c.name);
     while (names.indexOf(nm) !== -1){ n++; nm = "new_column_" + n; }
@@ -3077,6 +3078,7 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
   // - Timestamp columns partitioned by Month can produce 100+ partitions across a few years of data.
   // - String columns without Low Cardinality checked are a proxy for high-cardinality — partitioning
   //   by something like a VIN or free-text field explodes into one partition per value.
+  const colCount = 1 + (originalNameLabel ? 1 : 0) + 2 + (enableFilter ? 1 : 0) + visibleOptionCols.length;
   const partitionWarning = (c) => {
     if (!c.part) return null;
     if (isTimeType(c.type)) return (c.partGrain || "Month") === "Month" ? "Monthly partitions over several years of data can exceed 100 partitions." : null;
@@ -3085,24 +3087,27 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
   };
   return (
     <div>
-      <div className="vds-h4 proto-section-title" style={{marginTop:0}}>Columns</div>
+      <div className="vds-h4 proto-section-title" style={{marginTop:0}}>Column mapping</div>
       <p className="vds-b2 proto-muted proto-cols-instr">Check the columns to import, set the type, and configure key options.{enableFilter ? " Use Filter to keep only the records that match a column's criteria." : ""}{lockColType ? " Type and key options are set by the API and can't be changed here — only the column name and filter." : (hasLocked ? " Primary Key and Order By are set by the API and can't be changed here." : "")}{noRenameRemove ? (forceNameEditable ? " This schema is a fixed platform contract — columns can't be added, removed, or restructured. Only the column name can be renamed." : (lockColType ? " Columns can't be renamed, removed, or added — only filters can change." : " Existing columns can be re-typed and filtered but not renamed or removed — use Add column for new fields.")) : ""}</p>
       <div className="colgrid-wrap">
         <button type="button" className={"cg-advanced-toggle" + (advancedOpen ? " on" : "")} onClick={()=>setAdvancedOpen(v=>!v)}>
           <Icon name="arrowRight" size={13} />Advanced (Low Cardinality, Partition)
         </button>
-        <div className={"colgrid" + (enableFilter ? " cg-filter-on" : "")}>
-          <div className="colgrid-head" style={{gridTemplateColumns:gridTemplate}}>
-            <div className="vds-label proto-cg-h cg-master">
-              <input className="vds-checkbox" type="checkbox" checked={allSel} disabled={noRenameRemove} onChange={noRenameRemove ? undefined : toggleAll} aria-label="Toggle all columns" />
-              <span>{noRenameRemove ? "Columns" : (allSel ? "Deselect All" : "Select All")}</span>
-            </div>
-            {originalNameLabel && <div className="vds-label proto-cg-h">{originalNameLabel} Column Name</div>}
-            <div className="vds-label proto-cg-h">{originalNameLabel ? "Viaduct Column Name" : "Column Name"}</div>
-            <div className={"vds-label proto-cg-h" + (lockColType ? " locked row-locked" : "")}>Type{lockColType && <Icon name="lock" size={11} />}</div>
-            {enableFilter && <div className="vds-label proto-cg-h center">Filter</div>}
-            {visibleOptionCols.map(o => <div className={"vds-label proto-cg-h center" + (isLocked(o.key) ? " locked" : "")} key={o.key}>{o.label}{isLocked(o.key) && <Icon name="lock" size={11} />}</div>)}
-          </div>
+        <table className={"vds-table cols-table" + (enableFilter ? " cg-filter-on" : "")}>
+          <thead>
+            <tr>
+              <th style={{width:44}}>
+                <input className="vds-checkbox" type="checkbox" checked={allSel} disabled={noRenameRemove}
+                  onChange={noRenameRemove ? undefined : toggleAll} aria-label="Select all columns" />
+              </th>
+              {originalNameLabel && <th className="cols-table__left">{originalNameLabel} Column Name</th>}
+              <th className="cols-table__left">{originalNameLabel ? "Viaduct Column Name" : "Column Name"}</th>
+              <th className={"cols-table__left" + (lockColType ? " locked" : "")}>Type{lockColType && <Icon name="lock" size={11} />}</th>
+              {enableFilter && <th style={{width:150}}>Filter</th>}
+              {visibleOptionCols.map(o => <th style={{width:110}} className={isLocked(o.key) ? "locked" : undefined} key={o.key}>{o.label}{isLocked(o.key) && <Icon name="lock" size={11} />}</th>)}
+            </tr>
+          </thead>
+          <tbody>
           {cols.map((c,i) => {
             const ops = filterOpsFor(c.type);
             const f = c.filter || { op: ops[0], values: [] };
@@ -3112,18 +3117,19 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
             const partWarn = partitionWarning(c);
             return (
             <React.Fragment key={c.name+i}>
-            <div className="colgrid-row" style={{gridTemplateColumns:gridTemplate}}>
-              <div className="cg-box cg-first"><input className="vds-checkbox" type="checkbox" checked={c.imp} disabled={importLocked}
+            <tr className={c.imp ? "is-selected" : ""}>
+              <td><input className="vds-checkbox" type="checkbox" checked={c.imp} disabled={importLocked}
                 title={importLocked ? "Column can't be removed" : undefined}
-                onChange={()=>{ if (importLocked) return; upd(i,{imp:!c.imp}); }} aria-label={"Import "+c.name} /></div>
-              {originalNameLabel && <div className="cg-orig"><span title={c.name}>{c.name} ({c.type})</span></div>}
-              <div className="cg-namecell">
+                onChange={()=>{ if (importLocked) return; upd(i,{imp:!c.imp}); }} aria-label={"Import "+c.name} /></td>
+              {originalNameLabel && <td className="cols-table__left"><div className="cg-orig"><span title={c.name}>{c.name} ({c.type})</span></div></td>}
+              <td className="cols-table__left"><div className="cg-namecell">
                 <input className={"vds-input" + (nameLocked ? " locked" : "")} value={c.display} readOnly={nameLocked}
                   title={nameLocked ? "Column name can't be changed" : undefined}
                   onChange={(e)=>{ if (nameLocked) return; upd(i, c._added ? { display:e.target.value, name: (e.target.value.trim() ? connSlug(e.target.value) : c.name) } : { display:e.target.value }); }}
                   aria-label="Column name" />
                 {c._added && <button type="button" className="vds-icon-btn vds-icon-btn--secondary vds-icon-btn--xs" title="Remove column" onClick={()=>removeColumn(i)}><Icon name="x" size={13} /></button>}
-              </div>
+              </div></td>
+              <td className="cols-table__left">
               <select className={"vds-select" + (lockColType ? " locked" : "")} value={c.type} disabled={lockColType}
                 title={lockColType ? "Set by the API — can't be changed" : undefined}
                 onChange={(e)=>{
@@ -3134,18 +3140,19 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
               }} aria-label="Type">
                 {COL_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
+              </td>
               {enableFilter && (
-                <div className="cg-box">
+                <td>
                   <button type="button" className={"cg-filter-btn" + (colFilterActive(c) ? " on" : "")} onClick={()=>setOpenFilter(openFilter===i ? -1 : i)} title={colFilterActive(c) ? "Edit filter" : "Add filter"}>
                     <Icon name="filter" size={15} /><span className="cg-filter-txt">{filterLabel(c)}</span>
                   </button>
-                </div>
+                </td>
               )}
               {visibleOptionCols.map(o => {
                 const locked = isLocked(o.key);
                 if (o.key === "part"){
                   return (
-                    <div className="cg-box cg-part" key={o.key}>
+                    <td key={o.key}><div className="cg-part">
                       {isTimeType(c.type) ? (
                         <select className="vds-select cg-part-sel" value={c.part ? (c.partGrain || "Month") : ""} disabled={locked}
                           title={locked ? "Set by the API — can't be changed" : undefined}
@@ -3158,22 +3165,23 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
                           onChange={()=>{ if (locked) return; upd(i, { part: !c.part }); }} aria-label={"Partition "+c.name} />
                       )}
                       {partWarn && <span className="cg-part-warn" title={partWarn}><Icon name="alert" size={13} /></span>}
-                    </div>
+                    </div></td>
                   );
                 }
                 return (
-                <div className="cg-box" key={o.key}>
+                <td key={o.key}>
                   <input className="vds-checkbox" type="checkbox" checked={!!c[o.key]} disabled={locked}
                     title={locked ? "Set by the API — can't be changed" : undefined}
                     onChange={()=>{
                       if (locked) return;
                       upd(i, { [o.key]: !c[o.key] });
                     }} aria-label={o.label+" "+c.name} />
-                </div>
+                </td>
                 );
               })}
-            </div>
+            </tr>
             {enableFilter && openFilter === i && (
+              <tr><td colSpan={colCount}>
               <div className="colfilter-editor">
                 <div className="colfilter-title">Filter <span>· only import records where <b>{c.display || c.name}</b>…</span></div>
                 <div className="field" style={{width:210}}>
@@ -3243,11 +3251,13 @@ function ColumnsTab({ cols, setCols, enableFilter, rows, lockedKeys = [], noRena
                   <button type="button" className="vds-btn vds-btn--primary vds-btn--sm" onClick={()=>setOpenFilter(-1)}>Done</button>
                 </div>
               </div>
+              </td></tr>
             )}
             </React.Fragment>
             );
           })}
-        </div>
+          </tbody>
+        </table>
         {allowAdd && (
           <button type="button" className="vds-btn vds-btn--sm" onClick={addColumn}><Icon name="plus" size={15} />Add column</button>
         )}
@@ -3689,7 +3699,7 @@ function ConfigureSource({ source, title, sub, submitLabel, onCancel, onSave, lo
 
     <div className="form-grid">
       <div className="field">
-        <label className="vds-label">Data table name</label>
+        <label className="vds-label">Viaduct Data Table name</label>
         <input className={"vds-input" + (lockName ? " locked" : "")} value={name} readOnly={lockName}
           title={lockName ? "The data table name can't be changed after it's configured" : undefined}
           onChange={(e)=>{ if (lockName) return; setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g,"_")); }} />
