@@ -130,6 +130,7 @@
   .connect-data-wrap { position: relative; display: inline-flex; }
   .connect-data-empty { padding: 8px 16px; max-width: 220px; color: var(--vds-text-secondary); }
   .rowmenu { position: relative; display: inline-block; }
+  .rowmenu__pop { position: fixed; z-index: 50; min-width: 200px; text-align: left; }
 
   /* ---------- chips / status ---------- */
   .proto-status-pill { background: var(--vds-alert-success-bg); }
@@ -895,6 +896,7 @@ function Icon({ name, size = 19, className }){
     trash:(<><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></>),
     swap:(<><path d="M4 8h13"/><path d="m14 5 3 3-3 3"/><path d="M20 16H7"/><path d="m10 13-3 3 3 3"/></>),
     chevronDown:(<path d="m6 9 6 6 6-6"/>),
+    dots:(<><circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none"/></>),
     gear:(<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9.4a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>),
     chevronUp:(<path d="m6 15 6-6 6 6"/>),
     folder:(<><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></>),
@@ -1371,15 +1373,20 @@ function ColFilterPopover({ label, options, selected, onChange }){
 // person to type the data's name (or the word "delete") before the delete actually fires.
 function DeleteDataSourceButton({ name, onDelete }){
   const [open, setOpen] = useState(false);
-  const [typed, setTyped] = useState("");
-  const match = typed.trim().toLowerCase() === String(name).trim().toLowerCase() || typed.trim().toLowerCase() === "delete";
-  const cancel = () => { setOpen(false); setTyped(""); };
-  const confirm = () => { if (!match) return; onDelete(); cancel(); };
   return (<>
     <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" title="Delete data table" aria-label="Delete data table" onClick={()=>setOpen(true)}>
       <Icon name="trash" size={17} />
     </button>
-    {open && (
+    {open && <DeleteDataSourceDialog name={name} onCancel={()=>setOpen(false)} onDelete={onDelete} />}
+  </>);
+}
+
+function DeleteDataSourceDialog({ name, onCancel, onDelete }){
+  const [typed, setTyped] = useState("");
+  const match = typed.trim().toLowerCase() === String(name).trim().toLowerCase() || typed.trim().toLowerCase() === "delete";
+  const cancel = () => { setTyped(""); onCancel(); };
+  const confirm = () => { if (!match) return; onDelete(); cancel(); };
+  return (
       <div className="modal-overlay" onClick={cancel}>
         <div className="vds-dialog proto-modal-card" onClick={(e)=>e.stopPropagation()}>
           <div className="vds-dialog__title"><Icon name="alert" size={18} />Delete {name}?</div>
@@ -1394,8 +1401,38 @@ function DeleteDataSourceButton({ name, onDelete }){
           </div>
         </div>
       </div>
-    )}
-  </>);
+  );
+}
+
+/* Overflow actions for a data table row: relations, and the guarded delete. */
+function DataTableRowMenu({ name, onViewRelations, onDelete }){
+  const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const btnRef = React.useRef(null);
+  // The row and the table container both clip their overflow, so the menu is
+  // positioned against the viewport instead of the button.
+  const [pos, setPos] = useState(null);
+  const toggle = () => {
+    if (open){ setOpen(false); return; }
+    const r = btnRef.current.getBoundingClientRect();
+    setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    setOpen(true);
+  };
+  return (
+    <div className="rowmenu">
+      <button className="vds-icon-btn vds-icon-btn--sm" ref={btnRef} title="More actions" aria-label="More actions"
+        aria-expanded={open} onClick={toggle}><Icon name="dots" size={17} /></button>
+      {open && (<>
+        <div className="menu-overlay" onClick={()=>setOpen(false)}></div>
+        <div className="vds-menu rowmenu__pop" style={{ top: pos.top, right: pos.right }}>
+          <button className="vds-menu-item" onClick={()=>{ setOpen(false); onViewRelations(); }}>View table relations</button>
+          <hr className="vds-menu-divider" />
+          <button className="vds-menu-item danger" onClick={()=>{ setOpen(false); setConfirming(true); }}>Delete table</button>
+        </div>
+      </>)}
+      {confirming && <DeleteDataSourceDialog name={name} onCancel={()=>setConfirming(false)} onDelete={onDelete} />}
+    </div>
+  );
 }
 
 
@@ -1479,7 +1516,7 @@ function ConnectDataButton({ onPick, compact, connectors = [], label = "Connect 
   );
 }
 
-function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete, onOpenSource, onRunNow, onImport, onConfigure, onConnectData, lookupSource, records=[], tabsNode, allConnectors=[] }){
+function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete, onOpenSource, onRunNow, onImport, onConfigure, onConnectData, onViewRelations, lookupSource, records=[], tabsNode, allConnectors=[] }){
   const isDS = cfg.key === "datasources";
   const isConn = cfg.key === "dataconnectors";
   const isAuto = cfg.key === "automations";
@@ -1667,11 +1704,12 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
                   <div className="row-actions" onClick={(e)=>e.stopPropagation()}>
                     <button className="vds-btn vds-btn--sm vds-btn--start-icon" title="Import now" onClick={()=>importNow(r.id)}>
                       <Icon name="play" size={16} />Import</button>
-                    {onConnectData && <ConnectDataButton compact connectors={allConnectors} onPick={(connId, instanceId)=>onConnectData(r.id, connId, instanceId)} />}
                     {r.fromConnector && r.configured === false
                       ? <button className="vds-btn vds-btn--sm proto-cfg-btn" onClick={()=>cfgSrc(r.id)}>Configure</button>
                       : <button className="vds-icon-btn vds-icon-btn--sm" title="Configure" aria-label="Configure" onClick={()=>edit(r.id)}><Icon name="gear" size={17} /></button>}
-                    <DeleteDataSourceButton name={r.name} onDelete={()=>del(r.id)} />
+                    <DataTableRowMenu name={r.name}
+                      onViewRelations={()=>onViewRelations && onViewRelations(r.id)}
+                      onDelete={()=>del(r.id)} />
                   </div>
                 </div>
               </div>
@@ -4040,7 +4078,11 @@ function DataTableDataPage({ source, allSources = [], onBack, onConfigure }){
 
 /* The configuration page, laid out like the data tables prototype: what the table
    is, where it comes from, how its columns map, and what automates it. */
-function DataTableConfigPage({ source, allSources = [], connectors = [], automations = [], onBack, onUpdate, onImport, onConnectData, onOpenAutomation }){
+function DataTableConfigPage({ source, allSources = [], connectors = [], automations = [], focus, onBack, onUpdate, onImport, onConnectData, onOpenAutomation }){
+  const relationsRef = React.useRef(null);
+  React.useEffect(() => {
+    if (focus === "relations" && relationsRef.current) relationsRef.current.scrollIntoView({ block:"start" });
+  }, [focus]);
   const [published, setPublished] = useState(source.published !== false);
   const [singular, setSingular] = useState(source.singular || "");
   const [plural, setPlural] = useState(source.plural || "");
@@ -4253,7 +4295,7 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
           )}
       </div>
 
-      <div className="vds-card prompt-card cfg-card">
+      <div className="vds-card prompt-card cfg-card" ref={relationsRef}>
         <h5 className="prompt-card__title">Relations</h5>
         <TableRelationsTab source={source} allSources={allSources} onUpdate={onUpdate} />
       </div>
@@ -10285,6 +10327,7 @@ function App(){
   const [editingAutoId, setEditingAutoId] = useState(null);
   const [viewingAutoId, setViewingAutoId] = useState(null);
   const [viewingAutoTab, setViewingAutoTab] = useState("steps");
+  const [detailFocus, setDetailFocus] = useState(null);
   const [newAuto, setNewAuto] = useState(null);
   const [savedPrompts, setSavedPrompts] = useState(seedSavedPrompts);
   const [editingPromptId, setEditingPromptId] = useState(null);
@@ -10522,7 +10565,8 @@ function App(){
       onConfigure={(id) => { setDataViewId(null); setDetailId(id); }} />;
   } else if (activeId === "datasources" && detailId && selected){
     page = <DataTableConfigPage source={selected} allSources={sources} connectors={connectors} automations={automations}
-      onBack={() => setDetailId(null)} onUpdate={updateSource}
+      focus={detailFocus}
+      onBack={() => { setDetailFocus(null); setDetailId(null); }} onUpdate={updateSource}
       onImport={(id) => setSources(s => s.map(x => x.id===id ? { ...x, lastSynced:"Just now", status:"Ready" } : x))}
       onOpenAutomation={(id) => { setDetailId(null); setActiveId("automations"); setViewingAutoId(id); setViewingAutoTab("steps"); }}
       onConnectData={(connId, instanceId) => setConnectDataFor({ targetId: selected.id, connId, instanceId })} />;
@@ -10676,7 +10720,8 @@ function App(){
       onConfigure={activeId==="datasources" ? (id) => setConfiguringId(id) : undefined}
       onConnectData={activeId==="datasources" ? (id, connId, instanceId) => setConnectDataFor({ targetId:id, connId, instanceId }) : undefined}
       onImport={activeId==="datasources" ? (id) => setSources(s => s.map(x => x.id===id ? { ...x, lastSynced:"Just now", status:"Ready" } : x)) : undefined}
-      onEdit={activeId==="datasources" ? (id) => setDetailId(id) : undefined}
+      onEdit={activeId==="datasources" ? (id) => { setDetailFocus(null); setDetailId(id); } : undefined}
+      onViewRelations={activeId==="datasources" ? (id) => { setDetailFocus("relations"); setDetailId(id); } : undefined}
       allConnectors={connectors}
       lookupSource={activeId==="dataconnectors" ? (id) => sources.find(s => s.id === id) : undefined}
       records={activeId==="datasources" ? sources : (activeId==="dataconnectors" ? connectors : (activeId==="datapipelines" ? pipelines : (activeId==="schedules" ? schedules : [])))} />;
