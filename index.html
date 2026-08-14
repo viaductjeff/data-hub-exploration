@@ -2764,11 +2764,15 @@ function Stepper({ current, steps = STEPS }){
     </div>
   );
 }
+/* Set to the connector's name while the connector wizard is being used to make data
+   tables rather than to set up a connection — the pages are shared, the framing isn't. */
+const DataTableEntry = React.createContext(null);
 function PageHead({ title, sub, onCancel }){
+  const fromDataTables = React.useContext(DataTableEntry);
   return (
     <div className="vds-page-header proto-sticky-head">
       <div>
-        <h1 className="vds-page-title">{title}</h1>
+        <h1 className="vds-page-title">{fromDataTables ? "New Data Table(s) from " + fromDataTables : title}</h1>
       </div>
       <button className="vds-btn vds-btn--text" onClick={onCancel}><Icon name="x" size={18} />Cancel</button>
     </div>
@@ -6616,14 +6620,19 @@ function ScriptConnectorFlow({ conn, tmpl, editing, editInstance, existingSource
 
 
 function NewConnector(props){
+  const conn = props.fromDataTables ? CONNECTORS.find(c => c.id === props.presetConnectorId) : null;
   return (
-    <SkipFirstStep.Provider value={!!props.presetConnectorId}>
-      <ConnectorWizard {...props} />
-    </SkipFirstStep.Provider>
+    <DataTableEntry.Provider value={conn ? conn.name : null}>
+      <SkipFirstStep.Provider value={!!props.presetConnectorId}>
+        <ConnectorWizard {...props} />
+      </SkipFirstStep.Provider>
+    </DataTableEntry.Provider>
   );
 }
-function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[], existingConnectors=[], onSave, onOpenSource, onOpenInstance, initialStep, presetConnectorId, presetTargetSourceId }){
+function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[], existingConnectors=[], onSave, onOpenSource, onOpenInstance, onBackToOrigin, initialStep, presetConnectorId, presetTargetSourceId }){
   const openInstance = onOpenInstance || (() => {});
+  /* Started from the data table wizard, so Back belongs to that picker, not this one. */
+  const backToPicker = onBackToOrigin || (() => setStep(1));
   const editing = !!editInstance;
   const editConn = editing ? CONNECTORS.find(c => c.id === editInstance.connectorId) : null;
   const editTmpl = editConn ? CONNECTOR_TEMPLATES[editConn.id] : null;
@@ -6896,46 +6905,46 @@ function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[],
     if (isApiConnector){
       return <ApiConnectorFlow conn={conn} tmpl={tmpl} editing={editing} editInstance={editInstance}
         existingSources={existingSources} existingConnectors={existingConnectors} onOpenSource={onOpenSource} presetTargetId={presetTargetSourceId}
-        onCancel={onCancel} onBackToConnectors={editing ? onCancel : (()=>setStep(1))}
+        onCancel={onCancel} onBackToConnectors={editing ? onCancel : backToPicker}
         onCreate={onCreate} onSave={onSave} />;
     }
     if (isSnowflakeConn){
       return <SnowflakeConnectorFlow conn={conn} tmpl={tmpl} editing={editing} editInstance={editInstance}
         existingSources={existingSources} existingConnectors={existingConnectors} onOpenSource={onOpenSource} presetTargetId={presetTargetSourceId}
-        onCancel={onCancel} onBackToConnectors={editing ? onCancel : (()=>setStep(1))}
+        onCancel={onCancel} onBackToConnectors={editing ? onCancel : backToPicker}
         onCreate={onCreate} onSave={onSave} />;
     }
     if (isScript){
       return <ScriptConnectorFlow conn={conn} tmpl={tmpl} editing={editing} editInstance={editInstance}
         existingSources={existingSources} onOpenSource={onOpenSource}
-        onCancel={onCancel} onBackToConnectors={editing ? onCancel : (()=>setStep(1))}
+        onCancel={onCancel} onBackToConnectors={editing ? onCancel : backToPicker}
         onCreate={onCreate} onSave={onSave} />;
     }
     if (isInbox){
       return <EmailInboxFlow conn={conn} tmpl={tmpl} editing={editing} editInstance={editInstance}
         existingSources={existingSources} existingConnectors={existingConnectors} onOpenSource={onOpenSource}
-        onCancel={onCancel} onBackToConnectors={editing ? onCancel : (()=>setStep(1))}
+        onCancel={onCancel} onBackToConnectors={editing ? onCancel : backToPicker}
         onCreate={onCreate} onSave={onSave} />;
     }
     if (isS3){
       return <S3ConnectorFlow conn={conn} tmpl={tmpl} editing={editing} editInstance={editInstance}
         existingSources={existingSources} existingConnectors={existingConnectors} onOpenSource={onOpenSource} presetTargetId={presetTargetSourceId}
-        onCancel={onCancel} onBackToConnectors={editing ? onCancel : (()=>setStep(1))}
+        onCancel={onCancel} onBackToConnectors={editing ? onCancel : backToPicker}
         onCreate={onCreate} onSave={onSave} />;
     }
     if (isPush){
       return <PushConfigureStep conn={conn} tmpl={tmpl} name={name} setName={setName} sources={fileSources}
         templateId={sftpTemplateId} setTemplateId={setSftpTemplateId} managedName={managedName} setManagedName={editManagedName} creds={pushCreds} editing={editing}
-        onCancel={onCancel} onBack={editing ? onCancel : (()=>setStep(1))} onContinue={()=>setStep(3)} />;
+        onCancel={onCancel} onBack={editing ? onCancel : backToPicker} onContinue={()=>setStep(3)} />;
     }
     if (isPull){
       return <PullConfigureStep conn={conn} tmpl={tmpl} name={name} setName={setName} sources={fileSources}
         templateId={sftpTemplateId} setTemplateId={setSftpTemplateId} managedName={managedName} setManagedName={editManagedName} creds={creds} setCreds={setCreds} editing={editing}
-        onCancel={onCancel} onBack={editing ? onCancel : (()=>setStep(1))} onContinue={()=>setStep(3)} />;
+        onCancel={onCancel} onBack={editing ? onCancel : backToPicker} onContinue={()=>setStep(3)} />;
     }
     if (isStream){
       return <StreamConfigureStep conn={conn} tmpl={tmpl} name={name} setName={setName} creds={pushCreds} editing={editing}
-        onCancel={onCancel} onBack={editing ? onCancel : (()=>setStep(1))} onContinue={()=>setStep(3)} />;
+        onCancel={onCancel} onBack={editing ? onCancel : backToPicker} onContinue={()=>setStep(3)} />;
     }
     if (!tmpl){
       return (
@@ -6944,7 +6953,7 @@ function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[],
           <Stepper current={1} steps={CONNECTOR_STEPS} />
           <div className="vds-h4 proto-section-title">Configure {conn.name}</div>
           <div className="vds-alert vds-alert--info proto-note proto-plain-note">The connection form for <strong>{conn.name}</strong> ({conn.group}) will be built next — each connector type has its own fields (credentials, endpoints, buckets, and so on).</div>
-          <div className="wiz-footer"><button className="vds-btn" onClick={()=>setStep(1)}><Icon name="arrowLeft" size={17} />Back</button></div>
+          <div className="wiz-footer"><button className="vds-btn" onClick={backToPicker}><Icon name="arrowLeft" size={17} />Back</button></div>
         </div>
       );
     }
@@ -6952,7 +6961,7 @@ function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[],
       verified={verified} setVerified={setVerified} picks={picks} setPicks={setPicks} startDates={startDates} setStartDates={setStartDates}
       configs={configs} onConfigure={(nm)=>setConfiguring(nm)}
       editing={editing} existingNames={existingNames} onOpenExisting={openExisting}
-      onCancel={onCancel} onBack={editing ? onCancel : (()=>setStep(1))} onContinue={()=>setStep(3)} />;
+      onCancel={onCancel} onBack={editing ? onCancel : backToPicker} onContinue={()=>setStep(3)} />;
   }
 
   if (isPush){
@@ -9940,6 +9949,8 @@ function App(){
   /* Set when the connector was chosen from the data table wizard, so the connections
      wizard opens on that connector instead of its own picker. */
   const [connPreset, setConnPreset] = useState(null);
+  /* True when that preset came from the data table wizard rather than the connections page. */
+  const [connFromDataTables, setConnFromDataTables] = useState(false);
   const [connectors, setConnectors] = useState([]);
   const [connDetailId, setConnDetailId] = useState(null);
   const [connDetailStep, setConnDetailStep] = useState(null);
@@ -9959,7 +9970,7 @@ function App(){
   const [runs, setRuns] = useState([]);
   const [connectDataFor, setConnectDataFor] = useState(null); // { targetId, connId } while launching a preset "Connect data table" flow
   const toggleSection = (k) => setOpenSections(s => ({ ...s, [k]: s[k] === false ? true : false }));
-  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setConnPreset(null); setEditingAutoId(null); setViewingAutoId(null); setNewAuto(null); setEditingPromptId(null); setViewingPromptId(null); setNewPrompt(null); setConnectDataFor(null); setActiveId(id); };
+  const goTo = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setConnPreset(null); setConnFromDataTables(false); setEditingAutoId(null); setViewingAutoId(null); setNewAuto(null); setEditingPromptId(null); setViewingPromptId(null); setNewPrompt(null); setConnectDataFor(null); setActiveId(id); };
   const updateSource = (id, patch) => setSources(ss => ss.map(s => s.id===id ? {...s, ...patch} : s));
   const deleteSource = (id) => { setSources(ss => ss.filter(s => s.id !== id)); setDetailId(d => d===id ? null : d); setUpdatingId(u => u===id ? null : u); setConfiguringId(c => c===id ? null : c); };
   const updateConnector = (id, patch) => {
@@ -10190,7 +10201,7 @@ function App(){
         const made = existingInstanceFor(connectors, id);
         setCreating(false);
         if (made){ openConnector(made.id); return; }
-        setConnPreset(id); setConnCreating(true); setActiveId("dataconnectors");
+        setConnPreset(id); setConnFromDataTables(true); setConnCreating(true); setActiveId("dataconnectors");
       }} />;
   } else if (activeId === "dataconnectors" && connDetailId && connDetail){
     page = <NewConnector key={"conn-" + connDetail.id} editInstance={connDetail} existingSources={sources} existingConnectors={connectors} onOpenSource={openSource} initialStep={connDetailStep} onCancel={() => setConnDetailId(null)}
@@ -10208,9 +10219,13 @@ function App(){
         setConnDetailId(null);
       }} />;
   } else if (activeId === "dataconnectors" && connCreating){
+    const leaveConnWizard = () => { setConnCreating(false); setConnPreset(null); setConnFromDataTables(false); };
+    const backToOrigin = () => { leaveConnWizard(); setActiveId("datasources"); setCreating(true); };
     page = <NewConnector key={"conn-new-" + (connPreset || "pick")} existingSources={sources} existingConnectors={connectors} presetConnectorId={connPreset}
-      onOpenInstance={(id) => { setConnCreating(false); setConnPreset(null); openConnector(id); }}
-      onCancel={() => { setConnCreating(false); setConnPreset(null); }} onCreate={(inst, dsRecords, sourceUpdates) => {
+      fromDataTables={connFromDataTables}
+      onBackToOrigin={connFromDataTables ? backToOrigin : undefined}
+      onOpenInstance={(id) => { leaveConnWizard(); openConnector(id); }}
+      onCancel={connFromDataTables ? backToOrigin : leaveConnWizard} onCreate={(inst, dsRecords, sourceUpdates) => {
       setSources(s => {
         let next = mergeSourceRecords(s, dsRecords);
         (sourceUpdates||[]).forEach(su => { next = next.map(x => x.id===su.id ? { ...x, ...su.patch } : x); });
@@ -10218,7 +10233,10 @@ function App(){
       });
       setConnectors(c => [inst, ...c]);
       if (!inst.noSchedule) setAutomations(as => [automationFromConnector(inst, inst.automationTrigger, inst.dataSourceIds, (id)=>(dsRecords.find(r=>r.id===id)||{}).name), ...as]);
-      setConnCreating(false); setConnPreset(null);
+      /* Started from Data Tables, so finish there. */
+      const backToTables = connFromDataTables;
+      leaveConnWizard();
+      if (backToTables) setActiveId("datasources");
     }} />;
   } else if (activeId === "datapipelines" && pipeEditId){
     const editing = pipelines.find(p => p.id === pipeEditId);
