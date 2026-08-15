@@ -587,7 +587,10 @@
   .cfg-card__head { cursor: pointer; }
   .vds-table.cfg-src-table :is(th, td) { text-align: left; }
   .vds-table.cfg-src-table :is(th, td).cfg-num { text-align: right; }
-  .colfilter-dialog { width: min(640px, 92vw); max-width: min(640px, 92vw); }
+  .proto-modal-card.colfilter-dialog { max-width: min(640px, 92vw); }
+  .proto-modal-card.sched-dialog { max-width: min(760px, 94vw); }
+  .proto-modal-card.trel-dialog { max-width: min(720px, 94vw); }
+  .trel-dialog .vds-dialog__content { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
   .colfilter-dialog .vds-dialog__content { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
   .colfilter-dialog__actions .colfilter-clear { margin-right: auto; }
   .prompt-auto-table { border: 1px solid var(--vds-gray-100); border-radius: 4px; overflow: hidden; }
@@ -2238,6 +2241,9 @@ const EXAMPLE_TABLES = ["drivers","faults","fuel_transactions","inspections","ma
 const newTriggerEvent = (tables) => ({ id:autoId("evt"), action:"inserted", table:(tables && tables[0]) || "" });
 /* What a table-event trigger can point at: the data tables that exist plus the
    stand-ins, so the picker is never empty. */
+/* An import starts on a weekday morning schedule; it can be changed or removed. */
+const defaultImportTrigger = () => ({ ...newWizardTrigger(),
+  schedules:[newScheduleEntry(WEEKDAY_DEFAULT, "06:00", "Weekly")] });
 const allTableNames = (sources) => Array.from(new Set([
   ...(sources || []).filter(s => s.configured !== false).map(s => s.name),
   ...EXAMPLE_TABLES,
@@ -3381,7 +3387,7 @@ const REL_TYPE_OPTIONS = [
 function blankTableRelation(defaultRelatedId){
   return { id:"rel_" + Math.random().toString(36).slice(2,10), name:"", type:"one_to_many", relatedTableId: defaultRelatedId || "", pairs:[{ localCol:"", relatedCol:"" }] };
 }
-function TableRelationsTab({ source, allSources, onUpdate }){
+function TableRelationsTab({ source, allSources, onUpdate, hideHead = false, dialogEditor = false, startSignal = 0 }){
   const { useState } = React;
   const outgoing = (source.relations && source.relations.outgoing) || [];
   const [editingRel, setEditingRel] = useState(null); // { index: number|null, draft: {...} }
@@ -3397,93 +3403,19 @@ function TableRelationsTab({ source, allSources, onUpdate }){
   const removeRel = (i) => saveRelations(outgoing.filter((_, idx) => idx !== i));
   const relTypeLabel = (typeId) => { const opt = REL_TYPE_OPTIONS.find(o => o.id === typeId) || REL_TYPE_OPTIONS[0]; return opt.label(singular, plural); };
   const relatedTableName = (id) => { const t = allSources.find(s => s.id === id); return t ? t.name : "—"; };
+  /* The page that owns the card head asks for a new relationship by bumping this. */
+  React.useEffect(() => { if (startSignal) startNew(); }, [startSignal]);
 
-  // ---- Full-page relationship editor — Cancel/Save live at top right, in the header itself ----
-  if (editingRel){
-    const { index, draft } = editingRel;
-    const setDraft = (patch) => setEditingRel(e => ({ ...e, draft: { ...e.draft, ...patch } }));
-    const relatedTable = allSources.find(s => s.id === draft.relatedTableId);
-    const relatedCols = relatedTable ? (relatedTable.columns || []).filter(c => c.imp).map(c => c.display || c.name) : [];
-
-    const setPair = (i, patch) => setDraft({ pairs: draft.pairs.map((p, idx) => idx === i ? { ...p, ...patch } : p) });
-    const addPair = () => setDraft({ pairs: [...draft.pairs, { localCol: myCols[0] || "", relatedCol: relatedCols[0] || "" }] });
-    const delPair = (i) => setDraft({ pairs: draft.pairs.length > 1 ? draft.pairs.filter((_, idx) => idx !== i) : draft.pairs });
-
-    const canSave = draft.name.trim() && draft.relatedTableId && draft.pairs.every(p => p.localCol && p.relatedCol);
-    const save = () => {
-      if (!canSave) return;
-      const rel = { ...draft, name: draft.name.trim(), createdAt: draft.createdAt || todayStr() };
-      const next = index === null ? [...outgoing, rel] : outgoing.map((r, idx) => idx === index ? rel : r);
-      saveRelations(next);
-      setEditingRel(null);
-    };
-
-    return (
-      <div>
-        <div className="trel-editor-head">
-          <h2 style={{margin:0, fontSize:22, fontFamily:"var(--vds-font-serif)", fontWeight:400, color:"var(--vds-text-primary)"}}>{index === null ? "New relationship" : "Edit relationship"}</h2>
-          <div className="trel-editor-actions">
-            <button className="vds-btn" onClick={()=>setEditingRel(null)}>Cancel</button>
-            <button className="vds-btn vds-btn--primary" disabled={!canSave} onClick={save}><Icon name="check" size={16} />Save</button>
-          </div>
-        </div>
-
-        <div className="form-grid">
-          <div className="field">
-            <label className="vds-label">Name of relationship</label>
-            <input className="vds-input" placeholder="e.g. driver_vehicle" value={draft.name} onChange={(e)=>setDraft({ name:e.target.value })} />
-          </div>
-        </div>
-
-        <div className="trel-row2">
-          <div>
-            <label className="vds-label">Relationship type</label>
-            <select className="vds-select" value={draft.type} onChange={(e)=>setDraft({ type:e.target.value })}>
-              {REL_TYPE_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label(singular, plural)}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="vds-label">Related table</label>
-            <select className="vds-select" value={draft.relatedTableId} onChange={(e)=>setDraft({ relatedTableId:e.target.value, pairs:[{ localCol: myCols[0] || "", relatedCol:"" }] })}>
-              <option value="">Select a table</option>
-              {otherTables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div className="vds-h4 proto-section-title" style={{marginTop:8}}>Tables related by matching columns</div>
-        <div className="trel-pairs-head">
-          <div>{singular} column</div>
-          <div>{relatedTable ? relatedTable.name : "Related table"} column</div>
-          <div style={{flex:"0 0 40px"}}></div>
-        </div>
-        {draft.pairs.map((p, i) => (
-          <div className="trel-pair-row" key={i}>
-            <select className="vds-select" value={p.localCol} onChange={(e)=>setPair(i, { localCol:e.target.value })}>
-              <option value="">Select column</option>
-              {myCols.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <select className="vds-select" value={p.relatedCol} onChange={(e)=>setPair(i, { relatedCol:e.target.value })} disabled={!draft.relatedTableId}>
-              <option value="">{draft.relatedTableId ? "Select column" : "Pick a related table first"}</option>
-              {relatedCols.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <button className="vds-icon-btn vds-icon-btn--sm" style={{flex:"0 0 40px"}} disabled={draft.pairs.length === 1} onClick={()=>delPair(i)} title={draft.pairs.length === 1 ? "At least one column pair is required" : "Remove pair"}><Icon name="x" size={16} /></button>
-          </div>
-        ))}
-        <button className="vds-btn" style={{marginTop:4}} onClick={addPair}><Icon name="plus" size={15} />Add column pair</button>
-      </div>
-    );
-  }
-
-  // ---- Card list ----
-  return (
+  const listView = () => (
     <div>
-      <div className="trel-head">
-        <div className="vds-b2">Relate {source.name} to other tables</div>
-        <button className="vds-btn vds-btn--primary" onClick={startNew}>Add New Relationship</button>
-      </div>
+      {!hideHead && (
+        <div className="trel-head">
+          <div className="vds-b2">Relate {source.name} to other tables</div>
+          <button className="vds-btn vds-btn--primary" onClick={startNew}>Add New Relationship</button>
+        </div>
+      )}
       {outgoing.length === 0 ? (
-        <div className="vds-alert vds-alert--info proto-note proto-plain-note">No relationships yet.</div>
+        <div className="vds-alert vds-alert--info proto-note proto-plain-note">No related tables yet.</div>
       ) : (
         <div className="trel-cards">
           {outgoing.map((rel, i) => (
@@ -3503,6 +3435,104 @@ function TableRelationsTab({ source, allSources, onUpdate }){
       )}
     </div>
   );
+
+  if (editingRel){
+    const { index, draft } = editingRel;
+    const setDraft = (patch) => setEditingRel(e => ({ ...e, draft: { ...e.draft, ...patch } }));
+    const relatedTable = allSources.find(s => s.id === draft.relatedTableId);
+    const relatedCols = relatedTable ? (relatedTable.columns || []).filter(c => c.imp).map(c => c.display || c.name) : [];
+
+    const setPair = (i, patch) => setDraft({ pairs: draft.pairs.map((p, idx) => idx === i ? { ...p, ...patch } : p) });
+    const addPair = () => setDraft({ pairs: [...draft.pairs, { localCol: myCols[0] || "", relatedCol: relatedCols[0] || "" }] });
+    const delPair = (i) => setDraft({ pairs: draft.pairs.length > 1 ? draft.pairs.filter((_, idx) => idx !== i) : draft.pairs });
+
+    const canSave = draft.name.trim() && draft.relatedTableId && draft.pairs.every(p => p.localCol && p.relatedCol);
+    const save = () => {
+      if (!canSave) return;
+      const rel = { ...draft, name: draft.name.trim(), createdAt: draft.createdAt || todayStr() };
+      const next = index === null ? [...outgoing, rel] : outgoing.map((r, idx) => idx === index ? rel : r);
+      saveRelations(next);
+      setEditingRel(null);
+    };
+    const title = index === null ? "New related table" : "Edit related table";
+
+    const fields = (<>
+      <div className="form-grid">
+        <div className="field">
+          <label className="vds-label">Name of relationship</label>
+          <input className="vds-input" placeholder="e.g. driver_vehicle" value={draft.name} onChange={(e)=>setDraft({ name:e.target.value })} />
+        </div>
+      </div>
+
+      <div className="trel-row2">
+        <div>
+          <label className="vds-label">Relationship type</label>
+          <select className="vds-select" value={draft.type} onChange={(e)=>setDraft({ type:e.target.value })}>
+            {REL_TYPE_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label(singular, plural)}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="vds-label">Related table</label>
+          <select className="vds-select" value={draft.relatedTableId} onChange={(e)=>setDraft({ relatedTableId:e.target.value, pairs:[{ localCol: myCols[0] || "", relatedCol:"" }] })}>
+            <option value="">Select a table</option>
+            {otherTables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div className="vds-h4 proto-section-title" style={{marginTop:8}}>Tables related by matching columns</div>
+      <div className="trel-pairs-head">
+        <div>{singular} column</div>
+        <div>{relatedTable ? relatedTable.name : "Related table"} column</div>
+        <div style={{flex:"0 0 40px"}}></div>
+      </div>
+      {draft.pairs.map((p, i) => (
+        <div className="trel-pair-row" key={i}>
+          <select className="vds-select" value={p.localCol} onChange={(e)=>setPair(i, { localCol:e.target.value })}>
+            <option value="">Select column</option>
+            {myCols.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="vds-select" value={p.relatedCol} onChange={(e)=>setPair(i, { relatedCol:e.target.value })} disabled={!draft.relatedTableId}>
+            <option value="">{draft.relatedTableId ? "Select column" : "Pick a related table first"}</option>
+            {relatedCols.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <button className="vds-icon-btn vds-icon-btn--sm" style={{flex:"0 0 40px"}} disabled={draft.pairs.length === 1} onClick={()=>delPair(i)} title={draft.pairs.length === 1 ? "At least one column pair is required" : "Remove pair"}><Icon name="x" size={16} /></button>
+        </div>
+      ))}
+      <button className="vds-btn" style={{marginTop:4}} onClick={addPair}><Icon name="plus" size={15} />Add column pair</button>
+    </>);
+
+    if (dialogEditor){
+      return (<>
+        {listView()}
+        <div className="modal-overlay" onClick={()=>setEditingRel(null)}>
+          <div className="vds-dialog proto-modal-card trel-dialog" onClick={(e)=>e.stopPropagation()}>
+            <div className="vds-dialog__title">{title}</div>
+            <div className="vds-dialog__content">{fields}</div>
+            <div className="vds-dialog__actions">
+              <button className="vds-btn" onClick={()=>setEditingRel(null)}>Cancel</button>
+              <button className="vds-btn vds-btn--primary" disabled={!canSave} onClick={save}><Icon name="check" size={16} />Save</button>
+            </div>
+          </div>
+        </div>
+      </>);
+    }
+
+    return (
+      <div>
+        <div className="trel-editor-head">
+          <h2 style={{margin:0, fontSize:22, fontFamily:"var(--vds-font-serif)", fontWeight:400, color:"var(--vds-text-primary)"}}>{index === null ? "New relationship" : "Edit relationship"}</h2>
+          <div className="trel-editor-actions">
+            <button className="vds-btn" onClick={()=>setEditingRel(null)}>Cancel</button>
+            <button className="vds-btn vds-btn--primary" disabled={!canSave} onClick={save}><Icon name="check" size={16} />Save</button>
+          </div>
+        </div>
+        {fields}
+      </div>
+    );
+  }
+
+  return listView();
 }
 function RelationsManager({ value, onChange, columns }){
   const outgoing = value.outgoing || [];
@@ -4076,9 +4106,28 @@ function DataTableDataPage({ source, allSources = [], onBack, onConfigure }){
   );
 }
 
+/* One import schedule, edited on its own rather than in the automation editor. */
+function ScheduleDialog({ title, trigger, tables, onCancel, onSave }){
+  const [draft, setDraft] = useState(trigger || defaultImportTrigger());
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="vds-dialog proto-modal-card sched-dialog" onClick={(e)=>e.stopPropagation()}>
+        <div className="vds-dialog__title">{title}</div>
+        <div className="vds-dialog__content">
+          <AutomateTriggerFields trigger={draft} setTrigger={setDraft} tables={tables} showLede={false} />
+        </div>
+        <div className="vds-dialog__actions">
+          <button className="vds-btn" onClick={onCancel}>Cancel</button>
+          <button className="vds-btn vds-btn--primary" onClick={()=>onSave(draft)}>Save schedule</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* The configuration page, laid out like the data tables prototype: what the table
    is, where it comes from, how its columns map, and what automates it. */
-function DataTableConfigPage({ source, allSources = [], connectors = [], automations = [], focus, onBack, onUpdate, onImport, onConnectData, onOpenAutomation }){
+function DataTableConfigPage({ source, allSources = [], connectors = [], automations = [], focus, onBack, onUpdate, onImport, onConnectData, onOpenAutomation, onSaveSchedule, onRemoveSchedule }){
   const relationsRef = React.useRef(null);
   React.useEffect(() => {
     if (focus === "relations" && relationsRef.current) relationsRef.current.scrollIntoView({ block:"start" });
@@ -4098,6 +4147,8 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
   const [srcIdx, setSrcIdx] = useState(0);
   const [filterIdx, setFilterIdx] = useState(-1);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState(null);
+  const [addRelation, setAddRelation] = useState(0);
   const picked = srcRows[Math.min(srcIdx, srcRows.length - 1)];
   const used = (automations || []).filter(a => (a.steps || []).some(st =>
     (st.actions || []).some(act => act.refName === source.name)
@@ -4276,28 +4327,55 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
       </div>
 
       <div className="vds-card prompt-card cfg-card">
-        <h5 className="prompt-card__title">Automation</h5>
+        <div className="prompt-card__head prompt-card__head--center">
+          <h5 className="prompt-card__title">Schedule</h5>
+          <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon" onClick={()=>setEditingSchedule({ id:null, trigger:defaultImportTrigger() })}>
+            <Icon name="plus" size={16} />Add schedule</button>
+        </div>
         {used.length === 0
-          ? <div className="vds-alert vds-alert--info proto-note">Nothing automates this data table yet.</div>
+          ? <div className="vds-alert vds-alert--info proto-note">Nothing imports this data table on a schedule yet.</div>
           : (
-            <div className="prompt-auto-table">
-              <div className="prompt-auto-row prompt-auto-row--head"><div>Name</div><div>Trigger</div><div>History</div></div>
-              {used.map(a => (
-                <div className="prompt-auto-row clickable-row" key={a.id} role="button" tabIndex={0}
-                  onClick={()=>onOpenAutomation && onOpenAutomation(a.id)}
-                  onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); onOpenAutomation && onOpenAutomation(a.id); } }}>
-                  <div className="prompt-auto-name">{a.name}</div>
-                  <div className="proto-muted">{automationTriggerText(a)}</div>
-                  <div><RunStrip runs={a.runList} /></div>
-                </div>
-              ))}
+            <div className="vds-table-container">
+              <table className="vds-table cfg-src-table">
+                <thead><tr>
+                  <th>Name</th><th>Trigger</th><th>History</th><th style={{width:110}}>Actions</th>
+                </tr></thead>
+                <tbody>
+                  {used.map(a => (
+                    <tr key={a.id} className="clickable-row" onClick={()=>onOpenAutomation && onOpenAutomation(a.id)}>
+                      <td>{a.name}</td>
+                      <td>{automationTriggerText(a)}</td>
+                      <td><RunStrip runs={a.runList} /></td>
+                      <td onClick={(e)=>e.stopPropagation()}>
+                        <div className="row-actions">
+                          <button className="vds-icon-btn vds-icon-btn--sm" title="Edit schedule" aria-label="Edit schedule"
+                            onClick={()=>setEditingSchedule({ id:a.id, trigger:(a.steps[0] || {}).trigger })}><Icon name="pencil" size={17} /></button>
+                          <DeleteButton label="Remove" onDelete={()=>onRemoveSchedule && onRemoveSchedule(a.id)} />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
       </div>
 
+      {editingSchedule && (
+        <ScheduleDialog trigger={editingSchedule.trigger} tables={allTableNames(allSources)}
+          title={editingSchedule.id ? "Edit schedule" : "Add schedule"}
+          onCancel={()=>setEditingSchedule(null)}
+          onSave={(trigger)=>{ onSaveSchedule && onSaveSchedule(editingSchedule.id, trigger); setEditingSchedule(null); }} />
+      )}
+
       <div className="vds-card prompt-card cfg-card" ref={relationsRef}>
-        <h5 className="prompt-card__title">Relations</h5>
-        <TableRelationsTab source={source} allSources={allSources} onUpdate={onUpdate} />
+        <div className="prompt-card__head prompt-card__head--center">
+          <h5 className="prompt-card__title">Related tables</h5>
+          <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon" onClick={()=>setAddRelation(n => n + 1)}>
+            <Icon name="plus" size={16} />Add related table</button>
+        </div>
+        <TableRelationsTab source={source} allSources={allSources} onUpdate={onUpdate}
+          hideHead dialogEditor startSignal={addRelation} />
       </div>
     </div>
   );
@@ -4662,9 +4740,6 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
      mapped one at a time, and each gets its own schedule. */
   const fromDataTables = React.useContext(DataTableEntry);
   const [tableTriggers, setTableTriggers] = useState({});
-  /* An import starts on a weekday morning schedule; it can be changed or removed. */
-  const defaultImportTrigger = () => ({ ...newWizardTrigger(),
-    schedules:[newScheduleEntry(WEEKDAY_DEFAULT, "06:00", "Weekly")] });
   const triggerFor = (name) => tableTriggers[name] || defaultImportTrigger();
   const setTriggerFor = (name) => (updater) =>
     setTableTriggers(m => ({ ...m, [name]: updater(m[name] || defaultImportTrigger()) }));
@@ -4749,7 +4824,9 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
         }} />;
     }
 
-    return <ConfigureSource source={draft}
+    /* Mapping runs table by table through the same form — remount it so each table
+       starts from its own values instead of keeping the previous one's. */
+    return <ConfigureSource key={configuring} source={draft}
       title="Customize Data Table"
       sub={"This is customize ingestion — the data table name and filters can be changed here, but column names, type, and key options are fixed by " + conn.name + "'s API. (File-based sources allow customizing more.)"}
       submitLabel={fromDataTables ? (nextToMap(configuring) ? "Next mapping" : "Schedule import") : "Save customization"}
@@ -10575,6 +10652,15 @@ function App(){
       onBack={() => { setDetailFocus(null); setDetailId(null); }} onUpdate={updateSource}
       onImport={(id) => setSources(s => s.map(x => x.id===id ? { ...x, lastSynced:"Just now", status:"Ready" } : x))}
       onOpenAutomation={(id) => { setDetailId(null); setActiveId("automations"); setViewingAutoId(id); setViewingAutoTab("steps"); }}
+      onSaveSchedule={(autoId, trigger) => setAutomations(as => {
+        if (autoId) return as.map(a => a.id===autoId
+          ? { ...a, steps:a.steps.map((st,i) => i===0 ? { ...st, trigger } : st) } : a);
+        const a = newAutomation("Sync " + selected.name);
+        a.steps[0] = { ...a.steps[0], name:"Sync " + selected.name, trigger,
+          actions:[{ ...newAutomationAction("import_table"), refName:selected.name }] };
+        return [a, ...as];
+      })}
+      onRemoveSchedule={deleteAutomation}
       onConnectData={(connId, instanceId) => setConnectDataFor({ targetId: selected.id, connId, instanceId })} />;
   } else if (activeId === "datasources" && updatingId && updating){
     page = <UpdateDataSource source={updating} onCancel={() => setUpdatingId(null)} onDone={() => setUpdatingId(null)} onUpdate={updateSource} />;
