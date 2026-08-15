@@ -585,6 +585,7 @@
   .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); }
   .cfg-readonly { padding-top: 6px; }
   .cfg-card__head { cursor: pointer; }
+  .vds-table.rel-table :is(th, td) { text-align: left; }
   .proto-modal-card.colfilter-dialog { max-width: min(640px, 92vw); }
   .proto-modal-card.sched-dialog { max-width: min(760px, 94vw); }
   .proto-modal-card.trel-dialog { max-width: min(720px, 94vw); }
@@ -1195,6 +1196,7 @@ const NAV = [
   { type:"section", key:"datahub", label:"Data Hub", items:[
     { id:"dataexplorer", label:"Data Explorer", icon:"file", external:true },
     { id:"datasources", label:"Data Tables", icon:"database", isNew:true },
+    { id:"tablerelations", label:"Related Tables", icon:"vector", isNew:true },
     { id:"dataconnectors", label:"Connections", icon:"plug", isNew:true },
     { id:"datapipelines", label:"Data Transformations", icon:"workflow", isNew:true },
     { id:"automations", label:"Automations", icon:"bolt", isNew:true },
@@ -3386,21 +3388,177 @@ const REL_TYPE_OPTIONS = [
 function blankTableRelation(defaultRelatedId){
   return { id:"rel_" + Math.random().toString(36).slice(2,10), name:"", type:"one_to_many", relatedTableId: defaultRelatedId || "", pairs:[{ localCol:"", relatedCol:"" }] };
 }
+const REL_PLAIN_LABEL = { one_to_many:"One to many", many_to_one:"Many to one", one_to_one:"One to one", many_to_many:"Many to many" };
+/* The fields that describe one relationship, shared by the table configuration page
+   and the Related tables page. */
+function TableRelationFields({ source, allSources, draft, setDraft }){
+  const singular = source.singular || source.name;
+  const plural = source.plural || source.name;
+  const myCols = (source.columns || []).filter(c => c.imp).map(c => c.display || c.name);
+  const otherTables = allSources.filter(s => s.id !== source.id);
+  const relatedTable = allSources.find(s => s.id === draft.relatedTableId);
+  const relatedCols = relatedTable ? (relatedTable.columns || []).filter(c => c.imp).map(c => c.display || c.name) : [];
+  const setPair = (i, patch) => setDraft({ pairs: draft.pairs.map((p, idx) => idx === i ? { ...p, ...patch } : p) });
+  const addPair = () => setDraft({ pairs: [...draft.pairs, { localCol: myCols[0] || "", relatedCol: relatedCols[0] || "" }] });
+  const delPair = (i) => setDraft({ pairs: draft.pairs.length > 1 ? draft.pairs.filter((_, idx) => idx !== i) : draft.pairs });
+  return (<>
+    <div className="form-grid">
+      <div className="field">
+        <label className="vds-label">Name of relationship</label>
+        <input className="vds-input" placeholder="e.g. driver_vehicle" value={draft.name} onChange={(e)=>setDraft({ name:e.target.value })} />
+      </div>
+    </div>
+
+    <div className="trel-row2">
+      <div>
+        <label className="vds-label">Relationship type</label>
+        <select className="vds-select" value={draft.type} onChange={(e)=>setDraft({ type:e.target.value })}>
+          {REL_TYPE_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label(singular, plural)}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="vds-label">Related table</label>
+        <select className="vds-select" value={draft.relatedTableId} onChange={(e)=>setDraft({ relatedTableId:e.target.value, pairs:[{ localCol: myCols[0] || "", relatedCol:"" }] })}>
+          <option value="">Select a table</option>
+          {otherTables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+      </div>
+    </div>
+
+    <div className="vds-h4 proto-section-title" style={{marginTop:8}}>Tables related by matching columns</div>
+    <div className="trel-pairs-head">
+      <div>{singular} column</div>
+      <div>{relatedTable ? relatedTable.name : "Related table"} column</div>
+      <div style={{flex:"0 0 40px"}}></div>
+    </div>
+    {draft.pairs.map((p, i) => (
+      <div className="trel-pair-row" key={i}>
+        <select className="vds-select" value={p.localCol} onChange={(e)=>setPair(i, { localCol:e.target.value })}>
+          <option value="">Select column</option>
+          {myCols.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <select className="vds-select" value={p.relatedCol} onChange={(e)=>setPair(i, { relatedCol:e.target.value })} disabled={!draft.relatedTableId}>
+          <option value="">{draft.relatedTableId ? "Select column" : "Pick a related table first"}</option>
+          {relatedCols.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <button className="vds-icon-btn vds-icon-btn--sm" style={{flex:"0 0 40px"}} disabled={draft.pairs.length === 1} onClick={()=>delPair(i)} title={draft.pairs.length === 1 ? "At least one column pair is required" : "Remove pair"}><Icon name="x" size={16} /></button>
+      </div>
+    ))}
+    <button className="vds-btn" style={{marginTop:4}} onClick={addPair}><Icon name="plus" size={15} />Add column pair</button>
+  </>);
+}
+
+/* One relationship, edited in a dialog. tablePicker lets the Related tables page
+   choose which table the relationship belongs to. */
+function TableRelationDialog({ title, source, allSources, relation, tablePicker, onCancel, onSave }){
+  const [draft, setDraft] = useState(relation || blankTableRelation());
+  const patch = (p) => setDraft(d => ({ ...d, ...p }));
+  const canSave = !!source && draft.name.trim() && draft.relatedTableId && draft.pairs.every(p => p.localCol && p.relatedCol);
+  return (
+    <div className="modal-overlay" onClick={onCancel}>
+      <div className="vds-dialog proto-modal-card trel-dialog" onClick={(e)=>e.stopPropagation()}>
+        <div className="vds-dialog__title">{title}</div>
+        <div className="vds-dialog__content">
+          {tablePicker && (
+            <div className="form-grid">
+              <div className="field">
+                <label className="vds-label">Table</label>
+                <select className="vds-select" value={tablePicker.value} onChange={(e)=>{ tablePicker.onChange(e.target.value); patch({ relatedTableId:"", pairs:[{ localCol:"", relatedCol:"" }] }); }}>
+                  <option value="">Select a table</option>
+                  {tablePicker.options.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+          {source
+            ? <TableRelationFields source={source} allSources={allSources} draft={draft} setDraft={patch} />
+            : <div className="vds-b2 proto-muted">Pick a table to relate first.</div>}
+        </div>
+        <div className="vds-dialog__actions">
+          <button className="vds-btn" onClick={onCancel}>Cancel</button>
+          <button className="vds-btn vds-btn--primary" disabled={!canSave}
+            onClick={()=>onSave({ ...draft, name: draft.name.trim(), createdAt: draft.createdAt || todayStr() })}><Icon name="check" size={16} />Save</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Every relationship in the tenant, whichever table it was defined on. */
+function RelatedTablesPage({ sources, onUpdate }){
+  const [editing, setEditing] = useState(null); // { sourceId, index } — index null when new
+  const rows = [];
+  sources.forEach(src => ((src.relations && src.relations.outgoing) || []).forEach((rel, index) => rows.push({ src, rel, index })));
+  const nameOf = (id) => { const t = sources.find(s => s.id === id); return t ? t.name : "—"; };
+  const editSource = editing ? sources.find(s => s.id === editing.sourceId) : null;
+  const editRelation = editing && editing.index !== null && editSource
+    ? ((editSource.relations && editSource.relations.outgoing) || [])[editing.index] : null;
+  const commit = (rel) => {
+    const outgoing = (editSource.relations && editSource.relations.outgoing) || [];
+    const next = editing.index === null ? [...outgoing, rel] : outgoing.map((r,i) => i === editing.index ? rel : r);
+    onUpdate(editSource.id, { relations: { ...(editSource.relations || { incoming:[] }), outgoing: next } });
+    setEditing(null);
+  };
+  return (
+    <div className="vds-content">
+      <div className="vds-page-header">
+        <div><h1 className="vds-page-title">Related tables</h1></div>
+        <button className="vds-btn vds-btn--primary" onClick={()=>setEditing({ sourceId:"", index:null })}>New table relation</button>
+      </div>
+      {rows.length === 0 ? (
+        <div className="empty">
+          <div className="empty-tile"><Icon name="vector" size={28} /></div>
+          <h2>No related tables yet</h2>
+          <p className="vds-b2">Relate two data tables by the columns they have in common.</p>
+          <button className="vds-btn vds-btn--primary" onClick={()=>setEditing({ sourceId:"", index:null })}>Create your first table relation</button>
+        </div>
+      ) : (
+        <div className="vds-table-container">
+          <div className="vds-table-toolbar">
+            <div className="vds-table-toolbar__count"><b>{rows.length}</b> {rows.length === 1 ? "table relation" : "table relations"}</div>
+          </div>
+          <table className="vds-table rel-table">
+            <thead><tr>
+              <th>Table</th><th>Relation</th><th>Related Table</th><th style={{width:90}}>Actions</th>
+            </tr></thead>
+            <tbody>
+              {rows.map(({ src, rel, index }) => (
+                <tr key={src.id + "-" + (rel.id || index)}>
+                  <td>{src.name}</td>
+                  <td>{REL_PLAIN_LABEL[rel.type] || rel.type}</td>
+                  <td>{nameOf(rel.relatedTableId)}</td>
+                  <td>
+                    <button className="vds-icon-btn vds-icon-btn--sm" title="Configure" aria-label={"Configure " + rel.name}
+                      onClick={()=>setEditing({ sourceId:src.id, index })}><Icon name="gear" size={17} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {editing && (
+        <TableRelationDialog title={editing.index === null ? "New table relation" : "Edit table relation"}
+          source={editSource} allSources={sources} relation={editRelation}
+          tablePicker={editing.index === null ? { value:editing.sourceId, options:sources, onChange:(id)=>setEditing(e => ({ ...e, sourceId:id })) } : null}
+          onCancel={()=>setEditing(null)} onSave={commit} />
+      )}
+    </div>
+  );
+}
+
 function TableRelationsTab({ source, allSources, onUpdate, hideHead = false, dialogEditor = false, startSignal = 0 }){
   const { useState } = React;
   const outgoing = (source.relations && source.relations.outgoing) || [];
   const [editingRel, setEditingRel] = useState(null); // { index: number|null, draft: {...} }
 
-  const singular = source.singular || source.name;
-  const plural = source.plural || source.name;
   const otherTables = allSources.filter(s => s.id !== source.id);
-  const myCols = (source.columns || []).filter(c => c.imp).map(c => c.display || c.name);
 
   const saveRelations = (newOutgoing) => onUpdate(source.id, { relations: { ...(source.relations || { incoming:[] }), outgoing: newOutgoing } });
   const startNew = () => setEditingRel({ index: null, draft: blankTableRelation(otherTables[0] && otherTables[0].id) });
   const startEdit = (i) => setEditingRel({ index: i, draft: { ...outgoing[i] } });
   const removeRel = (i) => saveRelations(outgoing.filter((_, idx) => idx !== i));
-  const relTypeLabel = (typeId) => { const opt = REL_TYPE_OPTIONS.find(o => o.id === typeId) || REL_TYPE_OPTIONS[0]; return opt.label(singular, plural); };
+  const relTypeLabel = (typeId) => { const opt = REL_TYPE_OPTIONS.find(o => o.id === typeId) || REL_TYPE_OPTIONS[0]; return opt.label(source.singular || source.name, source.plural || source.name); };
   const relatedTableName = (id) => { const t = allSources.find(s => s.id === id); return t ? t.name : "—"; };
   /* The page that owns the card head asks for a new relationship by bumping this. */
   React.useEffect(() => { if (startSignal) startNew(); }, [startSignal]);
@@ -3437,96 +3595,31 @@ function TableRelationsTab({ source, allSources, onUpdate, hideHead = false, dia
 
   if (editingRel){
     const { index, draft } = editingRel;
-    const setDraft = (patch) => setEditingRel(e => ({ ...e, draft: { ...e.draft, ...patch } }));
-    const relatedTable = allSources.find(s => s.id === draft.relatedTableId);
-    const relatedCols = relatedTable ? (relatedTable.columns || []).filter(c => c.imp).map(c => c.display || c.name) : [];
-
-    const setPair = (i, patch) => setDraft({ pairs: draft.pairs.map((p, idx) => idx === i ? { ...p, ...patch } : p) });
-    const addPair = () => setDraft({ pairs: [...draft.pairs, { localCol: myCols[0] || "", relatedCol: relatedCols[0] || "" }] });
-    const delPair = (i) => setDraft({ pairs: draft.pairs.length > 1 ? draft.pairs.filter((_, idx) => idx !== i) : draft.pairs });
-
-    const canSave = draft.name.trim() && draft.relatedTableId && draft.pairs.every(p => p.localCol && p.relatedCol);
-    const save = () => {
-      if (!canSave) return;
-      const rel = { ...draft, name: draft.name.trim(), createdAt: draft.createdAt || todayStr() };
-      const next = index === null ? [...outgoing, rel] : outgoing.map((r, idx) => idx === index ? rel : r);
-      saveRelations(next);
+    const commit = (rel) => {
+      saveRelations(index === null ? [...outgoing, rel] : outgoing.map((r, idx) => idx === index ? rel : r));
       setEditingRel(null);
     };
     const title = index === null ? "New related table" : "Edit related table";
-
-    const fields = (<>
-      <div className="form-grid">
-        <div className="field">
-          <label className="vds-label">Name of relationship</label>
-          <input className="vds-input" placeholder="e.g. driver_vehicle" value={draft.name} onChange={(e)=>setDraft({ name:e.target.value })} />
-        </div>
-      </div>
-
-      <div className="trel-row2">
-        <div>
-          <label className="vds-label">Relationship type</label>
-          <select className="vds-select" value={draft.type} onChange={(e)=>setDraft({ type:e.target.value })}>
-            {REL_TYPE_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label(singular, plural)}</option>)}
-          </select>
-        </div>
-        <div>
-          <label className="vds-label">Related table</label>
-          <select className="vds-select" value={draft.relatedTableId} onChange={(e)=>setDraft({ relatedTableId:e.target.value, pairs:[{ localCol: myCols[0] || "", relatedCol:"" }] })}>
-            <option value="">Select a table</option>
-            {otherTables.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
-          </select>
-        </div>
-      </div>
-
-      <div className="vds-h4 proto-section-title" style={{marginTop:8}}>Tables related by matching columns</div>
-      <div className="trel-pairs-head">
-        <div>{singular} column</div>
-        <div>{relatedTable ? relatedTable.name : "Related table"} column</div>
-        <div style={{flex:"0 0 40px"}}></div>
-      </div>
-      {draft.pairs.map((p, i) => (
-        <div className="trel-pair-row" key={i}>
-          <select className="vds-select" value={p.localCol} onChange={(e)=>setPair(i, { localCol:e.target.value })}>
-            <option value="">Select column</option>
-            {myCols.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select className="vds-select" value={p.relatedCol} onChange={(e)=>setPair(i, { relatedCol:e.target.value })} disabled={!draft.relatedTableId}>
-            <option value="">{draft.relatedTableId ? "Select column" : "Pick a related table first"}</option>
-            {relatedCols.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <button className="vds-icon-btn vds-icon-btn--sm" style={{flex:"0 0 40px"}} disabled={draft.pairs.length === 1} onClick={()=>delPair(i)} title={draft.pairs.length === 1 ? "At least one column pair is required" : "Remove pair"}><Icon name="x" size={16} /></button>
-        </div>
-      ))}
-      <button className="vds-btn" style={{marginTop:4}} onClick={addPair}><Icon name="plus" size={15} />Add column pair</button>
-    </>);
-
     if (dialogEditor){
       return (<>
         {listView()}
-        <div className="modal-overlay" onClick={()=>setEditingRel(null)}>
-          <div className="vds-dialog proto-modal-card trel-dialog" onClick={(e)=>e.stopPropagation()}>
-            <div className="vds-dialog__title">{title}</div>
-            <div className="vds-dialog__content">{fields}</div>
-            <div className="vds-dialog__actions">
-              <button className="vds-btn" onClick={()=>setEditingRel(null)}>Cancel</button>
-              <button className="vds-btn vds-btn--primary" disabled={!canSave} onClick={save}><Icon name="check" size={16} />Save</button>
-            </div>
-          </div>
-        </div>
+        <TableRelationDialog title={title} source={source} allSources={allSources} relation={draft}
+          onCancel={()=>setEditingRel(null)} onSave={commit} />
       </>);
     }
-
+    const setDraft = (patch) => setEditingRel(e => ({ ...e, draft: { ...e.draft, ...patch } }));
+    const canSave = draft.name.trim() && draft.relatedTableId && draft.pairs.every(p => p.localCol && p.relatedCol);
     return (
       <div>
         <div className="trel-editor-head">
-          <h2 style={{margin:0, fontSize:22, fontFamily:"var(--vds-font-serif)", fontWeight:400, color:"var(--vds-text-primary)"}}>{index === null ? "New relationship" : "Edit relationship"}</h2>
+          <h2 style={{margin:0, fontSize:22, fontFamily:"var(--vds-font-serif)", fontWeight:400, color:"var(--vds-text-primary)"}}>{title}</h2>
           <div className="trel-editor-actions">
             <button className="vds-btn" onClick={()=>setEditingRel(null)}>Cancel</button>
-            <button className="vds-btn vds-btn--primary" disabled={!canSave} onClick={save}><Icon name="check" size={16} />Save</button>
+            <button className="vds-btn vds-btn--primary" disabled={!canSave}
+              onClick={()=>canSave && commit({ ...draft, name: draft.name.trim(), createdAt: draft.createdAt || todayStr() })}><Icon name="check" size={16} />Save</button>
           </div>
         </div>
-        {fields}
+        <TableRelationFields source={source} allSources={allSources} draft={draft} setDraft={setDraft} />
       </div>
     );
   }
@@ -10648,6 +10741,8 @@ function App(){
           onEdit={(id) => setEditingAutoId(id)}
           onOpenHistory={(id) => { setViewingAutoTab("history"); setViewingAutoId(id); }}
           onDelete={deleteAutomation} onRunNow={runAutomation} records={automations} />;
+  } else if (activeId === "tablerelations"){
+    page = <RelatedTablesPage sources={sources} onUpdate={updateSource} />;
   } else if (activeId === "directives"){
     /* Same shape as automations: a new prompt is held here until it is saved, the
        row opens read-only, and the pencil opens the editor. */
