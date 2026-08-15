@@ -1156,7 +1156,7 @@ const HUB_PAGE = {
   datasources:{ key:"datasources", title:"Data Tables", icon:"database", newLabel:"New Data Table",
     sub:"Manage data tables",
     noun:"data tables", filter:"Filter data tables...", hidden:"Show hidden data tables",
-    cols:["Name","Origin","Type","Published","Records","Last synced","Actions"],
+    cols:["Name","Origin","Type","Published","Records","Last imported","Actions"],
     emptyTitle:"No data tables yet", emptyBody:"Connect a file, connector, or content source to create a data table in Viaduct.", cta:"Create your first data table" },
   dataconnectors:{ key:"dataconnectors", title:"Connections", icon:"plug", newLabel:"New connection",
     sub:"Connected external systems that create and sync data tables on a schedule.",
@@ -2044,7 +2044,7 @@ function s3FileDraft(connName, prefix, matchingFiles){
   const files = matchingFiles || [];
   const totalRows = files.reduce((sum, f) => sum + (f.rows || 0), 0);
   return { ...rec, filenamePrefix: prefix, recordCount: totalRows, records: totalRows.toLocaleString("en-US"),
-    lastSynced: files.length ? "Just now" : "Not synced yet", status: files.length ? "Ready" : "Waiting for data",
+    lastSynced: files.length ? "Just now" : "Not imported yet", status: files.length ? "Ready" : "Waiting for data",
     published: false }; // landing never auto-publishes — each Data needs its own manual Published flag
 }
 CONNECTOR_TEMPLATES.cazure = {
@@ -2155,7 +2155,7 @@ function sftpManagedSource(template, managedName, connName, instId, whenLabel, s
     name: connSlug(managedName),
     origin: connName, type: template.type || "Table",
     status: "Ready", records: rows.length.toLocaleString("en-US"), recordCount: rows.length,
-    lastSynced: doSeed ? (whenLabel || "Just now") : "Not synced yet",
+    lastSynced: doSeed ? (whenLabel || "Just now") : "Not imported yet",
     singular: dn.singular, plural: dn.plural,
     description: template.description || "",
     published: true, fromConnector: true, configured: true, connectorInstanceId: instId,
@@ -2182,7 +2182,7 @@ function connectorDataSourceRecord(connName, src, opts){
     id: "ds_" + Math.random().toString(36).slice(2,10),
     name: dsName,
     origin: connName, type: src.type,
-    status: "Ready", records: "0", recordCount: 0, lastSynced: "Not synced yet",
+    status: "Ready", records: "0", recordCount: 0, lastSynced: "Not imported yet",
     singular: dn.singular, plural: dn.plural, description: src.description || ("Created by the " + connName + " connector."),
     published: true, fromConnector: true,
     columns, parsed: { fileName: connName + " · " + src.name, columns: parsedCols, rows: [], previewRows: genPreviewRows(src.cols, 100), typeByCol },
@@ -4232,7 +4232,7 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
           </div>
           <div className="field">
             <label className="vds-label">Last imported</label>
-            <div className="vds-b2 cfg-readonly">{source.lastSynced || "Not synced yet"}</div>
+            <div className="vds-b2 cfg-readonly">{source.lastSynced || "Not imported yet"}</div>
           </div>
         </div>
       </div>
@@ -4728,7 +4728,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
 
   const backfillColFor = (s) => { const dt = (s.cols || []).find(c => c[1] === "date" || c[1] === "datetime"); return dt ? dt[0] : null; };
   const buildRecord = (s, instId) => {
-    let rec = { ...connectorDataSourceRecord(name || conn.name, s, { connId: conn.id, rawPrefix:true }), connectorInstanceId: instId, lastSynced:"Not synced yet", templateSourceKey: s.name };
+    let rec = { ...connectorDataSourceRecord(name || conn.name, s, { connId: conn.id, rawPrefix:true }), connectorInstanceId: instId, lastSynced:"Not imported yet", templateSourceKey: s.name };
     rec.startDate = s.firstDate;
     const cfg = configs[s.name];
     if (cfg){ rec = { ...rec, ...cfg, configured:true }; }
@@ -7075,7 +7075,7 @@ function ConnectorWizard({ onCancel, onCreate, editInstance, existingSources=[],
   }, [sftpTemplateId, isTemplateKind]);
 
   const buildRecord = (s, instId) => {
-    let rec = { ...connectorDataSourceRecord(name || conn.name, s, { connId: conn.id, rawPrefix: !requiresConfig }), connectorInstanceId: instId, lastSynced:"Not synced yet", templateSourceKey: s.name };
+    let rec = { ...connectorDataSourceRecord(name || conn.name, s, { connId: conn.id, rawPrefix: !requiresConfig }), connectorInstanceId: instId, lastSynced:"Not imported yet", templateSourceKey: s.name };
     if (!isWarehouse) rec.startDate = startDates[s.name] || s.firstDate;
     if (requiresConfig){
       const cfg = configs[s.name];
