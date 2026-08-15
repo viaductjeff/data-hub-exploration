@@ -4106,28 +4106,9 @@ function DataTableDataPage({ source, allSources = [], onBack, onConfigure }){
   );
 }
 
-/* One import schedule, edited on its own rather than in the automation editor. */
-function ScheduleDialog({ title, trigger, tables, onCancel, onSave }){
-  const [draft, setDraft] = useState(trigger || defaultImportTrigger());
-  return (
-    <div className="modal-overlay" onClick={onCancel}>
-      <div className="vds-dialog proto-modal-card sched-dialog" onClick={(e)=>e.stopPropagation()}>
-        <div className="vds-dialog__title">{title}</div>
-        <div className="vds-dialog__content">
-          <AutomateTriggerFields trigger={draft} setTrigger={setDraft} tables={tables} showLede={false} />
-        </div>
-        <div className="vds-dialog__actions">
-          <button className="vds-btn" onClick={onCancel}>Cancel</button>
-          <button className="vds-btn vds-btn--primary" onClick={()=>onSave(draft)}>Save schedule</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* The configuration page, laid out like the data tables prototype: what the table
    is, where it comes from, how its columns map, and what automates it. */
-function DataTableConfigPage({ source, allSources = [], connectors = [], automations = [], focus, onBack, onUpdate, onImport, onConnectData, onOpenAutomation, onSaveSchedule, onRemoveSchedule }){
+function DataTableConfigPage({ source, allSources = [], connectors = [], automations = [], focus, onBack, onUpdate, onImport, onConnectData, onSaveSchedule }){
   const relationsRef = React.useRef(null);
   React.useEffect(() => {
     if (focus === "relations" && relationsRef.current) relationsRef.current.scrollIntoView({ block:"start" });
@@ -4147,14 +4128,20 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
   const [srcIdx, setSrcIdx] = useState(0);
   const [filterIdx, setFilterIdx] = useState(-1);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [editingSchedule, setEditingSchedule] = useState(null);
   const [addRelation, setAddRelation] = useState(0);
   const picked = srcRows[Math.min(srcIdx, srcRows.length - 1)];
   const used = (automations || []).filter(a => (a.steps || []).some(st =>
     (st.actions || []).some(act => act.refName === source.name)
     || ((st.trigger && st.trigger.events) || []).some(ev => ev.table === source.name)));
+  /* The import this table runs on. A table that has never been scheduled starts from
+     the standard weekday morning import. */
+  const importAuto = used.find(a => (a.steps || []).some(st =>
+    (st.actions || []).some(act => act.type === "import_table" && act.refName === source.name))) || null;
+  const [sched, setSched] = useState(() =>
+    (importAuto && importAuto.steps[0] && importAuto.steps[0].trigger) || defaultImportTrigger());
   const save = () => {
     onUpdate(source.id, { published, singular, plural, description: desc, columns: cols });
+    if (onSaveSchedule) onSaveSchedule(importAuto ? importAuto.id : null, sched);
     onBack();
   };
   const setCol = (i, patch) => setCols(cs => cs.map((c,idx) => idx===i ? { ...c, ...patch } : c));
@@ -4327,46 +4314,9 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
       </div>
 
       <div className="vds-card prompt-card cfg-card">
-        <div className="prompt-card__head prompt-card__head--center">
-          <h5 className="prompt-card__title">Schedule</h5>
-          <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon" onClick={()=>setEditingSchedule({ id:null, trigger:defaultImportTrigger() })}>
-            <Icon name="plus" size={16} />Add schedule</button>
-        </div>
-        {used.length === 0
-          ? <div className="vds-alert vds-alert--info proto-note">Nothing imports this data table on a schedule yet.</div>
-          : (
-            <div className="vds-table-container">
-              <table className="vds-table cfg-src-table">
-                <thead><tr>
-                  <th>Name</th><th>Trigger</th><th>History</th><th style={{width:110}}>Actions</th>
-                </tr></thead>
-                <tbody>
-                  {used.map(a => (
-                    <tr key={a.id} className="clickable-row" onClick={()=>onOpenAutomation && onOpenAutomation(a.id)}>
-                      <td>{a.name}</td>
-                      <td>{automationTriggerText(a)}</td>
-                      <td><RunStrip runs={a.runList} /></td>
-                      <td onClick={(e)=>e.stopPropagation()}>
-                        <div className="row-actions">
-                          <button className="vds-icon-btn vds-icon-btn--sm" title="Edit schedule" aria-label="Edit schedule"
-                            onClick={()=>setEditingSchedule({ id:a.id, trigger:(a.steps[0] || {}).trigger })}><Icon name="pencil" size={17} /></button>
-                          <DeleteButton label="Remove" onDelete={()=>onRemoveSchedule && onRemoveSchedule(a.id)} />
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        <h5 className="prompt-card__title">Schedule</h5>
+        <AutomateTriggerFields trigger={sched} setTrigger={setSched} tables={allTableNames(allSources)} showLede={false} />
       </div>
-
-      {editingSchedule && (
-        <ScheduleDialog trigger={editingSchedule.trigger} tables={allTableNames(allSources)}
-          title={editingSchedule.id ? "Edit schedule" : "Add schedule"}
-          onCancel={()=>setEditingSchedule(null)}
-          onSave={(trigger)=>{ onSaveSchedule && onSaveSchedule(editingSchedule.id, trigger); setEditingSchedule(null); }} />
-      )}
 
       <div className="vds-card prompt-card cfg-card" ref={relationsRef}>
         <div className="prompt-card__head prompt-card__head--center">
@@ -10651,7 +10601,6 @@ function App(){
       focus={detailFocus}
       onBack={() => { setDetailFocus(null); setDetailId(null); }} onUpdate={updateSource}
       onImport={(id) => setSources(s => s.map(x => x.id===id ? { ...x, lastSynced:"Just now", status:"Ready" } : x))}
-      onOpenAutomation={(id) => { setDetailId(null); setActiveId("automations"); setViewingAutoId(id); setViewingAutoTab("steps"); }}
       onSaveSchedule={(autoId, trigger) => setAutomations(as => {
         if (autoId) return as.map(a => a.id===autoId
           ? { ...a, steps:a.steps.map((st,i) => i===0 ? { ...st, trigger } : st) } : a);
@@ -10660,7 +10609,6 @@ function App(){
           actions:[{ ...newAutomationAction("import_table"), refName:selected.name }] };
         return [a, ...as];
       })}
-      onRemoveSchedule={deleteAutomation}
       onConnectData={(connId, instanceId) => setConnectDataFor({ targetId: selected.id, connId, instanceId })} />;
   } else if (activeId === "datasources" && updatingId && updating){
     page = <UpdateDataSource source={updating} onCancel={() => setUpdatingId(null)} onDone={() => setUpdatingId(null)} onUpdate={updateSource} />;
