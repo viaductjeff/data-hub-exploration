@@ -4866,7 +4866,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
             </table>
           </div>
           <div className="wiz-footer">
-            <button className="vds-btn" onClick={()=>setPage(editing ? "schedule" : "auth")}><Icon name="arrowLeft" size={17} />Back</button>
+            <button className="vds-btn" onClick={()=>{ if (editing && fromDataTables) onCancel(); else setPage(editing ? "schedule" : "auth"); }}><Icon name="arrowLeft" size={17} />Back</button>
             {nextUnmapped
               ? <button className="vds-btn vds-btn--primary"
                   onClick={()=>{ setConfiguring(nextUnmapped.name); setConfiguringOpenCol(null); }}>Map new table(s)<Icon name="arrowRight" size={17} /></button>
@@ -4967,7 +4967,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
       id: instId, name: name || conn.name, connectorId: conn.id, connectorName: conn.name, group: conn.group,
       creds: { apiKey }, automationTrigger: sched, ...triggerToSyncFields(sched),
       /* One trigger per table when the tables were the point of the visit. */
-      tableTriggers: fromDataTables ? Object.fromEntries(pickedList.map(s => [s.name, triggerFor(s.name)])) : null,
+      tableTriggers: fromDataTables ? Object.fromEntries(pickedList.filter(s => !existingNames.includes(s.name)).map(s => [s.name, triggerFor(s.name)])) : null,
       startDates: Object.fromEntries(pickedList.map(s => [s.name, s.firstDate])),
       status: "Ready", lastChecked: "Just now",
       createdAt: editing ? editInstance.createdAt : day, updatedAt: day,
@@ -4979,16 +4979,18 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
   };
 
   if (fromDataTables){
-    /* One schedule per table — each import runs on its own terms. */
+    /* One schedule per table — each import runs on its own terms. Tables that were
+       already mapped keep the schedule they were given. */
+    const newlyPicked = pickedList.filter(s => !existingNames.includes(s.name));
     return (
       <div className="vds-content">
         <PageHead title={"Set up " + conn.name + " connection"} onCancel={onCancel} />
         <Stepper current={3} steps={CONNECTOR_WIZARD_STEPS} />
         <div className="vds-h4 proto-section-title">Schedule import</div>
         <div className="vds-b2 proto-muted proto-section-note">Imports can always be manually run, even when triggered on a schedule or by a table event.</div>
-        {pickedList.length === 0
+        {newlyPicked.length === 0
           ? <div className="vds-alert vds-alert--info proto-note">No source tables were selected, so there is nothing to schedule yet.</div>
-          : pickedList.map(s => (
+          : newlyPicked.map(s => (
               <div className="vds-card prompt-card import-card" key={s.name}>
                 <div className="prompt-card__head prompt-card__head--center import-card__head">
                   <span className="vds-h5">{s.name}</span>
@@ -6987,7 +6989,8 @@ function ScriptConnectorFlow({ conn, tmpl, editing, editInstance, existingSource
 
 
 function NewConnector(props){
-  const conn = props.fromDataTables ? CONNECTORS.find(c => c.id === props.presetConnectorId) : null;
+  const connId = props.presetConnectorId || (props.editInstance && props.editInstance.connectorId);
+  const conn = props.fromDataTables ? CONNECTORS.find(c => c.id === connId) : null;
   return (
     <DataTableEntry.Provider value={conn ? conn.name : null}>
       <SkipFirstStep.Provider value={!!props.presetConnectorId}>
@@ -10323,6 +10326,9 @@ function App(){
   const [connectors, setConnectors] = useState([]);
   const [connDetailId, setConnDetailId] = useState(null);
   const [connDetailStep, setConnDetailStep] = useState(null);
+  /* An existing connection opened from the data table wizard: same pages, but framed
+     as new data tables and returning to Data Tables when it's done. */
+  const [connDetailFromDT, setConnDetailFromDT] = useState(false);
   const [automations, setAutomations] = useState(seedAutomations);
   const [editingAutoId, setEditingAutoId] = useState(null);
   const [viewingAutoId, setViewingAutoId] = useState(null);
@@ -10356,7 +10362,7 @@ function App(){
     setConnDetailId(d => d===id ? null : d);
   };
   const openSource = (id) => { setConnCreating(false); setConnDetailId(null); setUpdatingId(null); setCreating(false); setActiveId("datasources"); setDetailId(id); };
-  const openConnector = (id, startStep) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setActiveId("dataconnectors"); setConnDetailId(id); setConnDetailStep(startStep || null); };
+  const openConnector = (id, startStep) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailFromDT(false); setActiveId("dataconnectors"); setConnDetailId(id); setConnDetailStep(startStep || null); };
   const runAutomation = (autoIdArg) => {
     const s = automations.find(x => x.id === autoIdArg);
     if (!s) return;
@@ -10578,11 +10584,16 @@ function App(){
       onPickConnector={(id) => {
         const made = existingInstanceFor(connectors, id);
         setCreating(false);
-        if (made){ openConnector(made.id); return; }
+        if (made){ openConnector(made.id); setConnDetailFromDT(true); return; }
         setConnPreset(id); setConnFromDataTables(true); setConnCreating(true); setActiveId("dataconnectors");
       }} />;
   } else if (activeId === "dataconnectors" && connDetailId && connDetail){
-    page = <NewConnector key={"conn-" + connDetail.id} editInstance={connDetail} existingSources={sources} existingConnectors={connectors} onOpenSource={openSource} initialStep={connDetailStep} onCancel={() => setConnDetailId(null)}
+    const leaveConnDetail = () => { setConnDetailFromDT(false); setConnDetailId(null); };
+    const backToDataTablePicker = () => { leaveConnDetail(); setActiveId("datasources"); setCreating(true); };
+    page = <NewConnector key={"conn-" + connDetail.id + (connDetailFromDT ? "-dt" : "")} editInstance={connDetail}
+      fromDataTables={connDetailFromDT}
+      existingSources={sources} existingConnectors={connectors} onOpenSource={openSource} initialStep={connDetailStep}
+      onCancel={connDetailFromDT ? backToDataTablePicker : leaveConnDetail}
       onSave={(updated, { newRecords, deleteIds, sourceUpdates }) => {
         setSources(s => {
           let next = mergeSourceRecords(s.filter(x => !(deleteIds||[]).includes(x.id)), newRecords||[]);
@@ -10590,11 +10601,27 @@ function App(){
           return next;
         });
         setConnectors(cs => cs.map(c => c.id===updated.id ? updated : c));
-        syncConnectorAutomation(updated, (id) => {
-          const src = (newRecords||[]).find(r=>r.id===id) || sources.find(x=>x.id===id);
-          return src && src.name;
-        }, deleteIds);
-        setConnDetailId(null);
+        if (connDetailFromDT){
+          /* Tables added to an existing connection each get their own import
+             automation; the tables already there keep the ones they have. */
+          setAutomations(as => {
+            const lookup = (id) => ((newRecords||[]).find(r=>r.id===id) || {}).name;
+            const made = (newRecords||[]).map(rec =>
+              automationFromConnector(updated, (updated.tableTriggers || {})[rec.templateSourceKey || rec.name], [rec.id], lookup));
+            const goneNames = (deleteIds||[]).map(id => (sources.find(x=>x.id===id)||{}).name).filter(Boolean);
+            const kept = goneNames.length
+              ? as.filter(a => !(a.steps||[]).every(st => (st.actions||[]).every(act => goneNames.includes(act.refName))))
+              : as;
+            return [...made, ...kept];
+          });
+        } else {
+          syncConnectorAutomation(updated, (id) => {
+            const src = (newRecords||[]).find(r=>r.id===id) || sources.find(x=>x.id===id);
+            return src && src.name;
+          }, deleteIds);
+        }
+        if (connDetailFromDT) setActiveId("datasources");
+        leaveConnDetail();
       }} />;
   } else if (activeId === "dataconnectors" && connCreating){
     const leaveConnWizard = () => { setConnCreating(false); setConnPreset(null); setConnFromDataTables(false); };
