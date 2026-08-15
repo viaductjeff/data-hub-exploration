@@ -585,8 +585,6 @@
   .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); }
   .cfg-readonly { padding-top: 6px; }
   .cfg-card__head { cursor: pointer; }
-  .vds-table.cfg-src-table :is(th, td) { text-align: left; }
-  .vds-table.cfg-src-table :is(th, td).cfg-num { text-align: right; }
   .proto-modal-card.colfilter-dialog { max-width: min(640px, 92vw); }
   .proto-modal-card.sched-dialog { max-width: min(760px, 94vw); }
   .proto-modal-card.trel-dialog { max-width: min(720px, 94vw); }
@@ -1474,7 +1472,7 @@ function CopyCredsButton({ existingConnectors, connId, onCopy }){
     </div>
   );
 }
-function ConnectDataButton({ onPick, compact, connectors = [], label = "Connect data table" }){
+function ConnectDataButton({ onPick, compact, connectors = [], label = "Connect data table", noIcon = false, small = false }){
   const [open, setOpen] = useState(false);
   const ref = React.useRef(null);
   React.useEffect(() => {
@@ -1491,7 +1489,8 @@ function ConnectDataButton({ onPick, compact, connectors = [], label = "Connect 
     <div className="connect-data-wrap" ref={ref}>
       {compact
         ? <button className="vds-icon-btn vds-icon-btn--sm" title="Connect data table" aria-label="Connect data table" onClick={()=>setOpen(v=>!v)}><Icon name="link" size={16} /></button>
-        : <button className="vds-btn" onClick={()=>setOpen(v=>!v)}><Icon name="link" size={16} />{label}</button>}
+        : <button className={"vds-btn" + (small ? " vds-btn--sm" : "")} onClick={()=>setOpen(v=>!v)}>
+            {!noIcon && <Icon name="link" size={16} />}{label}</button>}
       {open && (
         <div className="vds-menu proto-pop proto-connect-menu">
           {configured.length > 0 && (<>
@@ -4118,18 +4117,14 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
   const [plural, setPlural] = useState(source.plural || "");
   const [desc, setDesc] = useState(source.description || "");
   const [cols, setCols] = useState(() => (source.columns || []).map(c => ({ ...c })));
-  const feeds = connectors.filter(c => (c.dataSourceIds || []).includes(source.id));
-  const srcRows = feeds.length
-    ? feeds.map(inst => {
-        const type = CONNECTORS.find(c => c.id === inst.connectorId);
-        return { key:inst.id, origin:(type && type.name) || inst.connectorId, table:source.templateSourceKey || source.name, connection:inst.name };
-      })
-    : [{ key:"manual", origin:source.origin || "Upload", table:source.templateSourceKey || "—", connection:"—" }];
-  const [srcIdx, setSrcIdx] = useState(0);
+  const feed = connectors.find(c => (c.dataSourceIds || []).includes(source.id)) || null;
+  const feedType = feed ? CONNECTORS.find(c => c.id === feed.connectorId) : null;
+  const src = feed
+    ? { origin:(feedType && feedType.name) || feed.connectorId, table:source.templateSourceKey || source.name, connection:feed.name }
+    : { origin:source.origin || "Upload", table:source.templateSourceKey || "—", connection:"—" };
   const [filterIdx, setFilterIdx] = useState(-1);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [addRelation, setAddRelation] = useState(0);
-  const picked = srcRows[Math.min(srcIdx, srcRows.length - 1)];
   const used = (automations || []).filter(a => (a.steps || []).some(st =>
     (st.actions || []).some(act => act.refName === source.name)
     || ((st.trigger && st.trigger.events) || []).some(ev => ev.table === source.name)));
@@ -4210,48 +4205,40 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
       </div>
 
       <div className="vds-card prompt-card cfg-card">
-        <h5 className="prompt-card__title">Data sources</h5>
-        <div className="vds-table-container">
-          <table className="vds-table cfg-src-table">
-            <thead><tr>
-              {srcRows.length > 1 && <th style={{width:44}}></th>}
-              <th>Source</th>
-              <th>Source table</th>
-              <th>Connection</th>
-              <th className="cfg-num">Records</th>
-              <th>Last synced</th>
-              <th style={{width:140}}></th><th style={{width:150}}></th>
-            </tr></thead>
-            <tbody>
-              {srcRows.map((r,i) => (
-                <tr key={r.key}>
-                  {srcRows.length > 1 && (
-                    <td>
-                      <input type="radio" className="vds-radio" name="cfg-source" checked={i === srcIdx}
-                        aria-label={"Show column mappings for " + r.connection} onChange={()=>setSrcIdx(i)} />
-                    </td>
-                  )}
-                  <td>{r.origin}</td>
-                  <td className="proto-mono">{r.table}</td>
-                  <td>{r.connection}</td>
-                  <td className="cfg-num">{Number(source.recordCount || 0).toLocaleString()}</td>
-                  <td>{source.lastSynced || "Not synced yet"}</td>
-                  <td>
-                    <button className="vds-btn vds-btn--sm vds-btn--start-icon" title="Import now" onClick={()=>onImport(source.id)}>
-                      <Icon name="play" size={16} />Import</button>
-                  </td>
-                  <td>
-                    {onConnectData && <ConnectDataButton connectors={connectors} onPick={onConnectData} label="Change source" />}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="prompt-card__head prompt-card__head--center">
+          <h5 className="prompt-card__title">Data source</h5>
+          <div className="row-actions">
+            <button className="vds-btn vds-btn--sm vds-btn--start-icon" title="Import now" onClick={()=>onImport(source.id)}>
+              <Icon name="play" size={16} />Import</button>
+            {onConnectData && <ConnectDataButton connectors={connectors} onPick={onConnectData} label="Change source" noIcon small />}
+          </div>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label className="vds-label">Source</label>
+            <div className="vds-b2 cfg-readonly">{src.origin}</div>
+          </div>
+          <div className="field">
+            <label className="vds-label">Source table</label>
+            <div className="vds-b2 proto-mono cfg-readonly">{src.table}</div>
+          </div>
+          <div className="field">
+            <label className="vds-label">Connection</label>
+            <div className="vds-b2 cfg-readonly">{src.connection}</div>
+          </div>
+          <div className="field">
+            <label className="vds-label">Records</label>
+            <div className="vds-b2 cfg-readonly">{Number(source.recordCount || 0).toLocaleString()}</div>
+          </div>
+          <div className="field">
+            <label className="vds-label">Last imported</label>
+            <div className="vds-b2 cfg-readonly">{source.lastSynced || "Not synced yet"}</div>
+          </div>
         </div>
       </div>
 
       <div className="vds-card prompt-card cfg-card">
-        <h5 className="prompt-card__title">{srcRows.length > 1 ? picked.origin + " " + picked.table + " column mappings" : "Column mappings"}</h5>
+        <h5 className="prompt-card__title">Column mappings</h5>
         <div className="vds-table-container">
           <table className="vds-table cols-table">
             <thead><tr>
