@@ -520,6 +520,7 @@
   /* The buttons centre against the input itself; the duplicate-name message sits
      below the whole row, so showing it does not shift them. */
   .auto-title-row { display: flex; align-items: center; gap: 32px; }
+  .auto-title-row .vds-page-title { flex: 1 1 auto; }
   .auto-title-input.err { border-color: var(--vds-error-dark); }
   /* Section heading with its explanatory note sitting beside it on the baseline. */
   .auto-section-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--vds-button-gap); margin-bottom: 12px; }
@@ -585,6 +586,8 @@
   .prompt-read-text { white-space: pre-wrap; }
   .prompt-avail-line { display: flex; align-items: center; justify-content: space-between; gap: var(--vds-dialog-gap); }
   .prompt-meta { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
+  .prompt-meta-line { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vds-dialog-gap); align-items: center; }
+  .prompt-meta-line > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .prompt-meta-value { font-weight: 500; }
   .cfg-card { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); }
   .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); }
@@ -9900,7 +9903,7 @@ function PromptHistoryCard({ prompt }){
       <h5 className="prompt-card__title">Details</h5>
       <div className="prompt-meta">
         {rows.map(([label, value]) => (
-          <div className="prompt-avail-line" key={label}>
+          <div className="prompt-meta-line" key={label}>
             <span className="vds-b2">{label}</span>
             <span className="vds-b2 prompt-meta-value">{value || "—"}</span>
           </div>
@@ -9981,10 +9984,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
           <span>{draft.name || (isSaved ? "Directive" : "New directive")}</span>
         </nav>
         <div className="auto-title-row">
-          <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder="Directive name"
-            value={draft.name} aria-label="Directive name" aria-invalid={nameTaken || undefined}
-            onChange={(e)=>{ setNameTaken(false); patch({ name:e.target.value }); }}
-            onBlur={(e)=>setNameTaken(nameIsTaken(e.target.value))} />
+          <h1 className="vds-page-title">{draft.name || (isSaved ? "Directive" : "New directive")}</h1>
           <div className="auto-editor-actions">
             <button className="vds-btn" onClick={onCancel}>Cancel</button>
             <button className="vds-btn vds-btn--primary" disabled={!canSave}
@@ -9995,12 +9995,26 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
               onClick={()=>onDelete && onDelete(prompt.id)}><Icon name="trash" size={17} /></button>
           </div>
         </div>
-        {nameTaken && <div className="vds-helper-text vds-helper-text--error">This name is already used. Names must be unique.</div>}
       </div>
 
       <PromptTabs tab={tab} setTab={setTab} />
       <div className="prompt-grid">
         <div className="prompt-col">
+          <div className="vds-card prompt-card">
+            <h5 className="prompt-card__title">Name*</h5>
+            <div className="field prompt-field">
+              <input className={"vds-input" + (nameTaken ? " err" : "")} placeholder="Directive name"
+                value={draft.name} aria-label="Directive name" aria-invalid={nameTaken || undefined}
+                onChange={(e)=>{ setNameTaken(false); patch({ name:e.target.value }); }}
+                onBlur={(e)=>setNameTaken(nameIsTaken(e.target.value))} />
+              {nameTaken && <div className="vds-helper-text vds-helper-text--error">This name is already used. Names must be unique.</div>}
+            </div>
+            <h5 className="prompt-card__title">How it appears in ViaDuck</h5>
+            <div className="prompt-chat-row">
+              <span className="vds-chip prompt-slash">{slashOf(draft.name)}</span>
+              <RunInViaDuckButton prompt={draft} withLabel label="Test in ViaDuck" gate={false} />
+            </div>
+          </div>
           <div className="vds-card prompt-card">
             <div className="prompt-card__head prompt-card__head--center">
               <h5 className="prompt-card__title">Prompt</h5>
@@ -10010,11 +10024,6 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
               <textarea className="vds-textarea prompt-textarea" rows={7} value={draft.instructions}
                 aria-label="Prompt instructions" placeholder="Describe what this directive should do"
                 onChange={(e)=>patch({ instructions:e.target.value })} />
-            </div>
-            <h5 className="prompt-card__title">How it appears in ViaDuck</h5>
-            <div className="prompt-chat-row">
-              <span className="vds-chip prompt-slash">{slashOf(draft.name)}</span>
-              <RunInViaDuckButton prompt={draft} withLabel label="Test in ViaDuck" gate={false} />
             </div>
           </div>
           <PromptHistoryCard prompt={draft} />
