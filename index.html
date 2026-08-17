@@ -584,6 +584,8 @@
   .prompt-slash { font-family: var(--vds-font-mono); background: var(--vds-alert-info-bg); color: var(--vds-alert-info-icon); }
   .prompt-read-text { white-space: pre-wrap; }
   .prompt-avail-line { display: flex; align-items: center; justify-content: space-between; gap: var(--vds-dialog-gap); }
+  .prompt-meta { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
+  .prompt-meta-value { font-weight: 500; }
   .cfg-card { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); }
   .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); }
   .cfg-readonly { padding-top: 6px; }
@@ -9848,13 +9850,61 @@ function ToolPickerDialog({ onClose, onInsert }){
 }
 
 /* Who made it and who touched it last. Never editable, shown on both pages. */
+/* Availability reads the same on both directive pages — the read-only one just
+   disables every control. */
+function PromptAvailabilityCard({ prompt, readOnly = false, onToUsers, onPatch }){
+  return (
+    <div className="vds-card prompt-card prompt-card--tight">
+      <h5 className="prompt-card__title">Availability</h5>
+      <label className="vds-choice">
+        <input type="checkbox" className="vds-checkbox" checked={!!prompt.toUsers} disabled={readOnly}
+          onChange={(e)=>onToUsers && onToUsers(e.target.checked)} />
+        <span className="vds-b2">Available in ViaDuck chat</span>
+      </label>
+      <label className="vds-choice">
+        <input type="checkbox" className="vds-checkbox" checked={!!prompt.toSchedule} disabled={readOnly || !prompt.toUsers}
+          onChange={(e)=>onPatch && onPatch({ toSchedule:e.target.checked })} />
+        <span className="vds-b2">Allow scheduling</span>
+      </label>
+      <label className="vds-choice">
+        <input type="checkbox" className="vds-checkbox" checked={!!prompt.toViaduck} disabled={readOnly || !prompt.toUsers}
+          onChange={(e)=>onPatch && onPatch({ toViaduck:e.target.checked })} />
+        <span className="vds-b2">Auto-run when appropriate</span>
+      </label>
+      {/* Nested under the auto-run checkbox, because the clues are what it matches on. */}
+      <div className="field prompt-field prompt-clues">
+        <label className="vds-label vds-dotted-underline"
+          title="If you describe when to use this, ViaDuck will run it on its own when that comes up.">Context clues</label>
+        <textarea className="vds-textarea prompt-textarea" rows={4} value={prompt.clues} disabled={readOnly || !prompt.toViaduck}
+          placeholder="Eg, when someone asks to reconcile an invoice with a work order"
+          onChange={(e)=>onPatch && onPatch({ clues:e.target.value })} />
+      </div>
+    </div>
+  );
+}
+
+const slashDate = (iso) => {
+  if (!iso) return "—";
+  const [y, m, d] = String(iso).split("-").map(Number);
+  return m + "/" + d + "/" + y;
+};
 function PromptHistoryCard({ prompt }){
+  const rows = [
+    ["Created by", prompt.createdBy],
+    ["Create date", slashDate(prompt.createdAt)],
+    ["Updated by", prompt.updatedBy],
+    ["Update date", slashDate(prompt.updatedAt)],
+  ];
   return (
     <div className="vds-card prompt-card">
-      <h5 className="prompt-card__title">History</h5>
-      <div>
-        <div className="vds-b2 proto-muted">Created by {prompt.createdBy} · {fmtAutoDate(prompt.createdAt)}</div>
-        <div className="vds-b2 proto-muted">Updated by {prompt.updatedBy} · {fmtAutoDate(prompt.updatedAt)}</div>
+      <h5 className="prompt-card__title">Details</h5>
+      <div className="prompt-meta">
+        {rows.map(([label, value]) => (
+          <div className="prompt-avail-line" key={label}>
+            <span className="vds-b2">{label}</span>
+            <span className="vds-b2 prompt-meta-value">{value || "—"}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -9897,27 +9947,7 @@ function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpen
         </div>
 
         <div className="prompt-col">
-          <div className="vds-card prompt-card">
-            <h5 className="prompt-card__title">Availability</h5>
-            <div className="prompt-avail-line">
-              <span className="vds-b2">Available in ViaDuck chat</span>
-              <span className="vds-b2 proto-muted">{prompt.toUsers ? "On" : "Off"}</span>
-            </div>
-            <div className="prompt-avail-line">
-              <span className="vds-b2">Allow scheduling</span>
-              <span className="vds-b2 proto-muted">{prompt.toSchedule ? "On" : "Off"}</span>
-            </div>
-            <div className="prompt-avail-line">
-              <span className="vds-b2">Auto-run when appropriate</span>
-              <span className="vds-b2 proto-muted">{prompt.toViaduck ? "On" : "Off"}</span>
-            </div>
-            <div className="prompt-clues">
-              <span className="vds-b3 proto-muted">Context clues</span>
-              {prompt.clues.trim()
-                ? <div className="vds-b2 prompt-read-text">{prompt.clues}</div>
-                : <div className="vds-b2 proto-muted">None — ViaDuck won't run this on its own.</div>}
-            </div>
-          </div>
+          <PromptAvailabilityCard prompt={prompt} readOnly />
           <PromptAutomationsCard prompt={prompt} automations={automations} onOpenAutomation={onOpenAutomation} />
         </div>
       </div>
@@ -9991,32 +10021,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
         </div>
 
         <div className="prompt-col">
-          <div className="vds-card prompt-card prompt-card--tight">
-            <h5 className="prompt-card__title">Availability</h5>
-            <label className="vds-choice">
-              <input type="checkbox" className="vds-checkbox" checked={draft.toUsers}
-                onChange={(e)=>setToUsers(e.target.checked)} />
-              <span className="vds-b2">Available in ViaDuck chat</span>
-            </label>
-            <label className="vds-choice">
-              <input type="checkbox" className="vds-checkbox" checked={!!draft.toSchedule} disabled={!draft.toUsers}
-                onChange={(e)=>patch({ toSchedule:e.target.checked })} />
-              <span className="vds-b2">Allow scheduling</span>
-            </label>
-            <label className="vds-choice">
-              <input type="checkbox" className="vds-checkbox" checked={draft.toViaduck} disabled={!draft.toUsers}
-                onChange={(e)=>patch({ toViaduck:e.target.checked })} />
-              <span className="vds-b2">Auto-run when appropriate</span>
-            </label>
-            {/* Nested under the ViaDuck checkbox, because the clues are what it matches on. */}
-            <div className="field prompt-field prompt-clues">
-              <label className="vds-label vds-dotted-underline"
-                title="If you describe when to use this, ViaDuck will run it on its own when that comes up.">Context clues</label>
-              <textarea className="vds-textarea prompt-textarea" rows={4} value={draft.clues} disabled={!draft.toViaduck}
-                placeholder="Eg, when someone asks to reconcile an invoice with a work order"
-                onChange={(e)=>patch({ clues:e.target.value })} />
-            </div>
-          </div>
+          <PromptAvailabilityCard prompt={draft} onToUsers={setToUsers} onPatch={patch} />
           <PromptAutomationsCard prompt={draft} automations={automations}
             onOpenAutomation={onOpenAutomation}
             onNewAutomation={() => onNewAutomation(draft)}
