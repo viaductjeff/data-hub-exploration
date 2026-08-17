@@ -550,7 +550,7 @@
   .proto-btn--danger-quiet:hover { color: var(--vds-alert-error-icon); border-color: var(--vds-alert-error-icon); }
   :is(.proto-btn--tested, .proto-btn--tested:disabled) { background: var(--vds-alert-success-bg); border-color: var(--vds-alert-success-border); color: var(--vds-alert-success-icon); }
 
-  /* Saved prompts. Two columns while there's room: the definition on the left,
+  /* Directives. Two columns while there's room: the definition on the left,
      everything about how it's used stacked on the right. */
   .prompt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: var(--vds-dialog-gap); align-items: start; }
   .prompt-col { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); min-width: 0; }
@@ -1173,20 +1173,20 @@ const HUB_PAGE = {
     cols:["Name","Type","Source","Status","Last run","Actions"],
     emptyTitle:"No data transformations built", emptyBody:"A data transformation reads from a source, transforms the records, and writes the result into Viaduct.", cta:"Create your first data transformation" },
   automations:{ key:"automations", title:"Automations", icon:"bolt", newLabel:"New Automation",
-    sub:"Run your connectors, saved prompts and data transformations on a trigger you define.",
+    sub:"Run your connectors, directives and data transformations on a trigger you define.",
     noun:"automations", filter:"Filter automations...", hidden:"Show paused automations",
     cols:["Name","Steps","Trigger","Next scheduled run","History","Last run","Creator","Actions"],
     emptyTitle:"No automations yet", emptyBody:"An automation runs a sequence of steps on a trigger. Build one here, or automate a connector or data transformation from its wizard and it will appear in this list.", cta:"New automation" },
   schedules:{ key:"schedules", title:"Schedules", icon:"clock", newLabel:"New Schedule",
-    sub:"Run your connectors, saved prompts and data transformations on a trigger you define.",
+    sub:"Run your connectors, directives and data transformations on a trigger you define.",
     noun:"schedules", filter:"Filter schedules...", hidden:"Show paused schedules",
     cols:["Name","Steps","Trigger","Next scheduled run","History","Last run","Creator","Actions"],
     emptyTitle:"No schedules yet", emptyBody:"A schedule runs a sequence of steps on a trigger. Build one here, or schedule a connector or data transformation from its wizard and it will appear in this list.", cta:"New schedule" },
-  directives:{ key:"directives", title:"Saved Prompts", icon:"terminal", newLabel:"New Saved Prompt",
+  directives:{ key:"directives", title:"Directives", icon:"terminal", newLabel:"New Directive",
     sub:"Named prompts you can reuse — in an automation, or to clean, map and route incoming records.",
-    noun:"saved prompts", filter:"Filter saved prompts...", hidden:"Show archived saved prompts",
+    noun:"directives", filter:"Filter directives...", hidden:"Show archived directives",
     cols:["Name","For users","For ViaDuck","Updated","Updated by","Created","Created by","Actions"],
-    emptyTitle:"No saved prompts yet", emptyBody:"Add a saved prompt to transform or route records the moment they arrive.", cta:"Create your first saved prompt" },
+    emptyTitle:"No directives yet", emptyBody:"Add a directive to transform or route records the moment they arrive.", cta:"Create your first directive" },
 };
 
 const NAV = [
@@ -1209,7 +1209,7 @@ const NAV = [
     { id:"datapipelines", label:"Data Transformations", icon:"workflow", isNew:true },
     { id:"automations", label:"Automations", icon:"bolt", isNew:true },
     { id:"schedules", label:"Schedules", icon:"clock", isNew:true },
-    { id:"directives", label:"Saved Prompts", icon:"terminal" },
+    { id:"directives", label:"Directives", icon:"terminal" },
   ]},
   { type:"section", key:"admin", label:"Admin", items:[
     { id:"admingroups", label:"Admin Groups", icon:"users" },
@@ -1615,7 +1615,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
           </div>
           <MultiSelectFilter label="Contains actions" options={AUTO_ACTION_FILTERS.map(a => a.label)}
             selected={actionFilter} onChange={setActionFilter} />
-          <MultiSelectFilter label="Contains saved prompts" options={AUTO_PROMPT_FILTERS}
+          <MultiSelectFilter label="Contains directives" options={AUTO_PROMPT_FILTERS}
             selected={promptFilter} onChange={setPromptFilter} />
           <MultiSelectFilter label="Accesses Data Tables" options={AUTO_TABLE_FILTERS}
             selected={tableFilter} onChange={setTableFilter} />
@@ -1648,7 +1648,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
               <div className="trow clickable-row" style={{gridTemplateColumns:tmpl}} key={r.id}
                 onClick={()=>open(r.id)} role="button" tabIndex={0}
                 onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(r.id); } }}>
-                <div className="td">{r.name || "Untitled saved prompt"}</div>
+                <div className="td">{r.name || "Untitled directive"}</div>
                 <div className="td td-flag">{r.toUsers && <Icon name="check" size={17} />}</div>
                 <div className="td td-flag">{r.toViaduck && <Icon name="check" size={17} />}</div>
                 <div className="td">{fmtAutoDate(r.updatedAt)}</div>
@@ -2388,8 +2388,8 @@ function seedAutomations(){
         trigger:{ type:"multi", schedules:[seedSched("Monthly", mondays, "07:00", { nth:"first", weekday:"Monday" })], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
         actions:[{ ...newAutomationAction("pipeline"), refName:"Maintenance Forecast" }] },
     ]),
-    /* These five run a saved prompt, which is what fills the Automations card on a
-       saved prompt's page — the link is the slash command in the prompt text. */
+    /* These five run a directive, which is what fills the Automations card on a
+       directive's page — the link is the slash command in the prompt text. */
     mk("Warranty claim digest", "2026-05-06", "Amy Chen", "schedule", 12, [
       { id:autoId("step"), name:"Summarise the week's claims",
         trigger:{ type:"multi", schedules:[seedSched("Weekly", mondays, "08:00")], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
@@ -2418,8 +2418,8 @@ function seedAutomations(){
   ];
 }
 
-/* ---------------- Saved prompts ----------------
-   A saved prompt is a named set of instructions with a slash command, which
+/* ---------------- Directives ----------------
+   A directive is a named set of instructions with a slash command, which
    people can call in ViaDuck chat and automations can run as an action. */
 const slashOf = (name) => "/" + String(name || "").trim().toLowerCase()
   .replace(/[^a-z0-9\s_]/g, "").replace(/\s+/g, "_");
@@ -2454,7 +2454,7 @@ function seedSavedPrompts(){
       instructions:"", clues:"" },
   ];
 }
-/* The agent tools a saved prompt can call. Reference only — nothing to configure. */
+/* The agent tools a directive can call. Reference only — nothing to configure. */
 const PROMPT_TOOLS = [
   { name:"apply_knowledge_item_modification",
     description:"Make the changes that have been approved by the user to the stored knowledge items.\n\nWhen the user confirms the suggested knowledge items modifications, that is an indication that the user wants the preference to apply to future requests, and that you should use this tool to modify knowledge items.",
@@ -4109,7 +4109,7 @@ function AttachmentViewerModal({ row, onBack, onClose }){
         ) : (
           <div className="vds-card proto-file-preview file-preview-empty">
             <Icon name="fileText" size={28} />
-            <span>No preview available for this file type. It's stored as raw bytes and passed to the extraction saved prompt as-is.</span>
+            <span>No preview available for this file type. It's stored as raw bytes and passed to the extraction directive as-is.</span>
           </div>
         )}
         <div className="vds-dialog__actions">
@@ -6195,7 +6195,7 @@ function WarehouseConfigureStep({ tableName, draft, existingSources, offerPopula
 /* ---------------- Email Inbound Parse: dedicated per-fleet inbox, push on receipt ---------------- */
 CONNECTOR_TEMPLATES.emailparse = {
   kind: "inbox",
-  tagline: "Create a dedicated inbox for each email use case — work orders, procurement, supplier quotes. Emails and attachments land as raw data for downstream saved prompts.",
+  tagline: "Create a dedicated inbox for each email use case — work orders, procurement, supplier quotes. Emails and attachments land as raw data for downstream directives.",
 };
 const EMAIL_STEPS = [
   { n:1, label:"Name connection" },
@@ -6295,7 +6295,7 @@ function emailInboxSources(connName, address){
     id:parentId, name:parentName, origin:connName, type:"Event",
     status:"Ready", records:parentRows.length.toLocaleString("en-US"), recordCount:parentRows.length, lastSynced:"Just now",
     singular:parentDn.singular, plural:parentDn.plural,
-    description:"One row per inbound email received at this connection's dedicated inbox. The connector performs zero parsing — a downstream saved prompt reads this raw data to extract structured information.",
+    description:"One row per inbound email received at this connection's dedicated inbox. The connector performs zero parsing — a downstream directive reads this raw data to extract structured information.",
     published:false, fromConnector:true, emailKind:"parent", tableNameLocked:false, colNameEditable:true, filterable:false,
     columns:parentCols,
     parsed:{ fileName:connName, columns:parentCols.map(c=>c.name), rows:parentRows, previewRows:parentRows, typeByCol:Object.fromEntries(parentCols.map(c=>[c.name,c.type])) },
@@ -6305,7 +6305,7 @@ function emailInboxSources(connName, address){
     id:childId, name:childName, origin:connName, type:"Event",
     status:"Ready", records:childRows.length.toLocaleString("en-US"), recordCount:childRows.length, lastSynced:"Just now",
     singular:childDn.singular, plural:childDn.plural,
-    description:"One row per attachment on an inbound email, keyed to the parent message. A downstream saved prompt iterates these rows to extract structured data from each attachment.",
+    description:"One row per attachment on an inbound email, keyed to the parent message. A downstream directive iterates these rows to extract structured data from each attachment.",
     published:false, fromConnector:true, emailKind:"child", tableNameLocked:false, colNameEditable:true, filterable:false,
     columns:childCols,
     parsed:{ fileName:connName, columns:childCols.map(c=>c.name), rows:childRows, previewRows:childRows, typeByCol:Object.fromEntries(childCols.map(c=>[c.name,c.type])) },
@@ -8629,7 +8629,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
   });
   const setIssueUse = (name, use) => setColUses(prev => ({ ...prev, [name]: use }));
 
-  const choose = (id) => { setTypeId(id); setName(uniqueName(id === "embed" ? "Embedding transformation" : id === "directive" ? "Saved prompt transformation" : id === "smart" ? "Smart Groups transformation" : id === "issue" ? "TPMS Issue Detection" : id === "transform" ? "Basic transformation" : "New data transformation", existingNames)); setDesc(""); setSourceId(null); setSteps([]); setOutputMode("new"); setOutName(""); setOutTargetId(null); setEmbedCols([]); setOutputCol(id === "smart" ? "smart_groups" : "vector_embedding"); setInId(null); setDirOutName(""); setDirectiveId(""); setTrigger(newWizardTrigger()); setAssetSourceId(null); setEventKey(""); setAssetKey(""); setEventWindow("30"); setEventFilter(""); setColUses({}); setStep(2); };
+  const choose = (id) => { setTypeId(id); setName(uniqueName(id === "embed" ? "Embedding transformation" : id === "directive" ? "Directive transformation" : id === "smart" ? "Smart Groups transformation" : id === "issue" ? "TPMS Issue Detection" : id === "transform" ? "Basic transformation" : "New data transformation", existingNames)); setDesc(""); setSourceId(null); setSteps([]); setOutputMode("new"); setOutName(""); setOutTargetId(null); setEmbedCols([]); setOutputCol(id === "smart" ? "smart_groups" : "vector_embedding"); setInId(null); setDirOutName(""); setDirectiveId(""); setTrigger(newWizardTrigger()); setAssetSourceId(null); setEventKey(""); setAssetKey(""); setEventWindow("30"); setEventFilter(""); setColUses({}); setStep(2); };
 
   const xfInputSrc = sources.find(s => s.id === sourceId);
   const xfFieldCollision = isXf && (steps || []).some((st, i) => (st.typeId === "calc" || st.typeId === "cond") && st.params && st.params.field && availableColsTyped(xfInputSrc, steps, i, sources).map(c => c.name).includes(st.params.field));
@@ -8879,7 +8879,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
       const outSrc = {
         id: outSrcId, name: connSlug(dirOutName), origin: "Data transformation", type: "Table",
         status: "Waiting for data", records: "0", recordCount: 0, lastSynced: "Not run yet",
-        description: "Written by the " + (dir ? dir.name : "saved prompt") + " saved prompt via " + (name || "data transformation") + ".",
+        description: "Written by the " + (dir ? dir.name : "directive") + " directive via " + (name || "data transformation") + ".",
         published: true, fromPipeline: true, configured: true, pipelineId: pipeId,
         columns: [], parsed: { fileName: connSlug(dirOutName), columns: [], typeByCol: {}, rows: [] }, relations: { outgoing:[], incoming:[] },
       };
@@ -8943,7 +8943,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         <PageHead title={(editing ? "Edit " : "New ") + type.label} sub={"Data transformation · " + type.label} onCancel={onCancel} />
         <Stepper current={scheduleStepN} steps={pipeSteps} />
         <div className="vds-h4 proto-section-title">Automate</div>
-        <div className="vds-b2 proto-muted proto-section-note">{isDir ? "How often this saved prompt runs in the agent harness." : isXf ? "How this data transformation reruns — plus a manual Run now, always available from the Automations page." : "How often this data transformation runs."}</div>
+        <div className="vds-b2 proto-muted proto-section-note">{isDir ? "How often this directive runs in the agent harness." : isXf ? "How this data transformation reruns — plus a manual Run now, always available from the Automations page." : "How often this data transformation runs."}</div>
         {isXf && (
           <div className="xf-outmode-row">
             <button className={"xf-outmode" + (triggerMode === "input" ? " on" : "")} onClick={() => setTriggerMode("input")}><Icon name="broadcast" size={16} /><span>On input update</span></button>
@@ -9065,11 +9065,11 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
         <DataSourcePicker sources={sources} valueId={inId} onChange={setInId} />
 
         <div className="vds-h4 proto-section-title">Directive</div>
-        <div className="vds-b2 proto-muted proto-section-note">A named prompt from your saved prompt library, run in a headless agent harness.</div>
+        <div className="vds-b2 proto-muted proto-section-note">A named prompt from your directive library, run in a headless agent harness.</div>
         <div className="form-grid">
           <div className="field">
             <select className="vds-select" value={directiveId} onChange={e => setDirectiveId(e.target.value)}>
-              <option value="">Select a saved prompt…</option>
+              <option value="">Select a directive…</option>
               {DIRECTIVES.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
             {directiveId && <div className="vds-helper-text">{(DIRECTIVES.find(d => d.id === directiveId) || {}).desc}</div>}
@@ -9083,7 +9083,7 @@ function NewPipeline({ onCancel, onCreate, editInstance, sources=[], onSave, pip
             <input className="vds-input" value={dirOutName} placeholder="e.g. triaged_issues" onChange={e => setDirOutName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "_"))} />
             {(() => { const inSrc = sources.find(s => s.id === inId); return (
               <div className="vds-helper-text">{dirOutName && inSrc && connSlug(dirOutName) === connSlug(inSrc.name)
-                ? ("Matches the input — the saved prompt writes its results into the original data table, " + inSrc.name + ".")
+                ? ("Matches the input — the directive writes its results into the original data table, " + inSrc.name + ".")
                 : ((inSrc ? ("Use the same name as the input (" + inSrc.name + ") to write results into the original data table. ") : "") + "Use a different name to create a new output data.")}</div>
             ); })()}
           </div>
@@ -9278,7 +9278,7 @@ function fmtDuration(startedTs, finishedTs){
 function histRowType(sched, pipelines){
   if (sched.connectorId) return "connection";
   const pipe = sched.pipelineId ? pipelines.find(p => p.id === sched.pipelineId) : null;
-  return (pipe && pipe.typeId === "directive") ? "saved prompt" : "data transformation";
+  return (pipe && pipe.typeId === "directive") ? "directive" : "data transformation";
 }
 // Flatten schedule-level runs into one row per data for connector runs (a single connector
 // sync covers several tables), and one row per run for pipeline/directive runs.
@@ -9345,7 +9345,7 @@ function genArgoLogs(row){
   }
   return lines;
 }
-const RUNH_TYPES = ["connection","data transformation","saved prompt"];
+const RUNH_TYPES = ["connection","data transformation","directive"];
 function RunDetailsPage({ row, onBack, onOpenConfigurator }){
   const meta = runStatusMeta(row.run.status);
   const logs = genArgoLogs(row);
@@ -9686,7 +9686,7 @@ function AutomationView({ automation, initialTab, noun = AUTOMATION_NOUN, onBack
   );
 }
 
-/* Running a saved prompt means calling it in ViaDuck chat, which only works once
+/* Running a directive means calling it in ViaDuck chat, which only works once
    it's available to users. */
 function RunInViaDuckButton({ prompt, withLabel = false, label = "Run in ViaDuck", gate = true }){
   const [open, setOpen] = useState(false);
@@ -9726,7 +9726,7 @@ function RunInViaDuckButton({ prompt, withLabel = false, label = "Run in ViaDuck
   </>);
 }
 
-/* Tabs shared by both saved prompt pages. Evals is coming, not built. */
+/* Tabs shared by both directive pages. Evals is coming, not built. */
 function PromptTabs({ tab, setTab }){
   return (
     <div className="vds-tabs" style={{margin:"0 0 16px"}}>
@@ -9751,7 +9751,7 @@ function PromptAutomationsCard({ prompt, automations, onOpenAutomation, onNewAut
         )}
       </div>
       {used.length === 0 ? (
-        <div className="vds-alert vds-alert--info proto-note">This saved prompt is not part of any automation yet.</div>
+        <div className="vds-alert vds-alert--info proto-note">This directive is not part of any automation yet.</div>
       ) : (
         <div className="prompt-auto-table">
           <div className="prompt-auto-row prompt-auto-row--head">
@@ -9866,12 +9866,12 @@ function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpen
     <div className="vds-content">
       <div className="proto-sticky-head">
         <nav className="vds-breadcrumbs">
-          <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Saved Prompts</a>
+          <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Directives</a>
           <span className="vds-breadcrumbs__sep">/</span>
-          <span>{prompt.name || "Saved prompt"}</span>
+          <span>{prompt.name || "Directive"}</span>
         </nav>
         <div className="proto-detail-head">
-        <div><h1 className="vds-page-title">{prompt.name || "Untitled saved prompt"}</h1></div>
+        <div><h1 className="vds-page-title">{prompt.name || "Untitled directive"}</h1></div>
         <div className="auto-editor-actions">
           <RunInViaDuckButton prompt={prompt} withLabel />
           <button className="vds-btn vds-btn--start-icon" onClick={()=>onEdit(prompt.id)}>
@@ -9942,22 +9942,22 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
     <div className="vds-content">
       <div className="auto-editor-header proto-sticky-head">
         <nav className="vds-breadcrumbs">
-          <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Saved Prompts</a>
+          <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Directives</a>
           <span className="vds-breadcrumbs__sep">/</span>
-          <span>{draft.name || (isSaved ? "Saved prompt" : "New saved prompt")}</span>
+          <span>{draft.name || (isSaved ? "Directive" : "New directive")}</span>
         </nav>
         <div className="auto-title-row">
-          <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder="Saved prompt name"
-            value={draft.name} aria-label="Saved prompt name" aria-invalid={nameTaken || undefined}
+          <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder="Directive name"
+            value={draft.name} aria-label="Directive name" aria-invalid={nameTaken || undefined}
             onChange={(e)=>{ setNameTaken(false); patch({ name:e.target.value }); }}
             onBlur={(e)=>setNameTaken(nameIsTaken(e.target.value))} />
           <div className="auto-editor-actions">
             <button className="vds-btn" onClick={onCancel}>Cancel</button>
             <button className="vds-btn vds-btn--primary" disabled={!canSave}
               title={canSave ? undefined : "Enter a unique name to save"}
-              onClick={()=>onSave(draft)}>Save prompt</button>
-            <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Delete saved prompt"
-              disabled={!isSaved} title={isSaved ? "Delete saved prompt" : "This saved prompt hasn't been saved yet"}
+              onClick={()=>onSave(draft)}>Save directive</button>
+            <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Delete directive"
+              disabled={!isSaved} title={isSaved ? "Delete directive" : "This directive hasn't been saved yet"}
               onClick={()=>onDelete && onDelete(prompt.id)}><Icon name="trash" size={17} /></button>
           </div>
         </div>
@@ -9974,7 +9974,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
             </div>
             <div className="field prompt-field">
               <textarea className="vds-textarea prompt-textarea" rows={7} value={draft.instructions}
-                aria-label="Prompt instructions" placeholder="Describe what this saved prompt should do"
+                aria-label="Prompt instructions" placeholder="Describe what this directive should do"
                 onChange={(e)=>patch({ instructions:e.target.value })} />
             </div>
             <h5 className="prompt-card__title">How it appears in ViaDuck</h5>
@@ -10011,7 +10011,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
           <PromptAutomationsCard prompt={draft} automations={automations}
             onOpenAutomation={onOpenAutomation}
             onNewAutomation={() => onNewAutomation(draft)}
-            newLabel={isSaved ? "New automation" : "Save prompt and create automation"}
+            newLabel={isSaved ? "New automation" : "Save directive and create automation"}
             newDisabled={!isSaved && !canSave}
             newTitle={(!isSaved && !canSave) ? "Enter a unique name to save" : undefined} />
         </div>
@@ -10218,7 +10218,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, no
                           {act.type === "prompt" && (
                             <div className="field action-row__prompt">
                               <textarea className="vds-textarea" rows={4} value={act.prompt || ""}
-                                placeholder='Enter AI prompt. You may type "/" to be shown a list of saved prompts.'
+                                placeholder='Enter AI prompt. You may type "/" to be shown a list of directives.'
                                 onChange={(e)=>patchAction(step.id, act.id, { prompt:e.target.value })} />
                             </div>
                           )}
@@ -10306,7 +10306,7 @@ function RunHistory({ cfg, automations, runs, connectors, pipelines, sources, ta
             <p>{noun.Many} created by connectors and data transformations will show their run history here.</p>
           </div>
         ) : (<>
-          <div className="vds-b2 proto-muted proto-section-note" style={{marginTop:0}}>Every data table, data transformation, and saved prompt that has run on the platform, one row per run. A connector run shows up here once per data table it syncs.</div>
+          <div className="vds-b2 proto-muted proto-section-note" style={{marginTop:0}}>Every data table, data transformation, and directive that has run on the platform, one row per run. A connector run shows up here once per data table it syncs.</div>
           <div className="runh-toolbar">
             <div className="vds-table-toolbar__count"><b>{rows.length}</b> runs</div>
             <div className="runh-filters">
@@ -10602,7 +10602,7 @@ function App(){
     : [{ ...sp, updatedAt:todayISO(), updatedBy:CURRENT_USER_EMAIL }, ...ps]);
   const deletePrompt = (id) => { setSavedPrompts(ps => ps.filter(p => p.id !== id));
     setEditingPromptId(e => e===id ? null : e); setViewingPromptId(v => v===id ? null : v); };
-  /* A saved prompt's "New automation" lands in the automation editor with the first
+  /* A directive's "New automation" lands in the automation editor with the first
      step already running that prompt. */
   const automationForPrompt = (sp) => {
     const a = newAutomation("Run " + sp.name);
