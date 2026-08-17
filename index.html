@@ -567,7 +567,10 @@
   /* 18px checkbox + the 8px .vds-choice gap, so the clues line up with the label above. */
   .prompt-clues { margin-left: 26px; }
   /* Tool picker: a fixed-height dialog so the list scrolls under a pinned action row. */
-  .tool-dialog { max-width: 620px; display: flex; flex-direction: column; max-height: min(80vh, 720px); padding: 0; }
+  /* Beats the 460px cap .proto-modal-card sets on every dialog. */
+  .proto-modal-card.tool-dialog { max-width: min(690px, 94vw); }
+  .tool-dialog { display: flex; flex-direction: column; max-height: min(80vh, 720px); padding: 0; }
+  .tool-dialog__lede { margin: 0; }
   .tool-dialog .vds-dialog__title { flex: none; }
   .tool-dialog__body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column;
     gap: var(--vds-form-gap); padding: var(--vds-dialog-gap); }
@@ -9807,11 +9810,12 @@ function ToolPickerDialog({ onClose, onInsert }){
     <div className="modal-overlay" onClick={onClose}>
       <div className="vds-dialog proto-modal-card tool-dialog" onClick={(e)=>e.stopPropagation()}>
         <div className="vds-dialog__title">
-          <span>Insert a tool call</span>
+          <span>Insert tool name</span>
           <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Close" title="Close" onClick={onClose}>
             <Icon name="x" size={17} /></button>
         </div>
         <div className="tool-dialog__body">
+          <p className="vds-b2 proto-muted tool-dialog__lede">You may want to ask your directive to prioritize certain tool calls, for example. You can learn about the available tools here, and insert their name into your directive prompt.</p>
           <div className="filter prompt-tool-search">
             <span className="s-icon"><Icon name="search" size={16} /></span>
             <input className="vds-input" placeholder="Filter tools..." aria-label="Filter tools" autoFocus
