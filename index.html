@@ -1174,6 +1174,11 @@ const HUB_PAGE = {
     noun:"automations", filter:"Filter automations...", hidden:"Show paused automations",
     cols:["Name","Steps","Trigger","Next scheduled run","History","Last run","Creator","Actions"],
     emptyTitle:"No automations yet", emptyBody:"An automation runs a sequence of steps on a trigger. Build one here, or automate a connector or data transformation from its wizard and it will appear in this list.", cta:"New automation" },
+  schedules:{ key:"schedules", title:"Schedules", icon:"clock", newLabel:"New Schedule",
+    sub:"Run your connectors, saved prompts and data transformations on a trigger you define.",
+    noun:"schedules", filter:"Filter schedules...", hidden:"Show paused schedules",
+    cols:["Name","Steps","Trigger","Next scheduled run","History","Last run","Creator","Actions"],
+    emptyTitle:"No schedules yet", emptyBody:"A schedule runs a sequence of steps on a trigger. Build one here, or schedule a connector or data transformation from its wizard and it will appear in this list.", cta:"New schedule" },
   directives:{ key:"directives", title:"Saved Prompts", icon:"terminal", newLabel:"New Saved Prompt",
     sub:"Named prompts you can reuse — in an automation, or to clean, map and route incoming records.",
     noun:"saved prompts", filter:"Filter saved prompts...", hidden:"Show archived saved prompts",
@@ -1200,6 +1205,7 @@ const NAV = [
     { id:"dataconnectors", label:"Connections", icon:"plug", isNew:true },
     { id:"datapipelines", label:"Data Transformations", icon:"workflow", isNew:true },
     { id:"automations", label:"Automations", icon:"bolt", isNew:true },
+    { id:"schedules", label:"Schedules", icon:"clock", isNew:true },
     { id:"directives", label:"Saved Prompts", icon:"terminal" },
   ]},
   { type:"section", key:"admin", label:"Admin", items:[
@@ -1523,7 +1529,8 @@ function ConnectDataButton({ onPick, compact, connectors = [], label = "Connect 
 function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete, onOpenSource, onRunNow, onImport, onConfigure, onConnectData, onViewRelations, lookupSource, records=[], tabsNode, allConnectors=[] }){
   const isDS = cfg.key === "datasources";
   const isConn = cfg.key === "dataconnectors";
-  const isAuto = cfg.key === "automations";
+  /* Schedules is the same list as Automations, under its own nav path. */
+  const isAuto = cfg.key === "automations" || cfg.key === "schedules";
   const isPipe = cfg.key === "datapipelines";
   const isPrompt = cfg.key === "directives";
   const tmpl = isConn ? "1.5fr 1.1fr 1fr 1fr 1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 130px 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : (isPrompt ? "1.9fr 0.85fr 0.9fr 0.9fr 1.1fr 0.9fr 1.1fr 0.95fr"
@@ -1644,7 +1651,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
               <div className="trow clickable-row" style={{gridTemplateColumns:tmpl}} key={r.id}
                 onClick={()=>open(r.id)} role="button" tabIndex={0}
                 onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(r.id); } }}>
-                <div className="td td-name">{r.name || "Unnamed automation"}</div>
+                <div className="td td-name">{r.name || ("Unnamed " + cfg.noun.replace(/s$/, ""))}</div>
                 <div className="td" style={{textAlign:"center"}}>{(r.steps || []).length}</div>
                 <div className="td">{automationTriggerText(r)}</div>
                 <div className="td">{automationNextRun(r)}</div>
@@ -5821,7 +5828,7 @@ function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = 
   if (lockedNote) return <div className="vds-alert vds-alert--info proto-note">{lockedNote}</div>;
   return (
     <div>
-      {showLede && <div className="vds-b2 proto-muted proto-section-note automate-lede">Automations can always be manually run, even when triggered on a schedule or by a table event.</div>}
+      {showLede && <div className="vds-b2 proto-muted proto-section-note automate-lede">{noun.Many + " can always be manually run, even when triggered on a schedule or by a table event."}</div>}
       <TriggerRows trigger={trigger} onChange={set} tables={tables} />
     </div>
   );
@@ -9374,7 +9381,7 @@ function RunStatusChip({ status, message }){
 }
 
 /* Past runs of one automation, with mutually exclusive status filters. */
-function AutomationRunHistory({ automation }){
+function AutomationRunHistory({ automation, noun = AUTOMATION_NOUN }){
   const [filter, setFilter] = useState("all");
   const runs = automation.runList || [];
   const counts = {
@@ -9541,7 +9548,12 @@ function actionSentence(act){
   return act.refName ? label + ": " + act.refName : label + " — nothing selected yet";
 }
 
-function AutomationView({ automation, initialTab, onBack, onEdit, onRun, onDelete }){
+/* The automation pages serve two nav paths — Automations and Schedules — so their
+   wording comes from the noun the caller passes in. */
+const AUTOMATION_NOUN = { one:"automation", One:"Automation", many:"automations", Many:"Automations" };
+const SCHEDULE_NOUN = { one:"schedule", One:"Schedule", many:"schedules", Many:"Schedules" };
+
+function AutomationView({ automation, initialTab, noun = AUTOMATION_NOUN, onBack, onEdit, onRun, onDelete }){
   const [tab, setTab] = useState(initialTab || "steps");
   const steps = automation.steps || [];
   const actionIsSpecified = (a) => a.type === "notification"
@@ -9552,7 +9564,7 @@ function AutomationView({ automation, initialTab, onBack, onEdit, onRun, onDelet
     <div className="vds-content">
       <div className="proto-sticky-head">
         <nav className="vds-breadcrumbs">
-          <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>Automations</a>
+          <a href="#" onClick={(e)=>{e.preventDefault(); onBack();}}>{noun.Many}</a>
           <span className="vds-breadcrumbs__sep">/</span>
           <span>{automation.name || "Automation"}</span>
         </nav>
@@ -9574,13 +9586,13 @@ function AutomationView({ automation, initialTab, onBack, onEdit, onRun, onDelet
         <button className={"vds-tab" + (tab==="steps" ? " vds-tab--selected" : "")} onClick={()=>setTab("steps")}>Steps</button>
         <button className={"vds-tab" + (tab==="history" ? " vds-tab--selected" : "")} onClick={()=>setTab("history")}>History</button>
       </div>
-      {tab === "history" ? <AutomationRunHistory automation={automation} /> : (<>
+      {tab === "history" ? <AutomationRunHistory automation={automation} noun={noun} /> : (<>
       <div className="auto-section-head">
         <span className="vds-b2">Performed in the order specified.</span>
       </div>
       {steps.length === 0 ? (
         <div className="vds-card auto-empty-steps">
-          <span className="vds-b2 proto-muted">This automation has no steps yet.</span>
+          <span className="vds-b2 proto-muted">{"This " + noun.one + " has no steps yet."}</span>
         </div>
       ) : (
         <div className="step-list">
@@ -9597,7 +9609,7 @@ function AutomationView({ automation, initialTab, onBack, onEdit, onRun, onDelet
                 <div className="step-card__body">
                   <div>
                     <h5 style={{margin:"0 0 4px"}}>Trigger</h5>
-                    {isFirst && <div className="vds-b2 proto-muted" style={{marginBottom:12}}>Automations can always be manually run, even when triggered on a schedule or by a table event.</div>}
+                    {isFirst && <div className="vds-b2 proto-muted" style={{marginBottom:12}}>{noun.Many + " can always be manually run, even when triggered on a schedule or by a table event."}</div>}
                     <div className="trigger-read-list">
                       {!isFirst && (
                         <div className="trigger-read-line">
@@ -9992,7 +10004,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
   );
 }
 
-function AutomationEditor({ automation, automations = [], sources, pipelines, onCancel, onSave, onDelete }){
+function AutomationEditor({ automation, automations = [], sources, pipelines, noun = AUTOMATION_NOUN, onCancel, onSave, onDelete }){
   const [draft, setDraft] = useState(automation);
   /* Uniqueness is checked on blur, against every other automation's name. */
   const [nameTaken, setNameTaken] = useState(false);
@@ -10047,22 +10059,22 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
     <div className="vds-content">
       <div className="auto-editor-header proto-sticky-head">
         <nav className="vds-breadcrumbs">
-          <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Automations</a>
+          <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>{noun.Many}</a>
           <span className="vds-breadcrumbs__sep">/</span>
-          <span>{draft.name || "Automation"}</span>
+          <span>{draft.name || noun.One}</span>
         </nav>
         <div className="auto-title-row">
-          <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder="Automation name"
-            value={draft.name} aria-label="Automation name" aria-invalid={nameTaken || undefined}
+          <input className={"auto-title-input" + (nameTaken ? " err" : "")} placeholder={noun.One + " name"}
+            value={draft.name} aria-label={noun.One + " name"} aria-invalid={nameTaken || undefined}
             onChange={(e)=>{ setNameTaken(false); setDraft(d => ({ ...d, name:e.target.value })); }}
             onBlur={(e)=>setNameTaken(nameIsTaken(e.target.value))} />
           <div className="auto-editor-actions">
           <button className="vds-btn" onClick={onCancel}>Cancel</button>
           <button className="vds-btn vds-btn--primary" disabled={!canSave}
             title={canSave ? undefined : "Enter a unique name to save"}
-            onClick={()=>onSave(draft)}>Save automation</button>
-          <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Delete automation"
-            disabled={!isSaved} title={isSaved ? "Delete automation" : "This automation hasn't been saved yet"}
+            onClick={()=>onSave(draft)}>{"Save " + noun.one}</button>
+          <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label={"Delete " + noun.one}
+            disabled={!isSaved} title={isSaved ? "Delete " + noun.one : "This " + noun.one + " hasn't been saved yet"}
             onClick={()=>onDelete && onDelete(automation.id)}><Icon name="trash" size={17} /></button>
           </div>
         </div>
@@ -10075,13 +10087,13 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
       </div>
       {/* The run list is not edited here, so read it from the live record rather than
           the local draft — otherwise a run finishing never updates the table. */}
-      {tab === "history" ? <AutomationRunHistory automation={automation} /> : (<>
+      {tab === "history" ? <AutomationRunHistory automation={automation} noun={noun} /> : (<>
       <div className="auto-section-head">
         <span className="vds-b2">Performed in the order specified. Drag to reorder.</span>
       </div>
       {draft.steps.length === 0 ? (
         <div className="vds-card auto-empty-steps">
-          <span className="vds-b2 proto-muted">This automation has no steps yet.</span>
+          <span className="vds-b2 proto-muted">{"This " + noun.one + " has no steps yet."}</span>
           <button className="vds-btn vds-btn--start-icon" onClick={addStep}><Icon name="plus" size={18} />Add step</button>
         </div>
       ) : (
@@ -10113,7 +10125,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, on
                 <div className="step-card__body">
                   <div>
                     <h5 style={{margin:"0 0 4px"}}>Trigger</h5>
-                    {isFirst && <div className="vds-b2 proto-muted" style={{marginBottom:12}}>Automations can always be manually run, even when triggered on a schedule or by a table event.</div>}
+                    {isFirst && <div className="vds-b2 proto-muted" style={{marginBottom:12}}>{noun.Many + " can always be manually run, even when triggered on a schedule or by a table event."}</div>}
                     {!isFirst && (
                       <div className="trigger-after-previous" style={{marginBottom:12}}>
                         <span className="vds-b2">After the previous step</span>
@@ -10266,7 +10278,7 @@ function RunHistory({ cfg, automations, runs, connectors, pipelines, sources, ta
           <div className="empty">
             <div className="empty-tile"><Icon name="clock" size={30} /></div>
             <h2>No automations yet</h2>
-            <p>Automations created by connectors and data transformations will show their run history here.</p>
+            <p>{noun.Many} created by connectors and data transformations will show their run history here.</p>
           </div>
         ) : (<>
           <div className="vds-b2 proto-muted proto-section-note" style={{marginTop:0}}>Every data table, data transformation, and saved prompt that has run on the platform, one row per run. A connector run shows up here once per data table it syncs.</div>
@@ -10295,7 +10307,7 @@ function RunHistory({ cfg, automations, runs, connectors, pipelines, sources, ta
           </div>
 
           {rows.length === 0 ? (
-            <div className="vds-alert vds-alert--info proto-note">{allRows.length === 0 ? (<>No runs recorded yet. Go to the <strong>Automations</strong> tab and use <strong>Run now</strong> — each run adds rows here.</>) : "No runs match the current filters."}</div>
+            <div className="vds-alert vds-alert--info proto-note">{allRows.length === 0 ? (<>No runs recorded yet. Go to the <strong>{noun.Many}</strong> tab and use <strong>Run now</strong> — each run adds rows here.</>) : "No runs match the current filters."}</div>
           ) : (
             <div className="vds-table-container">
               <div className="thead" style={{gridTemplateColumns:"52px 1.6fr 1.1fr 1.3fr 1.3fr 0.9fr"}}>
@@ -10353,6 +10365,12 @@ function App(){
      as new data tables and returning to Data Tables when it's done. */
   const [connDetailFromDT, setConnDetailFromDT] = useState(false);
   const [automations, setAutomations] = useState(seedAutomations);
+  /* Schedules is its own list of the same kind of record, under its own nav path. */
+  const [schedules, setSchedules] = useState(() => seedAutomations().map(a => ({ ...a, id:autoId("sched") })));
+  const [editingSchedId, setEditingSchedId] = useState(null);
+  const [viewingSchedId, setViewingSchedId] = useState(null);
+  const [viewingSchedTab, setViewingSchedTab] = useState("steps");
+  const [newSched, setNewSched] = useState(null);
   const [editingAutoId, setEditingAutoId] = useState(null);
   const [viewingAutoId, setViewingAutoId] = useState(null);
   const [viewingAutoTab, setViewingAutoTab] = useState("steps");
@@ -10386,13 +10404,14 @@ function App(){
   };
   const openSource = (id) => { setConnCreating(false); setConnDetailId(null); setUpdatingId(null); setCreating(false); setActiveId("datasources"); setDetailId(id); };
   const openConnector = (id, startStep) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailFromDT(false); setActiveId("dataconnectors"); setConnDetailId(id); setConnDetailStep(startStep || null); };
-  const runAutomation = (autoIdArg) => {
-    const s = automations.find(x => x.id === autoIdArg);
+  /* Running is the same simulation for either list, so it takes the list it acts on. */
+  const runRecordIn = (list, setList) => (autoIdArg) => {
+    const s = list.find(x => x.id === autoIdArg);
     if (!s) return;
     const runId = "run_" + Math.random().toString(36).slice(2,10);
     const startedTs = Date.now();
     setRuns(rs => [...rs, { id:runId, automationId: autoIdArg, status:"progress", startedTs, finishedTs:null, msg:null }]);
-    setAutomations(as => as.map(x => x.id===autoIdArg ? { ...x, lastRunStatus:"progress",
+    setList(as => as.map(x => x.id===autoIdArg ? { ...x, lastRunStatus:"progress",
       runList: [{ id:runId, at: startedTs, status:"running", durationMin:null, triggeredBy:"manual", message:null },
                 ...(x.runList || [])] } : x));
     const delay = 1400 + Math.random()*1800;
@@ -10406,7 +10425,7 @@ function App(){
       const isInboxConn = !!(connTmpl && connTmpl.kind === "inbox");
       const outcome = isScriptConn ? simulateScriptRunOutcome() : simulateRunOutcome();
       setRuns(rs => rs.map(r => r.id===runId ? { ...r, status: outcome.status, finishedTs: ts, msg: outcome.msg || null } : r));
-      setAutomations(as => as.map(x => x.id===autoIdArg
+      setList(as => as.map(x => x.id===autoIdArg
         ? { ...x, lastRunStatus: outcome.status, lastRunAt: todayISO(), lastRunBy: CURRENT_USER,
             runList: (x.runList || []).map(r => r.id === runId
               ? { ...r, status: outcome.status === "pending" ? "warn" : outcome.status,
@@ -10505,7 +10524,11 @@ function App(){
       }
     }, delay);
   };
+  const runAutomation = runRecordIn(automations, setAutomations);
+  const runSchedule = runRecordIn(schedules, setSchedules);
   const deleteAutomation = (id) => setAutomations(as => as.filter(a => a.id !== id));
+  const deleteSchedule = (id) => setSchedules(ss => ss.filter(a => a.id !== id));
+  const upsertSchedule = (sc) => setSchedules(ss => ss.some(a => a.id===sc.id) ? ss.map(a => a.id===sc.id ? sc : a) : [sc, ...ss]);
   const syncConnectorAutomation = (inst, lookupName, removedIds) => setAutomations(as => {
     if (inst.noSchedule) return as.filter(a => a.connectorId !== inst.id);
     const ids = (inst.dataSourceIds || []).filter(id => !(removedIds || []).includes(id));
@@ -10522,6 +10545,8 @@ function App(){
   const openPipeline = (id) => { setCreating(false); setDetailId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConfiguringId(null); setPipeCreating(false); setActiveId("datapipelines"); setPipeEditId(id); };
   const deletePipeline = (id) => { setPipelines(ps => ps.filter(p => p.id !== id)); setAutomations(as => as.filter(a => a.pipelineId !== id)); setPipeEditId(e => e===id ? null : e); };
 
+  const editingSched = schedules.find(a => a.id === editingSchedId);
+  const viewingSched = schedules.find(a => a.id === viewingSchedId);
   const editingAuto = automations.find(a => a.id === editingAutoId);
   const viewingAuto = automations.find(a => a.id === viewingAutoId);
   const editingPrompt = savedPrompts.find(p => p.id === editingPromptId);
@@ -10741,6 +10766,26 @@ function App(){
           onEdit={(id) => setEditingAutoId(id)}
           onOpenHistory={(id) => { setViewingAutoTab("history"); setViewingAutoId(id); }}
           onDelete={deleteAutomation} onRunNow={runAutomation} records={automations} />;
+  } else if (activeId === "schedules"){
+    /* Same shape as automations, over the schedules list. */
+    const editing = editingSched || newSched;
+    const closeEditor = () => { setEditingSchedId(null); setNewSched(null); };
+    const closeView = () => setViewingSchedId(null);
+    page = editing
+      ? <AutomationEditor automation={editing} automations={schedules} sources={sources} pipelines={pipelines} noun={SCHEDULE_NOUN}
+          onCancel={closeEditor}
+          onDelete={(id) => { if (!newSched) deleteSchedule(id); closeEditor(); }}
+          onSave={(a) => { upsertSchedule(a); closeEditor(); }} />
+      : viewingSched
+      ? <AutomationView automation={viewingSched} key={viewingSched.id + viewingSchedTab} initialTab={viewingSchedTab} noun={SCHEDULE_NOUN} onBack={closeView}
+          onEdit={(id) => { closeView(); setEditingSchedId(id); }}
+          onRun={(id) => runSchedule(id)}
+          onDelete={(id) => { deleteSchedule(id); closeView(); }} />
+      : <HubPage cfg={cfg} onNew={() => setNewSched(newAutomation(""))}
+          onOpen={(id) => { setViewingSchedTab("steps"); setViewingSchedId(id); }}
+          onEdit={(id) => setEditingSchedId(id)}
+          onOpenHistory={(id) => { setViewingSchedTab("history"); setViewingSchedId(id); }}
+          onDelete={deleteSchedule} onRunNow={runSchedule} records={schedules} />;
   } else if (activeId === "tablerelations"){
     page = <RelatedTablesPage sources={sources} onUpdate={updateSource} />;
   } else if (activeId === "directives"){
@@ -10771,11 +10816,10 @@ function App(){
   } else if (cfg){
     page = <HubPage cfg={cfg}
       onNew={activeId==="datasources" ? () => setCreating(true) : (activeId==="dataconnectors" ? () => setConnCreating(true) : (activeId==="datapipelines" ? () => setPipeCreating(true) : undefined))}
-      onOpen={activeId==="datasources" ? (id) => setDataViewId(id) : (activeId==="dataconnectors" ? (id) => { setConnDetailId(id); setConnDetailStep(null); } : (activeId==="datapipelines" ? openPipeline : (activeId==="schedules" ? editSchedule : undefined)))}
+      onOpen={activeId==="datasources" ? (id) => setDataViewId(id) : (activeId==="dataconnectors" ? (id) => { setConnDetailId(id); setConnDetailStep(null); } : (activeId==="datapipelines" ? openPipeline : undefined))}
       onUpdate={activeId==="datasources" ? (id) => setUpdatingId(id) : undefined}
-      onDelete={activeId==="datasources" ? deleteSource : (activeId==="dataconnectors" ? deleteConnector : (activeId==="datapipelines" ? deletePipeline : (activeId==="schedules" ? deleteSchedule : undefined)))}
-      onOpenSource={(activeId==="dataconnectors" || activeId==="schedules") ? openSource : undefined}
-      onRunNow={activeId==="schedules" ? runSchedule : undefined}
+      onDelete={activeId==="datasources" ? deleteSource : (activeId==="dataconnectors" ? deleteConnector : (activeId==="datapipelines" ? deletePipeline : undefined))}
+      onOpenSource={activeId==="dataconnectors" ? openSource : undefined}
       onConfigure={activeId==="datasources" ? (id) => setConfiguringId(id) : undefined}
       onConnectData={activeId==="datasources" ? (id, connId, instanceId) => setConnectDataFor({ targetId:id, connId, instanceId }) : undefined}
       onImport={activeId==="datasources" ? (id) => setSources(s => s.map(x => x.id===id ? { ...x, lastSynced:"Just now", status:"Ready" } : x)) : undefined}
@@ -10783,7 +10827,7 @@ function App(){
       onViewRelations={activeId==="datasources" ? (id) => { setDetailFocus("relations"); setDetailId(id); } : undefined}
       allConnectors={connectors}
       lookupSource={activeId==="dataconnectors" ? (id) => sources.find(s => s.id === id) : undefined}
-      records={activeId==="datasources" ? sources : (activeId==="dataconnectors" ? connectors : (activeId==="datapipelines" ? pipelines : (activeId==="schedules" ? schedules : [])))} />;
+      records={activeId==="datasources" ? sources : (activeId==="dataconnectors" ? connectors : (activeId==="datapipelines" ? pipelines : []))} />;
   } else {
     page = <SimplePage item={item} />;
   }
