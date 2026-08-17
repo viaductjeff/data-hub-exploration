@@ -10100,8 +10100,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
         <ToolPickerDialog onClose={()=>setToolPicker(false)}
           onInsert={(names)=>{
             const base = draft.instructions.replace(/\s+$/, "");
-            const many = names.includes(",");
-            patch({ instructions: (base ? base + "\n\n" : "") + "Use the " + names + (many ? " tools." : " tool.") });
+            patch({ instructions: (base ? base + "\n\n" : "") + "Prioritize the use of these tools: " + names });
             setToolPicker(false);
           }} />
       )}
