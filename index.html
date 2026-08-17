@@ -2431,7 +2431,7 @@ const automationsUsingPrompt = (automations, prompt) => {
     (st.actions || []).some(act => act.type === "prompt" && String(act.prompt || "").includes(cmd))));
 };
 function newSavedPrompt(){
-  return { id:autoId("sp"), name:"", instructions:"", clues:"", toUsers:false, toViaduck:false,
+  return { id:autoId("sp"), name:"", instructions:"", clues:"", toUsers:false, toSchedule:false, toViaduck:false,
            createdAt:todayISO(), updatedAt:todayISO(), createdBy:CURRENT_USER_EMAIL, updatedBy:CURRENT_USER_EMAIL };
 }
 function seedSavedPrompts(){
@@ -2439,14 +2439,14 @@ function seedSavedPrompts(){
     { id:"sp1", name:"Summarize Warranty Claims", toUsers:false, toViaduck:false,
       createdAt:"2026-07-28", updatedAt:"2026-08-03", createdBy:"bora@viaduct.ai", updatedBy:"abel@viaduct.ai",
       instructions:"", clues:"" },
-    { id:"sp2", name:"Flag Outlier Vendors", toUsers:true, toViaduck:false,
+    { id:"sp2", name:"Flag Outlier Vendors", toUsers:true, toSchedule:true, toViaduck:false,
       createdAt:"2026-08-04", updatedAt:"2026-08-04", createdBy:"jan@viaduct.ai", updatedBy:"abel@viaduct.ai",
       instructions:"Summarize non-approved work order verifications across the fleet from the last 180 days grouped by vendor. Flag any vendor whose average cost per work order is more than 25% above the fleet average. Return the result as a table.",
       clues:"" },
-    { id:"sp3", name:"Detect Duplicate Work Orders", toUsers:true, toViaduck:true,
+    { id:"sp3", name:"Detect Duplicate Work Orders", toUsers:true, toSchedule:true, toViaduck:true,
       createdAt:"2026-08-05", updatedAt:"2026-08-05", createdBy:"abel@viaduct.ai", updatedBy:"abel@viaduct.ai",
       instructions:"", clues:"" },
-    { id:"sp4", name:"Compare Repair Costs By Region", toUsers:true, toViaduck:false,
+    { id:"sp4", name:"Compare Repair Costs By Region", toUsers:true, toSchedule:false, toViaduck:false,
       createdAt:"2026-08-03", updatedAt:"2026-08-04", createdBy:"abel@viaduct.ai", updatedBy:"jernej@viaduct.ai",
       instructions:"", clues:"" },
     { id:"sp5", name:"Draft Recall Notification Brief", toUsers:false, toViaduck:false,
@@ -9730,7 +9730,7 @@ function RunInViaDuckButton({ prompt, withLabel = false, label = "Run in ViaDuck
 function PromptTabs({ tab, setTab }){
   return (
     <div className="vds-tabs" style={{margin:"0 0 16px"}}>
-      <button className={"vds-tab" + (tab==="details" ? " vds-tab--selected" : "")} onClick={()=>setTab("details")}>Details</button>
+      <button className={"vds-tab" + (tab==="details" ? " vds-tab--selected" : "")} onClick={()=>setTab("details")}>Definition</button>
       <button className="vds-tab" disabled title="Not built yet">Evals</button>
     </div>
   );
@@ -9900,11 +9900,15 @@ function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpen
           <div className="vds-card prompt-card">
             <h5 className="prompt-card__title">Availability</h5>
             <div className="prompt-avail-line">
-              <span className="vds-b2">Users can run and automate</span>
+              <span className="vds-b2">Available in ViaDuck chat</span>
               <span className="vds-b2 proto-muted">{prompt.toUsers ? "On" : "Off"}</span>
             </div>
             <div className="prompt-avail-line">
-              <span className="vds-b2">ViaDuck can independently run when in context</span>
+              <span className="vds-b2">Allow scheduling</span>
+              <span className="vds-b2 proto-muted">{prompt.toSchedule ? "On" : "Off"}</span>
+            </div>
+            <div className="prompt-avail-line">
+              <span className="vds-b2">Auto-run when appropriate</span>
               <span className="vds-b2 proto-muted">{prompt.toViaduck ? "On" : "Off"}</span>
             </div>
             <div className="prompt-clues">
@@ -9936,7 +9940,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
   const patch = (p) => setDraft(d => ({ ...d, ...p }));
   /* ViaDuck can only reach a prompt users can reach, so turning users off turns
      ViaDuck off with it. */
-  const setToUsers = (on) => patch(on ? { toUsers:true } : { toUsers:false, toViaduck:false });
+  const setToUsers = (on) => patch(on ? { toUsers:true } : { toUsers:false, toSchedule:false, toViaduck:false });
 
   return (
     <div className="vds-content">
@@ -9992,12 +9996,17 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
             <label className="vds-choice">
               <input type="checkbox" className="vds-checkbox" checked={draft.toUsers}
                 onChange={(e)=>setToUsers(e.target.checked)} />
-              <span className="vds-b2">Users can run and automate</span>
+              <span className="vds-b2">Available in ViaDuck chat</span>
+            </label>
+            <label className="vds-choice">
+              <input type="checkbox" className="vds-checkbox" checked={!!draft.toSchedule} disabled={!draft.toUsers}
+                onChange={(e)=>patch({ toSchedule:e.target.checked })} />
+              <span className="vds-b2">Allow scheduling</span>
             </label>
             <label className="vds-choice">
               <input type="checkbox" className="vds-checkbox" checked={draft.toViaduck} disabled={!draft.toUsers}
                 onChange={(e)=>patch({ toViaduck:e.target.checked })} />
-              <span className="vds-b2">ViaDuck can independently run when in context</span>
+              <span className="vds-b2">Auto-run when appropriate</span>
             </label>
             {/* Nested under the ViaDuck checkbox, because the clues are what it matches on. */}
             <div className="field prompt-field prompt-clues">
