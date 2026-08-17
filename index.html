@@ -602,14 +602,7 @@
   .trel-dialog .vds-dialog__content { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
   .colfilter-dialog .vds-dialog__content { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
   .colfilter-dialog__actions .colfilter-clear { margin-right: auto; }
-  .prompt-auto-table { border: 1px solid var(--vds-gray-100); border-radius: 4px; overflow: hidden; }
-  .prompt-auto-row { display: grid; grid-template-columns: 1.4fr 1.2fr 124px; gap: var(--vds-form-gap);
-    align-items: center; padding: 10px 14px; border-top: 1px solid var(--vds-gray-100); }
-  .prompt-auto-row > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .prompt-auto-row:first-child { border-top: none; }
-  .prompt-auto-row--head { background: var(--vds-surface-muted); font: 500 12px/16px var(--vds-font-sans);
-    letter-spacing: 0.06em; text-transform: uppercase; color: var(--vds-text-secondary); }
-  .prompt-auto-name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .vds-table.prompt-auto-table :is(th, td) { text-align: left; }
   .prompt-tool-search { width: 100%; }
   .prompt-tool-list { display: flex; flex-direction: column; gap: var(--vds-button-gap); max-height: 420px; overflow-y: auto; }
   .prompt-tool-list summary { font-family: var(--vds-font-mono); }
@@ -9760,19 +9753,19 @@ function PromptAutomationsCard({ prompt, automations, onOpenAutomation, onNewAut
       {used.length === 0 ? (
         <div className="vds-alert vds-alert--info proto-note">This directive is not part of any automation yet.</div>
       ) : (
-        <div className="prompt-auto-table">
-          <div className="prompt-auto-row prompt-auto-row--head">
-            <div>Name</div><div>Trigger</div><div>History</div>
-          </div>
-          {used.map(a => (
-            <div className="prompt-auto-row clickable-row" key={a.id} role="button" tabIndex={0}
-              onClick={()=>onOpenAutomation && onOpenAutomation(a.id)}
-              onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); onOpenAutomation && onOpenAutomation(a.id); } }}>
-              <div className="prompt-auto-name">{a.name}</div>
-              <div className="proto-muted">{automationTriggerText(a)}</div>
-              <div><RunStrip runs={a.runList} /></div>
-            </div>
-          ))}
+        <div className="vds-table-container">
+          <table className="vds-table prompt-auto-table">
+            <thead><tr><th>When</th><th style={{width:124}}>History</th></tr></thead>
+            <tbody>
+              {used.map(a => (
+                <tr className="clickable-row" key={a.id}
+                  onClick={()=>onOpenAutomation && onOpenAutomation(a.id)}>
+                  <td>{automationTriggerText(a)}</td>
+                  <td><RunStrip runs={a.runList} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
@@ -9882,8 +9875,9 @@ function PromptPromptCard({ prompt, readOnly = false, onInstructions, onInsertTo
     <div className="vds-card prompt-card">
       <div className="prompt-card__head prompt-card__head--center">
         <h5 className="prompt-card__title">Prompt*</h5>
-        <button className="vds-btn vds-btn--sm" disabled={readOnly}
-          onClick={()=>onInsertTool && onInsertTool()}>Insert tool name</button>
+        {!readOnly && (
+          <button className="vds-btn vds-btn--sm" onClick={()=>onInsertTool && onInsertTool()}>Insert tool name</button>
+        )}
       </div>
       <div className="field prompt-field">
         <textarea className="vds-textarea prompt-textarea" rows={7} value={prompt.instructions} disabled={readOnly}
