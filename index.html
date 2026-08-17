@@ -9890,10 +9890,10 @@ const slashDate = (iso) => {
 };
 function PromptHistoryCard({ prompt }){
   const rows = [
-    ["Created by", prompt.createdBy],
-    ["Create date", slashDate(prompt.createdAt)],
     ["Updated by", prompt.updatedBy],
-    ["Update date", slashDate(prompt.updatedAt)],
+    ["Updated", slashDate(prompt.updatedAt)],
+    ["Created by", prompt.createdBy],
+    ["Created", slashDate(prompt.createdAt)],
   ];
   return (
     <div className="vds-card prompt-card">
