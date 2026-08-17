@@ -31,6 +31,9 @@
   .vds-nav-group.is-collapsed .chev { transform: rotate(180deg); }
   .chev { display: inline-flex; transition: transform 0.18s ease; color: var(--vds-gray-700); }
   .vds-nav-item { width: calc(100% - 16px); margin: 1px 8px; height: auto; min-height: 40px; padding: 4px 0; border: none; background: transparent; text-align: left; font-family: inherit; gap: 16px; }
+  /* The button reset above also cleared the selected pill, and the section you are in
+     has to stay marked once the pointer leaves. */
+  .vds-nav-item.vds-nav-item--selected { background: var(--vds-slate-200); font-weight: 500; }
   .ni-icon { display: inline-flex; flex: none; margin-left: 16px; }
   .ni-icon svg { width: 24px; height: 24px; }
   .ni-label { flex: 1 1 auto; }
