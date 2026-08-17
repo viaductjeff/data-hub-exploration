@@ -10615,6 +10615,11 @@ function App(){
 
   const configuringSource = sources.find(s => s.id === configuringId);
 
+  /* The nav marks the section whose tree the page belongs to — the connector wizard
+     entered from Data Tables is still part of Data Tables. */
+  const navActiveId = ((connCreating && connFromDataTables) || (connDetailId && connDetailFromDT) || connectDataFor)
+    ? "datasources" : activeId;
+
   let page;
   if (connectDataFor){
     const reuseInstance = connectDataFor.instanceId ? connectors.find(c => c.id === connectDataFor.instanceId) : null;
@@ -10878,7 +10883,7 @@ function App(){
   return (
     <UnsavedGuard.Provider value={guard}>
     <div className="vds-page">
-      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} activeId={activeId} setActiveId={goTo} openSections={openSections} toggleSection={toggleSection} />
+      <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} activeId={navActiveId} setActiveId={goTo} openSections={openSections} toggleSection={toggleSection} />
       <div className="vds-shell-main proto-shell-main">
         <TopBar />
         <main className="main" style={{flex:"1 1 auto",display:"flex",minWidth:0,minHeight:0}}>{page}</main>
