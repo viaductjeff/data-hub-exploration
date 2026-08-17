@@ -1239,6 +1239,20 @@ function NavItem({ item, active, collapsed, onClick }){
     </button>
   );
 }
+/* An editor with unsaved work registers a dirty check and a save, so a nav click can
+   offer to save before it leaves. */
+const UnsavedGuard = React.createContext(null);
+function useUnsavedGuard(isDirty, save){
+  const guard = React.useContext(UnsavedGuard);
+  const latest = React.useRef({ isDirty, save });
+  latest.current = { isDirty, save };
+  React.useEffect(() => {
+    if (!guard) return;
+    guard.set({ isDirty: () => !!latest.current.isDirty, save: () => latest.current.save() });
+    return () => guard.clear();
+  }, [guard]);
+}
+
 function Sidebar({ collapsed, setCollapsed, activeId, setActiveId, openSections, toggleSection }){
   return (
     <aside className={"vds-sidebar" + (collapsed ? " vds-sidebar--closed" : "")}>
@@ -4234,11 +4248,17 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
     (st.actions || []).some(act => act.type === "import_table" && act.refName === source.name))) || null;
   const [sched, setSched] = useState(() =>
     (importAuto && importAuto.steps[0] && importAuto.steps[0].trigger) || defaultImportTrigger());
-  const save = () => {
+  const commit = () => {
     onUpdate(source.id, { published, singular, plural, description: desc, columns: cols });
     if (onSaveSchedule) onSaveSchedule(importAuto ? importAuto.id : null, sched);
-    onBack();
   };
+  const save = () => { commit(); onBack(); };
+  const dirty = published !== (source.published !== false)
+    || singular !== (source.singular || "") || plural !== (source.plural || "")
+    || desc !== (source.description || "")
+    || JSON.stringify(cols) !== JSON.stringify((source.columns || []).map(c => ({ ...c })))
+    || JSON.stringify(sched) !== JSON.stringify((importAuto && importAuto.steps[0] && importAuto.steps[0].trigger) || defaultImportTrigger());
+  useUnsavedGuard(dirty, commit);
   const setCol = (i, patch) => setCols(cs => cs.map((c,idx) => idx===i ? { ...c, ...patch } : c));
   const parsed = source.parsed || { rows:[], previewRows:[] };
   const isSample = !((parsed.rows || []).length) && !!((parsed.previewRows || []).length);
@@ -9909,6 +9929,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
     && (p.name || "").trim().toLowerCase() === v.trim().toLowerCase());
   const isSaved = prompts.some(p => p.id === prompt.id);
   const canSave = !!draft.name.trim() && !nameTaken;
+  useUnsavedGuard(JSON.stringify(draft) !== JSON.stringify(prompt), () => { if (canSave) onSave(draft); });
   const patch = (p) => setDraft(d => ({ ...d, ...p }));
   /* ViaDuck can only reach a prompt users can reach, so turning users off turns
      ViaDuck off with it. */
@@ -10011,6 +10032,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, no
   const nameIsTaken = (v) => automations.some(a => a.id !== automation.id
     && (a.name || "").trim().toLowerCase() === v.trim().toLowerCase());
   const canSave = !!draft.name.trim() && !nameTaken;
+  useUnsavedGuard(JSON.stringify(draft) !== JSON.stringify(automation), () => { if (canSave) onSave(draft); });
   /* A new automation isn't in the list until it's saved, so there is nothing to
      delete yet. */
   const isSaved = automations.some(a => a.id === automation.id);
@@ -10387,7 +10409,28 @@ function App(){
   const [runs, setRuns] = useState([]);
   const [connectDataFor, setConnectDataFor] = useState(null); // { targetId, connId } while launching a preset "Connect data table" flow
   const toggleSection = (k) => setOpenSections(s => ({ ...s, [k]: s[k] === false ? true : false }));
-  const goTo = (id) => { setCreating(false); setDetailId(null); setDataViewId(null); setUpdatingId(null); setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setConnPreset(null); setConnFromDataTables(false); setEditingAutoId(null); setViewingAutoId(null); setNewAuto(null); setEditingPromptId(null); setViewingPromptId(null); setNewPrompt(null); setConnectDataFor(null); setActiveId(id); };
+  /* Every nav click lands on that section's list, so anything open is closed first. */
+  const resetSection = () => {
+    setCreating(false); setDetailId(null); setDetailFocus(null); setDataViewId(null); setUpdatingId(null);
+    setConnCreating(false); setConnDetailId(null); setConnDetailStep(null); setConnDetailFromDT(false);
+    setConfiguringId(null); setPipeCreating(false); setPipeEditId(null); setConnPreset(null); setConnFromDataTables(false);
+    setEditingAutoId(null); setViewingAutoId(null); setNewAuto(null);
+    setEditingSchedId(null); setViewingSchedId(null); setNewSched(null);
+    setEditingPromptId(null); setViewingPromptId(null); setNewPrompt(null); setConnectDataFor(null);
+  };
+  /* An open editor registers itself here, so leaving with unsaved work can offer to save it. */
+  const guardRef = React.useRef(null);
+  const guard = React.useMemo(() => ({
+    set: (g) => { guardRef.current = g; },
+    clear: () => { guardRef.current = null; },
+  }), []);
+  const [pendingNav, setPendingNav] = useState(null);
+  const leaveTo = (id) => { guard.clear(); resetSection(); setActiveId(id); };
+  const goTo = (id) => {
+    const g = guardRef.current;
+    if (g && g.isDirty()){ setPendingNav(id); return; }
+    leaveTo(id);
+  };
   const updateSource = (id, patch) => setSources(ss => ss.map(s => s.id===id ? {...s, ...patch} : s));
   const deleteSource = (id) => { setSources(ss => ss.filter(s => s.id !== id)); setDetailId(d => d===id ? null : d); setUpdatingId(u => u===id ? null : u); setConfiguringId(c => c===id ? null : c); };
   const updateConnector = (id, patch) => {
@@ -10833,13 +10876,22 @@ function App(){
   }
 
   return (
+    <UnsavedGuard.Provider value={guard}>
     <div className="vds-page">
       <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} activeId={activeId} setActiveId={goTo} openSections={openSections} toggleSection={toggleSection} />
       <div className="vds-shell-main proto-shell-main">
         <TopBar />
         <main className="main" style={{flex:"1 1 auto",display:"flex",minWidth:0,minHeight:0}}>{page}</main>
       </div>
+      {pendingNav && (
+        <ConfirmDialog title="Save changes?"
+          body="You have made changes that will be lost if you do not save before leaving this page."
+          confirmLabel="Save" cancelLabel="Cancel"
+          onConfirm={()=>{ const g = guardRef.current; if (g) g.save(); const id = pendingNav; setPendingNav(null); leaveTo(id); }}
+          onCancel={()=>setPendingNav(null)} />
+      )}
     </div>
+    </UnsavedGuard.Provider>
   );
 }
 
