@@ -9802,10 +9802,28 @@ function PromptAutomationsCard({ prompt, automations, onOpenAutomation, onNewAut
    be selected to drop into the instructions. */
 function ToolPickerDialog({ onClose, onInsert }){
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState([]);
+  const [anchor, setAnchor] = useState(null);
   const [expanded, setExpanded] = useState(null);
   const q = query.trim().toLowerCase();
   const shown = PROMPT_TOOLS.filter(t => !q || t.name.includes(q));
+  /* Plain click picks one; shift takes the run since the last pick, and the
+     command/control/option keys add and remove one at a time. */
+  const pick = (name, e) => {
+    const names = shown.map(t => t.name);
+    if (e && e.shiftKey && anchor && names.includes(anchor)){
+      const [a, b] = [names.indexOf(anchor), names.indexOf(name)].sort((x,y) => x - y);
+      setSelected(names.slice(a, b + 1));
+      return;
+    }
+    if (e && (e.metaKey || e.ctrlKey || e.altKey)){
+      setSelected(sel => sel.includes(name) ? sel.filter(n => n !== name) : [...sel, name]);
+      setAnchor(name);
+      return;
+    }
+    setSelected([name]);
+    setAnchor(name);
+  };
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="vds-dialog proto-modal-card tool-dialog" onClick={(e)=>e.stopPropagation()}>
@@ -9824,12 +9842,12 @@ function ToolPickerDialog({ onClose, onInsert }){
           <div className="prompt-tool-list">
             {shown.map(tool => {
               const isOpen = expanded === tool.name;
-              const isSel = selected === tool.name;
+              const isSel = selected.includes(tool.name);
               return (
                 <div className={"tool-card" + (isSel ? " is-selected" : "")} key={tool.name}>
-                  <div className="tool-card__head" role="button" tabIndex={0}
-                    onClick={()=>setSelected(tool.name)}
-                    onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); setSelected(tool.name); } }}>
+                  <div className="tool-card__head" role="button" tabIndex={0} aria-pressed={isSel}
+                    onClick={(e)=>pick(tool.name, e)}
+                    onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); pick(tool.name, e); } }}>
                     <span className="tool-card__name">{tool.name}</span>
                     <button className="vds-icon-btn vds-icon-btn--sm" aria-expanded={isOpen}
                       aria-label={isOpen ? "Hide details" : "Show details"}
@@ -9865,9 +9883,10 @@ function ToolPickerDialog({ onClose, onInsert }){
         </div>
         <div className="tool-dialog__actions">
           <button className="vds-btn" onClick={onClose}>Cancel</button>
-          <button className="vds-btn vds-btn--primary" disabled={!selected}
-            title={selected ? undefined : "Select a tool first"}
-            onClick={()=>onInsert(selected)}>Insert selected name</button>
+          <button className="vds-btn vds-btn--primary" disabled={!selected.length}
+            title={selected.length ? undefined : "Select a tool first"}
+            onClick={()=>onInsert(selected.join(", "))}>
+            {selected.length > 1 ? "Insert selected names" : "Insert selected name"}</button>
         </div>
       </div>
     </div>
@@ -10079,9 +10098,10 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
       </div>
       {toolPicker && (
         <ToolPickerDialog onClose={()=>setToolPicker(false)}
-          onInsert={(name)=>{
+          onInsert={(names)=>{
             const base = draft.instructions.replace(/\s+$/, "");
-            patch({ instructions: (base ? base + "\n\n" : "") + "Use the " + name + " tool." });
+            const many = names.includes(",");
+            patch({ instructions: (base ? base + "\n\n" : "") + "Use the " + names + (many ? " tools." : " tool.") });
             setToolPicker(false);
           }} />
       )}
