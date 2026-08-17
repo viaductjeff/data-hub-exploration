@@ -9815,7 +9815,7 @@ function ToolPickerDialog({ onClose, onInsert }){
             <Icon name="x" size={17} /></button>
         </div>
         <div className="tool-dialog__body">
-          <p className="vds-b2 proto-muted tool-dialog__lede">You may want to ask your directive to prioritize certain tool calls, for example. You can learn about the available tools here, and insert their name into your directive prompt.</p>
+          <p className="vds-b2 proto-muted tool-dialog__lede">If you want to ask your directive to prioritize the use of certain tools, you can learn about the available tools and insert their names into your directive prompt.</p>
           <div className="filter prompt-tool-search">
             <span className="s-icon"><Icon name="search" size={16} /></span>
             <input className="vds-input" placeholder="Filter tools..." aria-label="Filter tools" autoFocus
@@ -9867,7 +9867,7 @@ function ToolPickerDialog({ onClose, onInsert }){
           <button className="vds-btn" onClick={onClose}>Cancel</button>
           <button className="vds-btn vds-btn--primary" disabled={!selected}
             title={selected ? undefined : "Select a tool first"}
-            onClick={()=>onInsert(selected)}>Insert selected tool</button>
+            onClick={()=>onInsert(selected)}>Insert selected name</button>
         </div>
       </div>
     </div>
