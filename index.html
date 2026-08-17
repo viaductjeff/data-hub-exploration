@@ -9974,6 +9974,8 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
   /* ViaDuck can only reach a prompt users can reach, so turning users off turns
      ViaDuck off with it. */
   const setToUsers = (on) => patch(on ? { toUsers:true } : { toUsers:false, toSchedule:false, toViaduck:false });
+  /* The heading names the directive as it stands saved — it isn't a preview of the field. */
+  const savedTitle = prompt.name || (isSaved ? "Directive" : "New directive");
 
   return (
     <div className="vds-content">
@@ -9981,10 +9983,10 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
         <nav className="vds-breadcrumbs">
           <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Directives</a>
           <span className="vds-breadcrumbs__sep">/</span>
-          <span>{draft.name || (isSaved ? "Directive" : "New directive")}</span>
+          <span>{savedTitle}</span>
         </nav>
         <div className="auto-title-row">
-          <h1 className="vds-page-title">{draft.name || (isSaved ? "Directive" : "New directive")}</h1>
+          <h1 className="vds-page-title">{savedTitle}</h1>
           <div className="auto-editor-actions">
             <button className="vds-btn" onClick={onCancel}>Cancel</button>
             <button className="vds-btn vds-btn--primary" disabled={!canSave}
