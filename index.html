@@ -551,9 +551,10 @@
   .proto-btn--danger-quiet:hover { color: var(--vds-alert-error-icon); border-color: var(--vds-alert-error-icon); }
   :is(.proto-btn--tested, .proto-btn--tested:disabled) { background: var(--vds-alert-success-bg); border-color: var(--vds-alert-success-border); color: var(--vds-alert-success-icon); }
 
-  /* Directives. Two columns while there's room: the definition on the left,
-     everything about how it's used stacked on the right. */
-  .prompt-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: var(--vds-dialog-gap); align-items: start; }
+  /* Directives. Two columns while there's room: the definition on the left, taking
+     two thirds, and everything about how it's used stacked on the right. */
+  .prompt-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--vds-dialog-gap); align-items: start; }
+  @media (max-width: 1100px) { .prompt-grid { grid-template-columns: 1fr; } }
   .prompt-col { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); min-width: 0; }
   .prompt-card { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
   .prompt-card__title { margin: 0; }
@@ -603,6 +604,7 @@
   .colfilter-dialog .vds-dialog__content { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
   .colfilter-dialog__actions .colfilter-clear { margin-right: auto; }
   .vds-table.prompt-auto-table :is(th, td) { text-align: left; }
+  .vds-table tbody tr.static-row:hover td { background: var(--vds-surface-default); }
   .prompt-tool-search { width: 100%; }
   .prompt-tool-list { display: flex; flex-direction: column; gap: var(--vds-button-gap); max-height: 420px; overflow-y: auto; }
   .prompt-tool-list summary { font-family: var(--vds-font-mono); }
@@ -2496,6 +2498,27 @@ function scheduleEntrySummary(sch){
   const days = dayLabels(sch.days);
   return (days.length === 7 ? "Every day" : days.length ? days.join(" ") : "No days") + " · " + t;
 }
+const DAY_FULL = { sun:"Sunday", mon:"Monday", tue:"Tuesday", wed:"Wednesday", thu:"Thursday", fri:"Friday", sat:"Saturday" };
+/* Spelled out and comma separated, for places that read as a sentence rather than a table cell. */
+function scheduleEntryLongSummary(sch){
+  const t = fmtTime(sch.time);
+  if (sch.freq === "Hourly") return "Hourly";
+  if (sch.freq === "Daily") return "Daily, " + t;
+  if (sch.freq === "Monthly") return "Monthly, " + (sch.nth || "first") + " " + (sch.weekday || "Monday") + ", " + t;
+  const days = DAYS_OF_WEEK.filter(d => sch.days && sch.days[d.value]).map(d => DAY_FULL[d.value]);
+  return (days.length === 7 ? "Every day" : days.length ? days.join(", ") : "No days") + ", " + t;
+}
+function triggerLongSummary(trigger){
+  if (!trigger || trigger.type !== "multi") return triggerSummary(trigger);
+  const list = trigger.schedules || [];
+  const events = trigger.events || [];
+  const parts = [];
+  if (list.length) parts.push(scheduleEntryLongSummary(list[0]) + (list.length > 1 ? " +" + (list.length - 1) + " more" : ""));
+  if (events.length === 1) parts.push(eventSummary(events[0]));
+  else if (events.length > 1) parts.push(events.length + " table events");
+  return parts.length ? parts.join(" + ") : "Manually run";
+}
+const automationTriggerLongText = (a) => a && a.steps && a.steps[0] ? triggerLongSummary(a.steps[0].trigger) : "—";
 function scheduleSummary(list){
   if (!list || !list.length) return null;
   return scheduleEntrySummary(list[0]) + (list.length > 1 ? " +" + (list.length - 1) + " more" : "");
@@ -9758,9 +9781,9 @@ function PromptAutomationsCard({ prompt, automations, onOpenAutomation, onNewAut
             <thead><tr><th>When</th><th style={{width:124}}>History</th></tr></thead>
             <tbody>
               {used.map(a => (
-                <tr className="clickable-row" key={a.id}
-                  onClick={()=>onOpenAutomation && onOpenAutomation(a.id)}>
-                  <td>{automationTriggerText(a)}</td>
+                <tr className={onOpenAutomation ? "clickable-row" : "static-row"} key={a.id}
+                  onClick={onOpenAutomation ? ()=>onOpenAutomation(a.id) : undefined}>
+                  <td>{automationTriggerLongText(a)}</td>
                   <td><RunStrip runs={a.runList} /></td>
                 </tr>
               ))}
@@ -9975,12 +9998,12 @@ function SavedPromptView({ prompt, automations, onBack, onEdit, onDelete, onOpen
         <div className="prompt-col">
           <PromptNameCard prompt={prompt} readOnly />
           <PromptPromptCard prompt={prompt} readOnly />
-          <PromptHistoryCard prompt={prompt} />
+          <PromptAutomationsCard prompt={prompt} automations={automations} />
         </div>
 
         <div className="prompt-col">
           <PromptAvailabilityCard prompt={prompt} readOnly />
-          <PromptAutomationsCard prompt={prompt} automations={automations} onOpenAutomation={onOpenAutomation} />
+          <PromptHistoryCard prompt={prompt} />
         </div>
       </div>
     </div>
@@ -10037,17 +10060,17 @@ function SavedPromptEditor({ prompt, prompts = [], automations, onCancel, onSave
           <PromptPromptCard prompt={draft}
             onInstructions={(v)=>patch({ instructions:v })}
             onInsertTool={()=>setToolPicker(true)} />
-          <PromptHistoryCard prompt={draft} />
-        </div>
-
-        <div className="prompt-col">
-          <PromptAvailabilityCard prompt={draft} onToUsers={setToUsers} onPatch={patch} />
           <PromptAutomationsCard prompt={draft} automations={automations}
             onOpenAutomation={onOpenAutomation}
             onNewAutomation={() => onNewAutomation(draft)}
             newLabel={isSaved ? "New automation" : "Save directive and create automation"}
             newDisabled={!isSaved && !canSave}
             newTitle={(!isSaved && !canSave) ? "Enter a unique name to save" : undefined} />
+        </div>
+
+        <div className="prompt-col">
+          <PromptAvailabilityCard prompt={draft} onToUsers={setToUsers} onPatch={patch} />
+          <PromptHistoryCard prompt={draft} />
         </div>
       </div>
       {toolPicker && (
