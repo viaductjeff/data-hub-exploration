@@ -582,6 +582,8 @@
   .tool-card__body { padding: 0 14px 14px; border-top: 1px solid var(--vds-gray-100); padding-top: var(--vds-form-gap); }
   .prompt-field { margin-bottom: 0; }
   .prompt-textarea { height: auto; padding: 12px 14px; line-height: 1.5; }
+  /* The name field sits above the prompt field, so it is padded to match. */
+  .prompt-name-input { height: auto; padding: 12px 14px; line-height: 1.5; }
   .prompt-slash { font-family: var(--vds-font-mono); background: var(--vds-alert-info-bg); color: var(--vds-alert-info-icon); }
   .prompt-read-text { white-space: pre-wrap; }
   .prompt-avail-line { display: flex; align-items: center; justify-content: space-between; gap: var(--vds-dialog-gap); }
@@ -9860,7 +9862,7 @@ function PromptNameCard({ prompt, readOnly = false, nameTaken = false, onName, o
     <div className="vds-card prompt-card">
       <h5 className="prompt-card__title">Name*</h5>
       <div className="field prompt-field">
-        <input className={"vds-input" + (nameTaken ? " err" : "")} placeholder="Directive name" disabled={readOnly}
+        <input className={"vds-input prompt-name-input" + (nameTaken ? " err" : "")} placeholder="Directive name" disabled={readOnly}
           value={prompt.name} aria-label="Directive name" aria-invalid={nameTaken || undefined}
           onChange={(e)=>onName && onName(e.target.value)}
           onBlur={(e)=>onNameCheck && onNameCheck(e.target.value)} />
