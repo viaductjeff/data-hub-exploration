@@ -1688,8 +1688,11 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
                   {/* Stops a click on an action from also opening the row. */}
                   <div className="row-actions" onClick={(e)=>e.stopPropagation()}>
                     <button className="vds-icon-btn vds-icon-btn--sm" title="Run now" aria-label="Run now" onClick={()=>runNow(r.id)}><Icon name="play" size={16} /></button>
-                    <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>edit(r.id)}><Icon name="pencil" size={17} /></button>
-                    <DeleteButton onDelete={()=>del(r.id)} />
+                    {/* Schedules are edited and deleted from the schedule itself. */}
+                    {cfg.key === "automations" && (<>
+                      <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>edit(r.id)}><Icon name="pencil" size={17} /></button>
+                      <DeleteButton onDelete={()=>del(r.id)} />
+                    </>)}
                   </div>
                 </div>
               </div>
