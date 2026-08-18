@@ -9475,7 +9475,7 @@ function AutomationRunHistory({ automation, noun = AUTOMATION_NOUN }){
       {runs.length > 0 && <div className="runh-filters" style={{margin:"0 0 16px"}}>
         {FILTERS.map(([v,label]) => (
           <button key={v} className={"vds-btn vds-btn--sm proto-toggle" + (filter === v ? " on" : "")}
-            aria-pressed={filter === v} onClick={()=>setFilter(v)}>{label} {counts[v]}</button>
+            aria-pressed={filter === v} onClick={()=>setFilter(v)}>{label + " (" + counts[v] + ")"}</button>
         ))}
       </div>}
       <div className="vds-table-container">
