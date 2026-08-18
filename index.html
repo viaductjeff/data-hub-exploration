@@ -655,7 +655,7 @@
      first line however many times the controls wrap. */
   /* Clear of the controls, which can wrap right up to it. */
   .trigger-row-x { display: flex; align-items: center; flex: none; height: 36px; margin-left: 16px; }
-  .schedule-entry__freq { width: 120px; }
+  .schedule-entry__freq { width: 152px; }
   .schedule-entry__nth { width: 110px; }
   .schedule-entry__weekday { width: 140px; }
   .action-list { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
@@ -2333,7 +2333,18 @@ const WEEKDAY_DEFAULT = { sun:false, mon:true, tue:true, wed:true, thu:true, fri
 const EVERY_DAY = { sun:true, mon:true, tue:true, wed:true, thu:true, fri:true, sat:true };
 
 const autoId = (p) => p + "_" + Math.random().toString(36).slice(2,10);
-const SCHED_FREQS = ["Hourly","Daily","Weekly","Monthly"];
+const SCHED_FREQS = [
+  { value:"Hourly", label:"Hourly" },
+  { value:"Daily", label:"Daily" },
+  { value:"Weekly", label:"Weekly" },
+  { value:"Monthly", label:"Monthly (day)" },
+  { value:"MonthlyDate", label:"Monthly (date)" },
+];
+const MONTH_DATES = Array.from({ length:31 }, (_, i) => {
+  const n = i + 1, rem = n % 100;
+  const suffix = (rem >= 11 && rem <= 13) ? "th" : ["th","st","nd","rd"][n % 10] || "th";
+  return String(n) + suffix;
+});
 const NTH_OPTIONS = ["first","second","third","fourth","last"];
 const TENANT_TZ = "PT";
 function newScheduleEntry(days, time, freq){
@@ -2546,6 +2557,7 @@ function scheduleEntrySummary(sch){
   if (sch.freq === "Hourly") return "Hourly";
   if (sch.freq === "Daily") return "Daily · " + t;
   if (sch.freq === "Monthly") return "Monthly · " + (sch.nth || "first") + " " + (sch.weekday || "Monday") + " · " + t;
+  if (sch.freq === "MonthlyDate") return "Monthly · " + (sch.monthDate || "1st") + " · " + t;
   const days = dayLabels(sch.days);
   return (days.length === 7 ? "Every day" : days.length ? days.join(" ") : "No days") + " · " + t;
 }
@@ -2610,6 +2622,17 @@ function nextRunFromSchedule(sch){
     if (d <= now) d.setDate(d.getDate() + 1);
     return d;
   }
+  if (sch.freq === "MonthlyDate"){
+    const day = parseInt(sch.monthDate || "1", 10);
+    for (let add = 0; add < 13; add++){
+      const probe = new Date(now.getFullYear(), now.getMonth() + add, 1);
+      const lastDay = new Date(probe.getFullYear(), probe.getMonth() + 1, 0).getDate();
+      if (day > lastDay) continue;                                        // e.g. the 31st of a short month
+      const d = new Date(probe.getFullYear(), probe.getMonth(), day, hh, mm, 0, 0);
+      if (d > now) return d;
+    }
+    return null;
+  }
   if (sch.freq === "Monthly"){
     const jsDow = (WEEKDAYS.indexOf(sch.weekday || "Monday") + 1) % 7;   // Mon->1 … Sun->0
     for (let add = 0; add < 4; add++){
@@ -2668,6 +2691,7 @@ function triggerToSyncFields(trigger){
   if (first.freq === "Hourly") return { frequency:"Hourly" };
   if (first.freq === "Daily") return { frequency:"Daily", timeOfDay:first.time };
   if (first.freq === "Monthly") return { frequency:"Weekly", dayOfWeek:first.weekday || "Monday", timeOfDay:first.time };
+  if (first.freq === "MonthlyDate") return { frequency:"Monthly", timeOfDay:first.time };
   const days = DAYS_OF_WEEK.filter(d => first.days && first.days[d.value]);
   if (days.length === 1) return { frequency:"Weekly", dayOfWeek:WEEKDAYS[(DAYS_OF_WEEK.findIndex(d=>d.value===days[0].value)+6)%7], timeOfDay:first.time };
   return { frequency:"Daily", timeOfDay:first.time };
@@ -9548,7 +9572,7 @@ function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockL
               <div className="field schedule-entry__freq">
                 <select className="vds-select" value={sch.freq || "Weekly"} aria-label="Frequency"
                   onChange={(e)=>patchSch({ freq:e.target.value })}>
-                  {SCHED_FREQS.map(f => <option key={f} value={f}>{f}</option>)}
+                  {SCHED_FREQS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
                 </select>
               </div>
               {sch.freq === "Daily" && (<><span className="vds-b2">at</span>{timeField}</>)}
@@ -9578,6 +9602,17 @@ function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockL
                     {WEEKDAYS.map(d => <option key={d} value={d}>{d}</option>)}
                   </select>
                 </div>
+                {timeField}
+              </>)}
+              {sch.freq === "MonthlyDate" && (<>
+                <span className="vds-b2">on the</span>
+                <div className="field schedule-entry__nth">
+                  <select className="vds-select" value={sch.monthDate || "1st"} aria-label="Day of month"
+                    onChange={(e)=>patchSch({ monthDate:e.target.value })}>
+                    {MONTH_DATES.map(d => <option key={d} value={d}>{d}</option>)}
+                  </select>
+                </div>
+                <span className="vds-b2">at</span>
                 {timeField}
               </>)}
               </div>
@@ -9641,6 +9676,7 @@ function scheduleSentence(sch){
   if (sch.freq === "Hourly") return "Hourly";
   if (sch.freq === "Daily") return "Daily " + at;
   if (sch.freq === "Monthly") return "Monthly on the " + (sch.nth || "first") + " " + (sch.weekday || "Monday") + " " + at;
+  if (sch.freq === "MonthlyDate") return "Monthly on the " + (sch.monthDate || "1st") + " " + at;
   const days = dayLabels(sch.days);
   return "Weekly on " + (days.length ? days.join(", ") : "no days") + " " + at;
 }
