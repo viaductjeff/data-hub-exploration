@@ -1191,7 +1191,7 @@ const HUB_PAGE = {
   schedules:{ key:"schedules", title:"Schedules", icon:"clock", newLabel:"New Schedule",
     sub:"Run your connectors, directives and data transformations on a trigger you define.",
     noun:"schedules", filter:"Filter schedules...", hidden:"Show paused schedules",
-    cols:["Name","Type","Schedule","Next scheduled run","History","Last run","Creator","Actions"],
+    cols:["Scheduled item","Type","Schedule","Next scheduled run","History","Last run","Creator","Actions"],
     emptyTitle:"No schedules yet", emptyBody:"A schedule runs a sequence of steps on a trigger. Build one here, or schedule a connector or data transformation from its wizard and it will appear in this list.", cta:"New schedule" },
   directives:{ key:"directives", title:"Directives", icon:"terminal", newLabel:"New Directive",
     sub:"Named prompts you can reuse — in an automation, or to clean, map and route incoming records.",
@@ -1587,8 +1587,9 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
      values within one filter widens it, across filters narrows it. */
   const autoActions = (r) => (r.steps || []).flatMap(st => st.actions || []);
   const matchesActions = (r) => actionFilter.length === 0 || actionFilter.some(lbl => {
-    const t = (AUTO_ACTION_FILTERS.find(a => a.label === lbl) || {}).type;
-    return autoActions(r).some(a => a.type === t);
+    const defs = isSched ? SCHED_TYPE_FILTERS : AUTO_ACTION_FILTERS;
+    const t = (defs.find(a => a.label === lbl) || {}).type;
+    return isSched ? (scheduledAction(r) || {}).type === t : autoActions(r).some(a => a.type === t);
   });
   const matchesPrompts = (r) => promptFilter.length === 0 || promptFilter.some(name =>
     autoActions(r).some(a => a.type === "prompt" && String(a.prompt || "").includes(slashOf(name))));
@@ -1625,10 +1626,13 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
                 value={query} onChange={(e)=>setQuery(e.target.value)} />
             </div>
           </div>
-          <MultiSelectFilter label="Contains actions" options={AUTO_ACTION_FILTERS.map(a => a.label)}
+          <MultiSelectFilter label={isSched ? "Type" : "Contains actions"}
+            options={(isSched ? SCHED_TYPE_FILTERS : AUTO_ACTION_FILTERS).map(a => a.label)}
             selected={actionFilter} onChange={setActionFilter} />
-          <MultiSelectFilter label="Contains directives" options={AUTO_PROMPT_FILTERS}
-            selected={promptFilter} onChange={setPromptFilter} />
+          {!isSched && (
+            <MultiSelectFilter label="Contains directives" options={AUTO_PROMPT_FILTERS}
+              selected={promptFilter} onChange={setPromptFilter} />
+          )}
           <MultiSelectFilter label="Accesses Data Tables" options={AUTO_TABLE_FILTERS}
             selected={tableFilter} onChange={setTableFilter} />
         </div>
@@ -2301,6 +2305,12 @@ const REF_ACTION_TYPES = ["pipeline","import_table"];
 const ACTION_ICONS = { prompt:"sparkles", pipeline:"shuffle", import_table:"refresh", notification:"bell" };
 /* Automations list filters. Action labels here are the ones people filter by; they
    map onto the action types stored on a step. */
+/* The kinds a schedule can run, in the order the filter lists them. */
+const SCHED_TYPE_FILTERS = [
+  { label:"Data Table upload", type:"import_table" },
+  { label:"Data transformation", type:"pipeline" },
+  { label:"Directive", type:"prompt" },
+];
 const AUTO_ACTION_FILTERS = [
   { label:"Run prompt", type:"prompt" },
   { label:"Run data transformation", type:"pipeline" },
@@ -10911,7 +10921,7 @@ function App(){
           onEdit={(id) => { closeView(); setEditingAutoId(id); }}
           onRun={(id) => runAutomation(id)}
           onDelete={(id) => { deleteAutomation(id); closeView(); }} />
-      : <HubPage cfg={cfg} onNew={() => setNewAuto(newAutomation(""))}
+      : <HubPage key={cfg.key} cfg={cfg} onNew={() => setNewAuto(newAutomation(""))}
           onOpen={(id) => { setViewingAutoTab("steps"); setViewingAutoId(id); }}
           onEdit={(id) => setEditingAutoId(id)}
           onOpenHistory={(id) => { setViewingAutoTab("history"); setViewingAutoId(id); }}
@@ -10931,7 +10941,7 @@ function App(){
           onEdit={(id) => { closeView(); setEditingSchedId(id); }}
           onRun={(id) => runSchedule(id)}
           onDelete={(id) => { deleteSchedule(id); closeView(); }} />
-      : <HubPage cfg={cfg} onNew={() => setNewSched(newAutomation(""))}
+      : <HubPage key={cfg.key} cfg={cfg} onNew={() => setNewSched(newAutomation(""))}
           onOpen={(id) => { setViewingSchedTab("steps"); setViewingSchedId(id); }}
           onEdit={(id) => setEditingSchedId(id)}
           onOpenHistory={(id) => { setViewingSchedTab("history"); setViewingSchedId(id); }}
@@ -10960,11 +10970,11 @@ function App(){
           onBack={() => setViewingPromptId(null)}
           onEdit={(id) => { setViewingPromptId(null); setEditingPromptId(id); }}
           onDelete={(id) => { deletePrompt(id); setViewingPromptId(null); }} />
-      : <HubPage cfg={cfg} onNew={() => setNewPrompt(newSavedPrompt())}
+      : <HubPage key={cfg.key} cfg={cfg} onNew={() => setNewPrompt(newSavedPrompt())}
           onOpen={(id) => setViewingPromptId(id)} onEdit={(id) => setEditingPromptId(id)}
           onDelete={deletePrompt} records={savedPrompts} />;
   } else if (cfg){
-    page = <HubPage cfg={cfg}
+    page = <HubPage key={cfg.key} cfg={cfg}
       onNew={activeId==="datasources" ? () => setCreating(true) : (activeId==="dataconnectors" ? () => setConnCreating(true) : (activeId==="datapipelines" ? () => setPipeCreating(true) : undefined))}
       onOpen={activeId==="datasources" ? (id) => setDataViewId(id) : (activeId==="dataconnectors" ? (id) => { setConnDetailId(id); setConnDetailStep(null); } : (activeId==="datapipelines" ? openPipeline : undefined))}
       onUpdate={activeId==="datasources" ? (id) => setUpdatingId(id) : undefined}
