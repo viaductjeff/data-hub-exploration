@@ -2310,7 +2310,7 @@ const ACTION_ICONS = { prompt:"sparkles", pipeline:"shuffle", import_table:"refr
    map onto the action types stored on a step. */
 /* The kinds a schedule can run, in the order the filter lists them. */
 const SCHED_TYPE_FILTERS = [
-  { label:"Data Table upload", type:"import_table" },
+  { label:"Data Table import", type:"import_table" },
   { label:"Data transformation", type:"pipeline" },
   { label:"Directive", type:"prompt" },
 ];
@@ -2560,7 +2560,7 @@ function triggerSummary(trigger){
 }
 const automationTriggerText = (a) => a && a.steps && a.steps[0] ? triggerSummary(a.steps[0].trigger) : "—";
 /* A schedule is listed by the thing it runs, not by the automation wrapped around it. */
-const SCHEDULED_KINDS = { prompt:"Directive", pipeline:"Data transformation", import_table:"Table upload" };
+const SCHEDULED_KINDS = { prompt:"Directive", pipeline:"Data transformation", import_table:"Table import" };
 const scheduledAction = (a) => ((a && a.steps || []).flatMap(st => st.actions || []))
   .find(act => SCHEDULED_KINDS[act.type]) || null;
 const scheduledKind = (a) => { const act = scheduledAction(a); return act ? SCHEDULED_KINDS[act.type] : "—"; };
