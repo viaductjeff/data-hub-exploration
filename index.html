@@ -591,6 +591,8 @@
   .prompt-slash { font-family: var(--vds-font-mono); background: var(--vds-alert-info-bg); color: var(--vds-alert-info-icon); }
   .prompt-read-text { white-space: pre-wrap; }
   .prompt-avail-line { display: flex; align-items: center; justify-content: space-between; gap: var(--vds-dialog-gap); }
+  /* Disabled fields still have to be read — VDS greys their text almost out of sight. */
+  :is(.vds-input, .vds-select, .vds-textarea):disabled { color: var(--vds-text-secondary); -webkit-text-fill-color: var(--vds-text-secondary); }
   .proto-readonly-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
   /* One shared column pair, so every value starts 24px past the longest label. */
   .prompt-meta { display: grid; grid-template-columns: max-content minmax(0, 1fr);
