@@ -9969,7 +9969,7 @@ function PromptHistoryCard({ prompt, automations = [] }){
   const rows = [
     ["Run by", prompt.lastRunBy],
     ["Run", stampDateTime(prompt.lastRunAt)],
-    ["History", (runs || []).length ? <RunStrip runs={runs} /> : ""],
+    ["Run history", (runs || []).length ? <RunStrip runs={runs} /> : ""],
     ["Updated by", prompt.updatedBy],
     ["Updated", slashDate(prompt.updatedAt)],
     ["Created by", prompt.createdBy],
