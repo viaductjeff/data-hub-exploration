@@ -151,6 +151,7 @@
   .proto-status-pill.wait .dot { background: var(--vds-gray-400); }
   .proto-pub-pill.yes { background: var(--vds-alert-success-bg); }
   .proto-pub-pill.no { background: var(--vds-slate-100); color: var(--vds-text-secondary); }
+  .proto-pub-pill.warn { background: var(--vds-alert-warning-bg); color: var(--vds-alert-warning-icon); }
   .proto-corner-tag { position: absolute; top: 8px; right: 8px; height: 22px; font-size: 12px; }
   .proto-corner-tag.p0, .proto-corner-tag.P0 { background: var(--vds-surface-info); }
   .proto-corner-tag.p1 { background: var(--vds-alert-success-bg); }
@@ -574,6 +575,16 @@
   .prompt-clues { margin-left: 26px; }
   /* Tool picker: a fixed-height dialog so the list scrolls under a pinned action row. */
   /* Beats the 460px cap .proto-modal-card sets on every dialog. */
+  .proto-modal-card.qc-dialog { max-width: min(560px, 94vw); }
+  .proto-modal-card.qc-dialog--wide { max-width: min(1040px, 96vw); }
+  .qc-dialog { display: flex; flex-direction: column; max-height: min(84vh, 760px); padding: 0; }
+  .qc-dialog .vds-dialog__title { flex: none; }
+  .qc-dialog__body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column;
+    gap: var(--vds-form-gap); padding: var(--vds-card-pad-v) var(--vds-card-pad-h); }
+  .qc-dialog__filter { width: 320px; }
+  .qc-dialog__tables { max-height: 46vh; overflow: auto; }
+  .qc-dialog__actions { flex: none; display: flex; justify-content: flex-end; gap: var(--vds-button-gap);
+    padding: var(--vds-form-gap) var(--vds-card-pad-h) var(--vds-card-pad-v); }
   .proto-modal-card.tool-dialog { max-width: min(690px, 94vw); }
   .tool-dialog { display: flex; flex-direction: column; max-height: min(80vh, 720px); padding: 0; }
   .tool-dialog__lede { margin: 0; }
@@ -1184,7 +1195,7 @@ const HUB_PAGE = {
   datasources:{ key:"datasources", title:"Data Tables", icon:"database", newLabel:"New Data Table",
     sub:"Manage data tables",
     noun:"data tables", filter:"Filter data tables...", hidden:"Show hidden data tables",
-    cols:["Name","Source","Type","Published","Records","Last imported","Actions"],
+    cols:["Name","Source","Type","Status","Records","Last imported","Actions"],
     emptyTitle:"No data tables yet", emptyBody:"Connect a file, connector, or content source to create a data table in Viaduct.", cta:"Create your first data table" },
   dataconnectors:{ key:"dataconnectors", title:"Connections", icon:"plug", newLabel:"New connection",
     sub:"Connected external systems that create and sync data tables on a schedule.",
@@ -1652,8 +1663,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
   const filtered = records.filter(r => {
     const q = query.trim().toLowerCase();
     const matchesText = !q || [r.name, r.singular, r.plural, r.connectorName].filter(Boolean).some(v => String(v).toLowerCase().includes(q));
-    const pubWord = r.published !== false ? "Published" : "Unpublished";
-    const matchesPub = !isDS || pubFilter.length === 0 || pubFilter.includes(pubWord);
+    const matchesPub = !isDS || pubFilter.length === 0 || pubFilter.includes(r.status || "Ready");
     if (!(matchesText && matchesPub)) return false;
     return !isAuto || (matchesActions(r) && matchesPrompts(r) && matchesTables(r));
   });
@@ -1704,8 +1714,8 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
           {cfg.cols.map((c,i) => (
             <div className={"th" + (i===cfg.cols.length-1 ? " right" : "") + (isPrompt && (i===1 || i===2) ? " center" : "") + (isAuto && c === "History" ? " right-mid" : "") + (isConn && (c === "Available Source tables" || c === "Mapped Data Tables") ? " right-mid" : "")} key={c}>
               {c}
-              {isDS && c === "Published" && (
-                <ColFilterPopover label="Published" options={["Published","Unpublished"]} selected={pubFilter} onChange={setPubFilter} />
+              {isDS && c === "Status" && (
+                <ColFilterPopover label="Status" options={Array.from(new Set(records.map(r => r.status || "Ready")))} selected={pubFilter} onChange={setPubFilter} />
               )}
             </div>
           ))}
@@ -1795,7 +1805,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
                 <div className="td td-name">{r.name}</div>
                 <div className="td">{r.origin}</div>
                 <div className="td">{r.type}</div>
-                <div className="td"><span className={"vds-chip vds-chip--sm proto-pub-pill " + (r.published !== false ? "yes" : "no")}>{r.published !== false ? "Published" : "Unpublished"}</span></div>
+                <div className="td"><span className={"vds-chip vds-chip--sm proto-pub-pill " + statusTone(r.status)}>{r.status || "Ready"}</span></div>
                 <div className="td">{r.records}</div>
                 <div className="td">{r.lastSynced}</div>
                 <div className="td right">
@@ -1899,6 +1909,7 @@ const existingInstanceFor = (connectors, connectorId) => isSingleInstance(connec
 const PRIORITIES = ["P0","P1","P2","P3"];
 const CONNECTORS = [
   { id:"samsara", name:"Samsara", group:"Telematics", icon:"broadcast", priority:"P0" },
+  { id:"samsara2", name:"Samsara 2", group:"Telematics", icon:"broadcast", priority:"P0" },
   { id:"geotab", name:"Geotab", group:"Telematics", icon:"broadcast", priority:"P0" },
   { id:"mqtt", name:"Viaduct MQTT Server", group:"Telematics", icon:"broadcast", priority:"P3" },
   { id:"fleetio", name:"Fleetio", group:"Fleet Management", icon:"truck", priority:"P0" },
@@ -1930,6 +1941,9 @@ const CONNECTOR_TEMPLATES = {
       { name:"Faults", kind:"Named Application", type:"Event", records:86500, firstDate:"2022-01-01", description:"Vehicle fault and diagnostic events from Samsara. Each event has a fault ID, the affected vehicle ID, a diagnostic trouble code (e.g. P0420), a severity (Low, Medium, High, or Critical), and a timestamp. Query this for questions about vehicle faults, error codes, how severe issues are, or when faults occurred.", cols:[["FaultID","number"],["VehicleID","number"],["Code","string"],["Severity","string"],["Timestamp","datetime"]] },
     ],
   },
+  get samsara2(){ return { ...CONNECTOR_TEMPLATES.samsara,
+    auth: { ...CONNECTOR_TEMPLATES.samsara.auth,
+      note:"Enter the API key from your Samsara 2 account. Viaduct uses it to pull data on your schedule." } }; },
   geotab: {
     tagline: "Telematics and fleet tracking platform.",
     auth: { title:"API key", note:"Enter the API key from your Geotab database. Viaduct uses it to pull data on your schedule.",
@@ -2261,6 +2275,8 @@ function sftpManagedSource(template, managedName, connName, instId, whenLabel, s
     relations: template.relations ? JSON.parse(JSON.stringify(template.relations)) : { outgoing:[], incoming:[] },
   };
 }
+/* Amber until a table holds data; green once it does. */
+const statusTone = (status) => (status === "Ready" || !status) ? "yes" : "warn";
 function dsNameForSource(src, connIdOrName, rawPrefix){
   const baseSlug = connSlug(src.name);
   return rawPrefix ? ("raw__" + connSlug(connIdOrName) + "_" + baseSlug) : baseSlug;
@@ -4386,8 +4402,12 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
      the standard weekday morning import. */
   const importAuto = used.find(a => (a.steps || []).some(st =>
     (st.actions || []).some(act => act.type === "import_table" && act.refName === source.name))) || null;
-  const [sched, setSched] = useState(() =>
-    (importAuto && importAuto.steps[0] && importAuto.steps[0].trigger) || defaultImportTrigger());
+  /* Held once: a fresh default trigger carries new row ids, so rebuilding it to
+     compare would read as an edit every time. */
+  const schedBase = React.useMemo(() =>
+    (importAuto && importAuto.steps[0] && importAuto.steps[0].trigger) || defaultImportTrigger(),
+    [importAuto]);
+  const [sched, setSched] = useState(schedBase);
   const commit = () => {
     onUpdate(source.id, { published, singular, plural, description: desc, columns: cols });
     if (onSaveSchedule) onSaveSchedule(importAuto ? importAuto.id : null, sched);
@@ -4397,7 +4417,7 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
     || singular !== (source.singular || "") || plural !== (source.plural || "")
     || desc !== (source.description || "")
     || JSON.stringify(cols) !== JSON.stringify((source.columns || []).map(c => ({ ...c })))
-    || JSON.stringify(sched) !== JSON.stringify((importAuto && importAuto.steps[0] && importAuto.steps[0].trigger) || defaultImportTrigger());
+    || JSON.stringify(sched) !== JSON.stringify(schedBase);
   useUnsavedGuard(dirty, commit);
   const setCol = (i, patch) => setCols(cs => cs.map((c,idx) => idx===i ? { ...c, ...patch } : c));
   const parsed = source.parsed || { rows:[], previewRows:[] };
@@ -9913,6 +9933,124 @@ function PromptAutomationsCard({ trigger, setTrigger, sources = [], readOnly = f
 
 /* The tool picker. Rows expand for their description and parameters, and one can
    be selected to drop into the instructions. */
+/* Samsara 2 sets up in one dialog: the API key, then the source tables to create.
+   The other connectors do this over wizard steps. */
+function QuickConnectDialog({ conn, existing, sources = [], onClose, onCreate }){
+  const tmpl = CONNECTOR_TEMPLATES[conn.id] || {};
+  const [step, setStep] = useState(existing ? "tables" : "auth");
+  const [apiKey, setApiKey] = useState(existing ? ((existing.creds && existing.creds.apiKey) || "") : "");
+  const [testing, setTesting] = useState(false);
+  const [tested, setTested] = useState(!!existing);
+  const [query, setQuery] = useState("");
+  const [picks, setPicks] = useState({});          // source name -> { on, name }
+  const taken = new Set(sources.map(s => s.name));
+
+  const defaultName = (src) => dsNameForSource(src, conn.id, true);
+  const pickOf = (src) => picks[src.name] || { on:false, name:defaultName(src) };
+  const setPick = (src, patch) => setPicks(p => ({ ...p, [src.name]: { ...pickOf(src), ...patch } }));
+  const shown = (tmpl.sources || []).filter(src => {
+    const q = query.trim().toLowerCase();
+    return !q || src.name.toLowerCase().includes(q) || String(src.description || "").toLowerCase().includes(q);
+  });
+  const chosen = (tmpl.sources || []).filter(src => pickOf(src).on);
+  const named = chosen.every(src => pickOf(src).name.trim());
+  const dupe = chosen.find(src => taken.has(pickOf(src).name.trim()));
+
+  const create = () => {
+    const records = chosen.map(src => {
+      const rec = connectorDataSourceRecord(conn.name, src, { connId: conn.id, rawPrefix:true });
+      return { ...rec, name: pickOf(src).name.trim(), templateSourceKey: src.name,
+               status:"Not imported", configured:true };
+    });
+    onCreate({ apiKey, records });
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className={"vds-dialog proto-modal-card qc-dialog" + (step === "tables" ? " qc-dialog--wide" : "")}
+        onClick={(e)=>e.stopPropagation()}>
+        <div className="vds-dialog__title">
+          <span>{step === "auth" ? ("Set up " + conn.name + " connection") : ("Select " + conn.name + " source table(s)")}</span>
+          <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Close" title="Close" onClick={onClose}>
+            <Icon name="x" size={17} /></button>
+        </div>
+
+        <div className="vds-dialog__content qc-dialog__body">
+          {step === "auth" ? (<>
+            <div className="vds-h5">{tmpl.auth && tmpl.auth.title}</div>
+            <div className="vds-b2 proto-muted">{tmpl.auth && tmpl.auth.note}</div>
+            <div className="field">
+              <input className="vds-input" placeholder="Paste your API key" aria-label="API key" value={apiKey}
+                onChange={(e)=>{ setTested(false); setApiKey(e.target.value); }} />
+            </div>
+          </>) : (<>
+            <div className="vds-b2 proto-muted">Pick the {conn.name} tables to create, and name each Viaduct data table.</div>
+            <div className="filter qc-dialog__filter">
+              <span className="s-icon"><Icon name="search" size={16} /></span>
+              <input className="vds-input" placeholder="Filter tables..." aria-label="Filter tables"
+                value={query} onChange={(e)=>setQuery(e.target.value)} />
+            </div>
+            <div className="vds-table-container qc-dialog__tables">
+              <table className="vds-table">
+                <thead><tr>
+                  <th style={{width:40}}></th>
+                  <th style={{textAlign:"left"}}>{conn.name} table</th>
+                  <th style={{textAlign:"left"}}>Description</th>
+                  <th style={{width:260, textAlign:"left"}}>Viaduct table</th>
+                </tr></thead>
+                <tbody>
+                  {shown.map(src => {
+                    const pick = pickOf(src);
+                    const clash = pick.on && taken.has(pick.name.trim());
+                    return (
+                      <tr key={src.name}>
+                        <td style={{textAlign:"center"}}>
+                          <input type="checkbox" className="vds-checkbox" checked={pick.on}
+                            aria-label={"Include " + src.name}
+                            onChange={(e)=>setPick(src, { on:e.target.checked })} />
+                        </td>
+                        <td className="src-name-cell">{src.name}</td>
+                        <td className="src-desc-cell"><ClampedDescription text={src.description} /></td>
+                        <td>
+                          <input className={"vds-input vds-input--sm" + ((pick.on && !pick.name.trim()) || clash ? " err" : "")}
+                            value={pick.name} disabled={!pick.on} required={pick.on}
+                            aria-label={"Viaduct table name for " + src.name}
+                            onChange={(e)=>setPick(src, { name:e.target.value })} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {shown.length === 0 && <tr><td colSpan={4} className="proto-muted">No table matches that filter.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            {dupe && <div className="vds-helper-text vds-helper-text--error">A data table named “{pickOf(dupe).name.trim()}” already exists.</div>}
+          </>)}
+        </div>
+
+        <div className="vds-dialog__actions qc-dialog__actions">
+          <button className="vds-btn" onClick={onClose}>Cancel</button>
+          {step === "auth" ? (<>
+            {tested
+              ? <button className="vds-btn vds-btn--start-icon proto-btn--tested" disabled>
+                  <Icon name="check" size={17} />Test connection</button>
+              : <button className="vds-btn" disabled={!apiKey.trim() || testing}
+                  onClick={()=>{ setTesting(true); setTimeout(()=>{ setTesting(false); setTested(true); }, 700); }}>
+                  {testing ? "Testing connection…" : "Test connection"}</button>}
+            <button className="vds-btn vds-btn--primary" disabled={!tested}
+              title={tested ? undefined : "Test the connection first"}
+              onClick={()=>setStep("tables")}>Select source table</button>
+          </>) : (
+            <button className="vds-btn vds-btn--primary" disabled={!chosen.length || !named || !!dupe}
+              title={chosen.length ? (named ? (dupe ? "Choose a name that is not taken" : undefined) : "Name every checked table") : "Check a table first"}
+              onClick={create}>Create Table</button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ToolPickerDialog({ onClose, onInsert }){
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState([]);
@@ -10763,6 +10901,7 @@ function App(){
   /* An existing connection opened from the data table wizard: same pages, but framed
      as new data tables and returning to Data Tables when it's done. */
   const [connDetailFromDT, setConnDetailFromDT] = useState(false);
+  const [quickConnId, setQuickConnId] = useState(null);
   const [automations, setAutomations] = useState(seedAutomations);
   /* Schedules is its own list of the same kind of record, under its own nav path. */
   const [schedules, setSchedules] = useState(() => seedAutomations().map(a => ({ ...a, id:autoId("sched") })));
@@ -11078,6 +11217,8 @@ function App(){
     page = <NewDataSource onCancel={() => setCreating(false)} onCreate={(rec) => { setSources(s => [rec, ...s]); setCreating(false); }}
       madeConnectors={connectors}
       onPickConnector={(id) => {
+        /* Samsara 2 is set up in a dialog, not the connector wizard. */
+        if (id === "samsara2"){ setCreating(false); setQuickConnId(id); return; }
         const made = existingInstanceFor(connectors, id);
         setCreating(false);
         if (made){ openConnector(made.id); setConnDetailFromDT(true); return; }
@@ -11285,6 +11426,25 @@ function App(){
         <TopBar />
         <main className="main" style={{flex:"1 1 auto",display:"flex",minWidth:0,minHeight:0}}>{page}</main>
       </div>
+      {quickConnId && (() => {
+        const conn = CONNECTORS.find(c => c.id === quickConnId);
+        const existing = existingInstanceFor(connectors, quickConnId);
+        return <QuickConnectDialog conn={conn} existing={existing} sources={sources}
+          onClose={()=>setQuickConnId(null)}
+          onCreate={({ apiKey, records }) => {
+            const instId = existing ? existing.id : ("conn_" + Math.random().toString(36).slice(2,10));
+            const withConn = records.map(r => ({ ...r, connectorInstanceId: instId }));
+            setSources(ss => [...withConn, ...ss]);
+            setConnectors(cs => existing
+              ? cs.map(c => c.id === instId
+                  ? { ...c, updatedAt: todayStr(), dataSourceIds:[...(c.dataSourceIds || []), ...withConn.map(r => r.id)] } : c)
+              : [{ id:instId, name:conn.name, connectorId:conn.id, connectorName:conn.name, group:conn.group,
+                   creds:{ apiKey }, noSchedule:true, status:"Ready", lastChecked:"Just now",
+                   createdAt:todayStr(), updatedAt:todayStr(), lastRun:"Never",
+                   dataSourceIds: withConn.map(r => r.id) }, ...cs]);
+            setQuickConnId(null); setActiveId("datasources");
+          }} />;
+      })()}
       {pendingNav && (
         <ConfirmDialog title="Save changes?"
           body="You have made changes that will be lost if you do not save before leaving this page."
