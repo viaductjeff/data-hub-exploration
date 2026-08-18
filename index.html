@@ -267,7 +267,6 @@
   .prompt-card__head.import-card__head { justify-content: flex-start; gap: var(--vds-button-gap); }
   .import-card__to { margin: 0 var(--vds-dialog-gap); }
   /* 4px under the title it follows, same as every other section note. */
-  .automate-lede { margin: 0 0 16px; }
 
   /* ---------- credentials / verify ---------- */
   .cred-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: var(--vds-form-gap) 20px; margin-top: 4px; }
@@ -4516,7 +4515,7 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
 
       <div className="vds-card prompt-card cfg-card">
         <h5 className="prompt-card__title">Scheduled import</h5>
-        <AutomateTriggerFields trigger={sched} setTrigger={setSched} tables={allTableNames(allSources)} showLede={false} />
+        <AutomateTriggerFields trigger={sched} setTrigger={setSched} tables={allTableNames(allSources)} />
       </div>
 
       <div className="vds-card prompt-card cfg-card" ref={relationsRef}>
@@ -5147,7 +5146,6 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
       <PageHead title={"Set up " + conn.name + " connection"} onCancel={onCancel} />
       <Stepper current={3} steps={CONNECTOR_WIZARD_STEPS} />
       <div className="vds-h4 proto-section-title">Schedule import</div>
-      <div className="vds-b2 proto-muted proto-section-note">Imports can always be manually run, even when triggered on a schedule or by a table event.</div>
       {newlyPicked.length === 0
         ? <div className="vds-alert vds-alert--info proto-note">No source tables were selected, so there is nothing to schedule yet.</div>
         : newlyPicked.map(s => (
@@ -5160,7 +5158,7 @@ function ApiConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[
                 <span className="vds-b2">(Viaduct)</span>
               </div>
               <AutomateTriggerFields trigger={triggerFor(s.name)} setTrigger={setTriggerFor(s.name)}
-                tables={allTableNames(existingSources)} showLede={false} />
+                tables={allTableNames(existingSources)} />
             </div>
           ))}
 
@@ -5937,12 +5935,11 @@ function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[]
 }
 /* The Automate step's trigger picker — the same model the automation editor
    uses, so whatever a wizard captures here becomes the automation's first step. */
-function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = null, showLede = true, hideEvents = false, lockLast = false, hideAdd = false, hideRemove = false, disableAdd = false, addNote = null }){
+function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = null, hideEvents = false, lockLast = false, hideAdd = false, hideRemove = false, disableAdd = false, addNote = null }){
   const set = (patch) => setTrigger(t => ({ ...t, ...patch }));
   if (lockedNote) return <div className="vds-alert vds-alert--info proto-note">{lockedNote}</div>;
   return (
     <div>
-      {showLede && <div className="vds-b2 proto-muted proto-section-note automate-lede">Automations can always be manually run, even when triggered on a schedule or by a table event.</div>}
       <TriggerRows trigger={trigger} onChange={set} tables={tables} hideEvents={hideEvents} lockLast={lockLast} hideAdd={hideAdd} hideRemove={hideRemove} disableAdd={disableAdd} addNote={addNote} />
     </div>
   );
@@ -9749,7 +9746,6 @@ function AutomationView({ automation, initialTab, noun = AUTOMATION_NOUN, onBack
                 <div className="step-card__body">
                   <div>
                     <h5 style={{margin:"0 0 4px"}}>Trigger</h5>
-                    {isFirst && <div className="vds-b2 proto-muted" style={{marginBottom:12}}>{noun.Many + " can always be manually run, even when triggered on a schedule or by a table event."}</div>}
                     <div className="trigger-read-list">
                       {!isFirst && (
                         <div className="trigger-read-line">
@@ -9859,7 +9855,7 @@ function PromptTabs({ tab, setTab }){
 /* The directive's schedule, edited with the same rows an automation step uses. */
 function PromptAutomationsCard({ trigger, setTrigger, sources = [], readOnly = false, canAdd = true }){
   const fields = <AutomateTriggerFields trigger={trigger} setTrigger={readOnly ? ()=>{} : setTrigger}
-    tables={allTableNames(sources)} showLede={false} hideAdd={readOnly} hideRemove={readOnly}
+    tables={allTableNames(sources)} hideAdd={readOnly} hideRemove={readOnly}
     disableAdd={!canAdd} addNote='Check "Allow scheduling" to add a schedule' />;
   return (
     <div className="vds-card prompt-card">
@@ -10353,10 +10349,10 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
           {readOnly
             ? <fieldset className="proto-readonly-fields" disabled>
                 <AutomateTriggerFields trigger={step.trigger} setTrigger={()=>{}}
-                  tables={allTableNames(sources)} showLede={false} hideEvents hideAdd hideRemove />
+                  tables={allTableNames(sources)} hideEvents hideAdd hideRemove />
               </fieldset>
             : <AutomateTriggerFields trigger={step.trigger} setTrigger={setTrigger}
-                tables={allTableNames(sources)} showLede={false} hideEvents lockLast />}
+                tables={allTableNames(sources)} hideEvents lockLast />}
         </div>
         </div>
 
@@ -10491,7 +10487,6 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, no
                 <div className="step-card__body">
                   <div>
                     <h5 style={{margin:"0 0 4px"}}>Trigger</h5>
-                    {isFirst && <div className="vds-b2 proto-muted" style={{marginBottom:12}}>{noun.Many + " can always be manually run, even when triggered on a schedule or by a table event."}</div>}
                     {!isFirst && (
                       <div className="trigger-after-previous" style={{marginBottom:12}}>
                         <span className="vds-b2">After the previous step</span>
