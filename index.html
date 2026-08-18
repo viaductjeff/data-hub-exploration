@@ -2257,7 +2257,7 @@ function uniqueName(base, existing){
    An automation is an ordered list of steps. Only the first step picks a
    trigger; every later step runs after the one before it, with an optional
    delay. Each step runs one or more actions. */
-const CURRENT_USER = "Jeff Kroll";
+const CURRENT_USER = "jeff@viaduct.ai";   // by-lines show the address, not the person's name
 const CURRENT_USER_EMAIL = "jeff@viaduct.ai";
 const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const TABLE_EVENTS = [
@@ -2369,12 +2369,12 @@ function seedAutomations(){
              runList: runs, steps };
   };
   return [
-    mk("Nightly telemetry rollup", "2026-01-25", "Diego Ramirez", "schedule", 16, [
+    mk("Nightly telemetry rollup", "2026-01-25", "diego@viaduct.ai", "schedule", 16, [
       { id:autoId("step"), name:"Roll up telemetry",
         trigger:{ type:"multi", schedules:[seedSched("Daily", daily, "02:00")], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
         actions:[{ ...newAutomationAction("pipeline"), refName:"Daily Telemetry Rollup" }] },
     ]),
-    mk("Critical fault escalation", "2026-04-14", "Amy Chen", "event", 11, [
+    mk("Critical fault escalation", "2026-04-14", "amy@viaduct.ai", "event", 11, [
       { id:autoId("step"), name:"Detect critical fault",
         trigger:{ type:"multi", schedules:[], events:[seedEvent("inserted","faults")], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
         actions:[{ ...newAutomationAction("prompt"), prompt:"Summarise the fault and decide whether it needs immediate escalation." }] },
@@ -2382,7 +2382,7 @@ function seedAutomations(){
         trigger:{ type:"after_previous", schedules:[], events:[], delayEnabled:true, delayValue:"30", delayUnit:"minutes" },
         actions:[newAutomationAction("notification")] },
     ]),
-    mk("Weekly fleet utilisation report", "2026-03-02", "Jeff Kroll", "schedule", 9, [
+    mk("Weekly fleet utilisation report", "2026-03-02", "jeff@viaduct.ai", "schedule", 9, [
       { id:autoId("step"), name:"Compute utilisation",
         trigger:{ type:"multi", schedules:[seedSched("Weekly", mondays, "06:30")], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
         actions:[{ ...newAutomationAction("pipeline"), refName:"Idle Time Aggregation" }] },
@@ -2390,39 +2390,39 @@ function seedAutomations(){
         trigger:{ type:"after_previous", schedules:[], events:[], delayEnabled:true, delayValue:"2", delayUnit:"hours" },
         actions:[newAutomationAction("notification")] },
     ]),
-    mk("Driver onboarding sync", "2026-06-10", "Priya Patel", "event", 6, [
+    mk("Driver onboarding sync", "2026-06-10", "priya@viaduct.ai", "event", 6, [
       { id:autoId("step"), name:"Sync the new driver",
         trigger:{ type:"multi", schedules:[], events:[seedEvent("inserted","drivers")], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
         actions:[{ ...newAutomationAction("import_table"), refName:"drivers" }, newAutomationAction("notification")] },
     ]),
-    mk("Monthly maintenance forecast", "2026-02-18", "Marcus Webb", "schedule", 4, [
+    mk("Monthly maintenance forecast", "2026-02-18", "marcus@viaduct.ai", "schedule", 4, [
       { id:autoId("step"), name:"Forecast upcoming maintenance",
         trigger:{ type:"multi", schedules:[seedSched("Monthly", mondays, "07:00", { nth:"first", weekday:"Monday" })], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
         actions:[{ ...newAutomationAction("pipeline"), refName:"Maintenance Forecast" }] },
     ]),
     /* These five run a directive, which is what fills the Automations card on a
        directive's page — the link is the slash command in the prompt text. */
-    mk("Warranty claim digest", "2026-05-06", "Amy Chen", "schedule", 12, [
+    mk("Warranty claim digest", "2026-05-06", "amy@viaduct.ai", "schedule", 12, [
       { id:autoId("step"), name:"Summarise the week's claims",
         trigger:{ type:"multi", schedules:[seedSched("Weekly", mondays, "08:00")], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
         actions:[{ ...newAutomationAction("prompt"), prompt:"/summarize_warranty_claims Group by platform." }] },
     ]),
-    mk("Claim spike watch", "2026-05-19", "Marcus Webb", "event", 8, [
+    mk("Claim spike watch", "2026-05-19", "marcus@viaduct.ai", "event", 8, [
       { id:autoId("step"), name:"Summarise the new batch",
         trigger:{ type:"multi", schedules:[], events:[seedEvent("inserted","work_orders")], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
         actions:[{ ...newAutomationAction("prompt"), prompt:"/summarize_warranty_claims" }] },
     ]),
-    mk("Duplicate work order sweep", "2026-04-02", "Jeff Kroll", "schedule", 14, [
+    mk("Duplicate work order sweep", "2026-04-02", "jeff@viaduct.ai", "schedule", 14, [
       { id:autoId("step"), name:"Sweep open work orders",
         trigger:{ type:"multi", schedules:[seedSched("Daily", daily, "05:00")], events:[], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
         actions:[{ ...newAutomationAction("prompt"), prompt:"/detect_duplicate_work_orders" }] },
     ]),
-    mk("Work order intake check", "2026-06-24", "Priya Patel", "event", 7, [
+    mk("Work order intake check", "2026-06-24", "priya@viaduct.ai", "event", 7, [
       { id:autoId("step"), name:"Check each new work order",
         trigger:{ type:"multi", schedules:[], events:[seedEvent("inserted","work_orders")], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
         actions:[{ ...newAutomationAction("prompt"), prompt:"/detect_duplicate_work_orders Only flag matches within 7 days." }] },
     ]),
-    mk("Recall brief generator", "2026-07-08", "Jeff Kroll", "event", 3, [
+    mk("Recall brief generator", "2026-07-08", "jeff@viaduct.ai", "event", 3, [
       { id:autoId("step"), name:"Draft the brief",
         trigger:{ type:"multi", schedules:[], events:[seedEvent("updated","recalls")], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
         actions:[{ ...newAutomationAction("prompt"), prompt:"/draft_recall_notification_brief" }, newAutomationAction("notification")] },
