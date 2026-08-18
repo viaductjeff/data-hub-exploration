@@ -5913,13 +5913,13 @@ function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[]
 }
 /* The Automate step's trigger picker — the same model the automation editor
    uses, so whatever a wizard captures here becomes the automation's first step. */
-function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = null, showLede = true, hideEvents = false, lockLast = false, hideAdd = false, hideRemove = false }){
+function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = null, showLede = true, hideEvents = false, lockLast = false, hideAdd = false, hideRemove = false, disableAdd = false, addNote = null }){
   const set = (patch) => setTrigger(t => ({ ...t, ...patch }));
   if (lockedNote) return <div className="vds-alert vds-alert--info proto-note">{lockedNote}</div>;
   return (
     <div>
       {showLede && <div className="vds-b2 proto-muted proto-section-note automate-lede">Automations can always be manually run, even when triggered on a schedule or by a table event.</div>}
-      <TriggerRows trigger={trigger} onChange={set} tables={tables} hideEvents={hideEvents} lockLast={lockLast} hideAdd={hideAdd} hideRemove={hideRemove} />
+      <TriggerRows trigger={trigger} onChange={set} tables={tables} hideEvents={hideEvents} lockLast={lockLast} hideAdd={hideAdd} hideRemove={hideRemove} disableAdd={disableAdd} addNote={addNote} />
     </div>
   );
 }
@@ -9522,7 +9522,7 @@ function AutomationRunHistory({ automation, noun = AUTOMATION_NOUN }){
 /* The schedule and table-event rows of a trigger. Shared by the automation
    editor's first step and every wizard's Automate step, so the two never drift.
    onChange takes a patch to merge into the trigger. */
-function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockLast = false, hideAdd = false, hideRemove = false }){
+function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockLast = false, hideAdd = false, hideRemove = false, disableAdd = false, addNote = null }){
   const schedules = trigger.schedules || [];
   const events = trigger.events || [];
   /* lockLast: a schedule has to keep one row, whichever kind it is, so its remove
@@ -9621,6 +9621,7 @@ function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockL
       </div>}
       {!hideAdd && <div className="trigger-add-row">
         <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
+          disabled={disableAdd} title={disableAdd ? addNote : undefined}
           onClick={()=>onChange({ schedules:[...schedules, newScheduleEntry()] })}>
           <Icon name="plus" size={16} />Add schedule</button>
         {!hideEvents && (
@@ -9820,9 +9821,10 @@ function PromptTabs({ tab, setTab }){
 /* The automations that run this prompt. Same name/trigger/history columns as the
    Automations list, so the two read the same way. */
 /* The directive's schedule, edited with the same rows an automation step uses. */
-function PromptAutomationsCard({ trigger, setTrigger, sources = [], readOnly = false }){
+function PromptAutomationsCard({ trigger, setTrigger, sources = [], readOnly = false, canAdd = true }){
   const fields = <AutomateTriggerFields trigger={trigger} setTrigger={readOnly ? ()=>{} : setTrigger}
-    tables={allTableNames(sources)} showLede={false} hideAdd={readOnly} hideRemove={readOnly} />;
+    tables={allTableNames(sources)} showLede={false} hideAdd={readOnly} hideRemove={readOnly}
+    disableAdd={!canAdd} addNote='Check "Allow scheduling" to add a schedule' />;
   return (
     <div className="vds-card prompt-card">
       <h5 className="prompt-card__title">Schedules</h5>
@@ -9979,7 +9981,7 @@ const promptTrigger = (prompt, automations) => {
 
 /* Availability reads the same on both directive pages — the read-only one just
    disables every control. */
-function PromptAvailabilityCard({ prompt, readOnly = false, onToUsers, onPatch }){
+function PromptAvailabilityCard({ prompt, readOnly = false, onToUsers, onToSchedule, onPatch }){
   return (
     <div className="vds-card prompt-card prompt-card--tight">
       <h5 className="prompt-card__title">Availability</h5>
@@ -9990,7 +9992,7 @@ function PromptAvailabilityCard({ prompt, readOnly = false, onToUsers, onPatch }
       </label>
       <label className="vds-choice">
         <input type="checkbox" className="vds-checkbox" checked={!!prompt.toSchedule} disabled={readOnly}
-          onChange={(e)=>onPatch && onPatch({ toSchedule:e.target.checked })} />
+          onChange={(e)=>onToSchedule ? onToSchedule(e.target.checked) : (onPatch && onPatch({ toSchedule:e.target.checked }))} />
         <span className="vds-b2">Allow scheduling</span>
       </label>
       <label className="vds-choice">
@@ -10113,6 +10115,13 @@ function SavedPromptEditor({ prompt, prompts = [], automations, sources = [], on
     onSave(draft);
     if (onSaveSchedule) onSaveSchedule(scheduleAuto ? scheduleAuto.id : null, sched, draft);
   };
+  /* Scheduling can't be withdrawn while schedules are standing. */
+  const [scheduledWarning, setScheduledWarning] = useState(false);
+  const hasTriggers = ((sched.schedules || []).length + (sched.events || []).length) > 0;
+  const setToSchedule = (on) => {
+    if (!on && hasTriggers){ setScheduledWarning(true); return; }
+    patch({ toSchedule:on });
+  };
   const dirty = JSON.stringify(draft) !== JSON.stringify(prompt)
     || JSON.stringify(sched) !== JSON.stringify(promptTrigger(prompt, automations));
   const canSave = !!draft.name.trim() && !nameTaken && dirty;
@@ -10152,14 +10161,25 @@ function SavedPromptEditor({ prompt, prompts = [], automations, sources = [], on
           <PromptPromptCard prompt={draft}
             onInstructions={(v)=>patch({ instructions:v })}
             onInsertTool={()=>setToolPicker(true)} />
-          <PromptAutomationsCard trigger={sched} setTrigger={setSched} sources={sources} />
+          <PromptAutomationsCard trigger={sched} setTrigger={setSched} sources={sources} canAdd={!!draft.toSchedule} />
         </div>
 
         <div className="prompt-col">
-          <PromptAvailabilityCard prompt={draft} onToUsers={setToUsers} onPatch={patch} />
+          <PromptAvailabilityCard prompt={draft} onToUsers={setToUsers} onToSchedule={setToSchedule} onPatch={patch} />
           <PromptHistoryCard prompt={draft} />
         </div>
       </div>
+      )}
+      {scheduledWarning && (
+        <div className="modal-overlay" onClick={()=>setScheduledWarning(false)}>
+          <div className="vds-dialog proto-modal-card" onClick={(e)=>e.stopPropagation()}>
+            <div className="vds-dialog__title">Directive is already scheduled</div>
+            <div className="vds-dialog__content">This directive is currently scheduled. Delete the schedule(s) at the bottom left of this page before unchecking the Allow scheduling box.</div>
+            <div className="vds-dialog__actions">
+              <button className="vds-btn" onClick={()=>setScheduledWarning(false)}>OK</button>
+            </div>
+          </div>
+        </div>
       )}
       {toolPicker && (
         <ToolPickerDialog onClose={()=>setToolPicker(false)}
