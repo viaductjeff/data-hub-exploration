@@ -596,6 +596,7 @@
   .prompt-meta { display: grid; grid-template-columns: max-content minmax(0, 1fr);
     column-gap: 24px; row-gap: var(--vds-button-gap); align-items: center; }
   .prompt-test-row { display: flex; }
+  .sched-picker { width: 280px; }
   .prompt-meta-line { display: contents; }
   .prompt-meta-line > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .prompt-meta-value { font-weight: 500; }
@@ -2336,6 +2337,13 @@ function newScheduleEntry(days, time, freq){
 }
 function newAutomationAction(type){
   return { id:autoId("act"), type:type || "prompt", refName:"", prompt:"" };
+}
+/* A new schedule: one action to choose, and one schedule row that cannot be removed. */
+function newSchedule(){
+  const a = newAutomation("");
+  a.steps[0] = { ...a.steps[0], actions:[{ ...newAutomationAction("prompt"), type:"", refName:"" }],
+    trigger:{ ...a.steps[0].trigger, schedules:[newScheduleEntry()] } };
+  return a;
 }
 function newAutomationStep(){
   return {
@@ -5890,13 +5898,13 @@ function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[]
 }
 /* The Automate step's trigger picker — the same model the automation editor
    uses, so whatever a wizard captures here becomes the automation's first step. */
-function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = null, showLede = true }){
+function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = null, showLede = true, hideEvents = false, lockLast = false }){
   const set = (patch) => setTrigger(t => ({ ...t, ...patch }));
   if (lockedNote) return <div className="vds-alert vds-alert--info proto-note">{lockedNote}</div>;
   return (
     <div>
       {showLede && <div className="vds-b2 proto-muted proto-section-note automate-lede">Automations can always be manually run, even when triggered on a schedule or by a table event.</div>}
-      <TriggerRows trigger={trigger} onChange={set} tables={tables} />
+      <TriggerRows trigger={trigger} onChange={set} tables={tables} hideEvents={hideEvents} lockLast={lockLast} />
     </div>
   );
 }
@@ -9499,7 +9507,7 @@ function AutomationRunHistory({ automation, noun = AUTOMATION_NOUN }){
 /* The schedule and table-event rows of a trigger. Shared by the automation
    editor's first step and every wizard's Automate step, so the two never drift.
    onChange takes a patch to merge into the trigger. */
-function TriggerRows({ trigger, onChange, tables = [] }){
+function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockLast = false }){
   const schedules = trigger.schedules || [];
   const events = trigger.events || [];
   return (
@@ -9555,7 +9563,9 @@ function TriggerRows({ trigger, onChange, tables = [] }){
               </>)}
               </div>
               <span className="trigger-row-x">
-                <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule" title="Remove schedule"
+                <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule"
+                  disabled={lockLast && schedules.length <= 1}
+                  title={(lockLast && schedules.length <= 1) ? "A schedule needs at least one row" : "Remove schedule"}
                   onClick={()=>onChange({ schedules: schedules.filter(x => x.id !== sch.id) })}>
                   <Icon name="x" size={16} /></button>
               </span>
@@ -9594,9 +9604,11 @@ function TriggerRows({ trigger, onChange, tables = [] }){
         <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
           onClick={()=>onChange({ schedules:[...schedules, newScheduleEntry()] })}>
           <Icon name="plus" size={16} />Add schedule</button>
-        <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
-          onClick={()=>onChange({ events:[...events, newTriggerEvent(tables)] })}>
-          <Icon name="plus" size={16} />Add table event</button>
+        {!hideEvents && (
+          <button className="vds-btn vds-btn--tertiary vds-btn--sm vds-btn--start-icon"
+            onClick={()=>onChange({ events:[...events, newTriggerEvent(tables)] })}>
+            <Icon name="plus" size={16} />Add table event</button>
+        )}
       </div>
     </div>
   );
@@ -10132,6 +10144,111 @@ function SavedPromptEditor({ prompt, prompts = [], automations, sources = [], on
             setToolPicker(false);
           }} />
       )}
+    </div>
+  );
+}
+
+/* The schedule editor is its own page: one action, run on one or more schedules.
+   Automations keep their multi-step editor. */
+function ScheduleEditor({ schedule, schedules = [], sources = [], pipelines = [], prompts = [], connectors = [], onCancel, onSave, onDelete }){
+  const [draft, setDraft] = useState(schedule);
+  const [tab, setTab] = useState("definition");
+  const isSaved = schedules.some(a => a.id === schedule.id);
+  const step = draft.steps[0] || newAutomationStep();
+  const action = (step.actions || [])[0] || newAutomationAction("prompt");
+  const kind = SCHEDULED_KINDS[action.type] ? action.type : "";
+
+  const setStep = (patch) => setDraft(d => ({ ...d, steps:d.steps.map((st,i) => i===0 ? { ...st, ...patch } : st) }));
+  const setAction = (patch) => setStep({ actions:[{ ...action, ...patch }] });
+  const setTrigger = (updater) => setStep({ trigger: typeof updater === "function" ? updater(step.trigger) : updater });
+  /* A schedule is named for what it runs, since the title is not typed. */
+  const itemName = action.refName || "";
+  const commit = () => onSave({ ...draft, name: itemName || draft.name,
+    steps: draft.steps.map((st,i) => i===0 ? { ...st, name: itemName ? ("Run " + itemName) : st.name } : st) });
+  const canSave = !!kind && !!itemName;
+  useUnsavedGuard(JSON.stringify(draft) !== JSON.stringify(schedule), () => { if (canSave) commit(); });
+
+  /* Every item of the chosen kind. Data tables are grouped by the connection they
+     come from, and the group headings are not selectable. */
+  const tableGroups = () => {
+    const groups = connectors.map(c => ({
+      label: c.name,
+      items: sources.filter(s => (c.dataSourceIds || []).includes(s.id)).map(s => s.name),
+    })).filter(g => g.items.length);
+    const grouped = new Set(groups.flatMap(g => g.items));
+    const rest = sources.filter(s => !grouped.has(s.name)).map(s => s.name);
+    return rest.length ? [...groups, { label:"Uploaded", items:rest }] : groups;
+  };
+  const flatItems = kind === "prompt" ? prompts.map(p => p.name)
+    : kind === "pipeline" ? pipelines.map(p => p.name) : null;
+
+  return (
+    <div className="vds-content">
+      <div className="auto-editor-header proto-sticky-head">
+        <nav className="vds-breadcrumbs">
+          <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Schedules</a>
+          <span className="vds-breadcrumbs__sep">/</span>
+          <span>{schedule.name || (isSaved ? "Schedule" : "New schedule")}</span>
+        </nav>
+        <div className="auto-title-row">
+          <h1 className="vds-page-title">{schedule.name || (isSaved ? "Schedule" : "New schedule")}</h1>
+          <div className="auto-editor-actions">
+            <button className="vds-btn" onClick={onCancel}>Cancel</button>
+            <button className="vds-btn vds-btn--primary" disabled={!canSave}
+              title={canSave ? undefined : "Pick what this schedule runs"}
+              onClick={commit}>Save schedule</button>
+            <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Delete schedule"
+              disabled={!isSaved} title={isSaved ? "Delete schedule" : "This schedule hasn't been saved yet"}
+              onClick={()=>onDelete && onDelete(schedule.id)}><Icon name="trash" size={17} /></button>
+          </div>
+        </div>
+      </div>
+
+      <div className="vds-tabs" style={{margin:"0 0 16px"}}>
+        <button className={"vds-tab" + (tab==="definition" ? " vds-tab--selected" : "")} onClick={()=>setTab("definition")}>Definition</button>
+        <button className={"vds-tab" + (tab==="history" ? " vds-tab--selected" : "")} onClick={()=>setTab("history")}>History</button>
+      </div>
+
+      {tab === "history" ? <AutomationRunHistory automation={draft} noun={SCHEDULE_NOUN} /> : (<>
+        <div className="vds-card prompt-card cfg-card">
+          <h5 className="prompt-card__title">Action</h5>
+          <div className="field-row">
+            <div className="field">
+              <label className="vds-label">Type</label>
+              <select className="vds-select sched-picker" value={kind}
+                onChange={(e)=>setAction({ type:e.target.value, refName:"" })}>
+                <option value="">Select type</option>
+                <option disabled>──────────</option>
+                {SCHED_TYPE_FILTERS.map(t => <option key={t.type} value={t.type}>{t.label}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label className="vds-label">Item</label>
+              <select className="vds-select sched-picker" value={itemName} disabled={!kind}
+                onChange={(e)=>setAction({ refName:e.target.value })}>
+                {!kind ? <option value=""></option> : (<>
+                  <option value="">Select item</option>
+                  <option disabled>──────────</option>
+                </>)}
+                {kind === "import_table"
+                  ? tableGroups().map(g => (
+                      <optgroup label={g.label} key={g.label}>
+                        {g.items.map(n => <option key={n} value={n}>{n}</option>)}
+                      </optgroup>
+                    ))
+                  : (flatItems || []).map(n => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div className="vds-card prompt-card cfg-card">
+          <h5 className="prompt-card__title">Schedules</h5>
+          <div className="vds-b2 proto-muted">Actions can always be manually run, even if scheduled.</div>
+          <AutomateTriggerFields trigger={step.trigger} setTrigger={setTrigger}
+            tables={allTableNames(sources)} showLede={false} hideEvents lockLast />
+        </div>
+      </>)}
     </div>
   );
 }
@@ -10932,7 +11049,8 @@ function App(){
     const closeEditor = () => { setEditingSchedId(null); setNewSched(null); };
     const closeView = () => setViewingSchedId(null);
     page = editing
-      ? <AutomationEditor automation={editing} automations={schedules} sources={sources} pipelines={pipelines} noun={SCHEDULE_NOUN}
+      ? <ScheduleEditor schedule={editing} schedules={schedules} sources={sources} pipelines={pipelines}
+          prompts={savedPrompts} connectors={connectors}
           onCancel={closeEditor}
           onDelete={(id) => { if (!newSched) deleteSchedule(id); closeEditor(); }}
           onSave={(a) => { upsertSchedule(a); closeEditor(); }} />
@@ -10941,7 +11059,7 @@ function App(){
           onEdit={(id) => { closeView(); setEditingSchedId(id); }}
           onRun={(id) => runSchedule(id)}
           onDelete={(id) => { deleteSchedule(id); closeView(); }} />
-      : <HubPage key={cfg.key} cfg={cfg} onNew={() => setNewSched(newAutomation(""))}
+      : <HubPage key={cfg.key} cfg={cfg} onNew={() => setNewSched(newSchedule())}
           onOpen={(id) => { setViewingSchedTab("steps"); setViewingSchedId(id); }}
           onEdit={(id) => setEditingSchedId(id)}
           onOpenHistory={(id) => { setViewingSchedTab("history"); setViewingSchedId(id); }}
