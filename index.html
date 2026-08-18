@@ -10178,6 +10178,8 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
   const itemName = action.refName || bySlash || "";
   const commit = () => onSave({ ...draft, name: itemName || draft.name,
     steps: draft.steps.map((st,i) => i===0 ? { ...st, name: itemName ? ("Run " + itemName) : st.name } : st) });
+  /* A schedule has no name of its own: it is titled by the thing it runs. */
+  const pageTitle = itemName || (isSaved ? "Schedule" : "New schedule");
   const canSave = !!kind && !!itemName;
   useUnsavedGuard(!readOnly && JSON.stringify(draft) !== JSON.stringify(schedule), () => { if (canSave) commit(); });
 
@@ -10205,10 +10207,10 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
         <nav className="vds-breadcrumbs">
           <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Schedules</a>
           <span className="vds-breadcrumbs__sep">/</span>
-          <span>{schedule.name || (isSaved ? "Schedule" : "New schedule")}</span>
+          <span>{pageTitle}</span>
         </nav>
         <div className="auto-title-row">
-          <h1 className="vds-page-title">{schedule.name || (isSaved ? "Schedule" : "New schedule")}</h1>
+          <h1 className="vds-page-title">{pageTitle}</h1>
           <div className="auto-editor-actions">
             {readOnly ? (<>
               <button className="vds-btn vds-btn--start-icon" onClick={()=>onRun && onRun(schedule.id)}>
@@ -10856,9 +10858,24 @@ function App(){
   const viewingAuto = automations.find(a => a.id === viewingAutoId);
   const editingPrompt = savedPrompts.find(p => p.id === editingPromptId);
   const viewingPrompt = savedPrompts.find(p => p.id === viewingPromptId);
-  const upsertPrompt = (sp) => setSavedPrompts(ps => ps.some(p => p.id===sp.id)
-    ? ps.map(p => p.id===sp.id ? { ...sp, updatedAt:todayISO(), updatedBy:CURRENT_USER_EMAIL } : p)
-    : [{ ...sp, updatedAt:todayISO(), updatedBy:CURRENT_USER_EMAIL }, ...ps]);
+  /* Schedules and automations name the directive they run, so a rename follows it
+     through both the action's reference and the slash command in a prompt. */
+  const renameInRecords = (list, from, to) => list.map(a => ({ ...a,
+    name: a.name === from ? to : a.name,
+    steps: (a.steps || []).map(st => ({ ...st,
+      actions: (st.actions || []).map(act => ({ ...act,
+        refName: act.refName === from ? to : act.refName,
+        prompt: act.prompt ? act.prompt.split(slashOf(from)).join(slashOf(to)) : act.prompt })) })) }));
+  const upsertPrompt = (sp) => {
+    const was = savedPrompts.find(p => p.id === sp.id);
+    if (was && was.name && was.name !== sp.name){
+      setAutomations(as => renameInRecords(as, was.name, sp.name));
+      setSchedules(ss => renameInRecords(ss, was.name, sp.name));
+    }
+    setSavedPrompts(ps => ps.some(p => p.id===sp.id)
+      ? ps.map(p => p.id===sp.id ? { ...sp, updatedAt:todayISO(), updatedBy:CURRENT_USER_EMAIL } : p)
+      : [{ ...sp, updatedAt:todayISO(), updatedBy:CURRENT_USER_EMAIL }, ...ps]);
+  };
   const deletePrompt = (id) => { setSavedPrompts(ps => ps.filter(p => p.id !== id));
     setEditingPromptId(e => e===id ? null : e); setViewingPromptId(v => v===id ? null : v); };
   /* A directive's "New automation" lands in the automation editor with the first
