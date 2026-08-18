@@ -1734,7 +1734,7 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
               <div className="trow clickable-row" style={{gridTemplateColumns:tmpl}} key={r.id}
                 onClick={()=>open(r.id)} role="button" tabIndex={0}
                 onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(r.id); } }}>
-                <div className="td td-name">{isSched ? scheduledName(r, prompts) : (r.name || ("Unnamed " + cfg.noun.replace(/s$/, "")))}</div>
+                <div className={"td" + (isSched ? "" : " td-name")}>{isSched ? scheduledName(r, prompts) : (r.name || ("Unnamed " + cfg.noun.replace(/s$/, "")))}</div>
                 {isSched
                   ? <div className="td">{scheduledKind(r)}</div>
                   : <div className="td" style={{textAlign:"center"}}>{(r.steps || []).length}</div>}
