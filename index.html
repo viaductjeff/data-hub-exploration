@@ -625,6 +625,7 @@
      leaves dead space at the bottom. */
   .prompt-card > :last-child { margin-bottom: 0; }
   .cfg-readonly { padding-top: 6px; }
+  .display-row__label { display: flex; align-items: center; height: 36px; white-space: nowrap; }
   .cfg-card__head { cursor: pointer; }
   .vds-table.rel-table :is(th, td) { text-align: left; }
   .proto-modal-card.colfilter-dialog { max-width: min(640px, 92vw); }
@@ -4465,7 +4466,24 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
             </label>
           </div>
         </div>
+        <div className="field">
+          <div className="label-row">
+            <label className="vds-label">Description</label>
+            <span className="vds-b3 proto-muted">Used by the ViaDuck agent to decide when to access this table</span>
+          </div>
+          <textarea className="vds-textarea" value={desc} onChange={(e)=>setDesc(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="vds-card prompt-card cfg-card">
+        <h5 className="prompt-card__title">Display</h5>
+        <div className="vds-b2 proto-muted">Sometimes the UI has to refer to the type of object that is represented by a row in this table.</div>
         <div className="field-row">
+          {/* The spacer label drops this line to the inputs' own text. */}
+          <div className="field">
+            <label className="vds-label" aria-hidden="true">&nbsp;</label>
+            <div className="vds-b2 display-row__label">Object type name</div>
+          </div>
           <div className="field">
             <label className="vds-label">Singular form</label>
             <input className="vds-input narrow-input" value={singular} onChange={(e)=>setSingular(e.target.value)} />
@@ -4474,13 +4492,6 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
             <label className="vds-label">Plural form</label>
             <input className="vds-input narrow-input" value={plural} onChange={(e)=>setPlural(e.target.value)} />
           </div>
-        </div>
-        <div className="field">
-          <div className="label-row">
-            <label className="vds-label">Description</label>
-            <span className="vds-b3 proto-muted">Used by the ViaDuck agent to decide when to access this table</span>
-          </div>
-          <textarea className="vds-textarea" value={desc} onChange={(e)=>setDesc(e.target.value)} />
         </div>
       </div>
 
