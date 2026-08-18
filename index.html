@@ -10011,11 +10011,11 @@ function PromptHistoryCard({ prompt }){
   /* The card reports the directive's own runs, so it agrees with the Run rows above. */
   const runs = prompt.runList;
   const rows = [
-    ["Run by", prompt.lastRunBy],
-    ["Run", stampDateTime(prompt.lastRunAt)],
+    ["Last run by", prompt.lastRunBy],
+    ["Last run", stampDateTime(prompt.lastRunAt)],
     ["Run history", (runs || []).length ? <RunStrip runs={runs} /> : ""],
-    ["Updated by", prompt.updatedBy],
-    ["Updated", slashDate(prompt.updatedAt)],
+    ["Updated by", prompt.updatedBy || prompt.createdBy],
+    ["Updated", slashDate(prompt.updatedAt || prompt.createdAt)],
     ["Created by", prompt.createdBy],
     ["Created", slashDate(prompt.createdAt)],
   ];
@@ -10237,7 +10237,9 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
         <button className={"vds-tab" + (tab==="history" ? " vds-tab--selected" : "")} onClick={()=>setTab("history")}>History</button>
       </div>
 
-      {tab === "history" ? <AutomationRunHistory automation={draft} noun={SCHEDULE_NOUN} /> : (<>
+      {tab === "history" ? <AutomationRunHistory automation={draft} noun={SCHEDULE_NOUN} /> : (
+      <div className="prompt-grid">
+        <div className="prompt-col">
         <div className="vds-card prompt-card cfg-card">
           <h5 className="prompt-card__title">Action</h5>
           <div className="field-row">
@@ -10284,7 +10286,13 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
             : <AutomateTriggerFields trigger={step.trigger} setTrigger={setTrigger}
                 tables={allTableNames(sources)} showLede={false} hideEvents lockLast />}
         </div>
-      </>)}
+        </div>
+
+        <div className="prompt-col">
+          <PromptHistoryCard prompt={draft} />
+        </div>
+      </div>
+      )}
     </div>
   );
 }
