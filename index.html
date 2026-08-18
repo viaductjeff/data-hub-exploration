@@ -553,7 +553,7 @@
 
   /* Directives. Two columns while there's room: the definition on the left, taking
      two thirds, and everything about how it's used stacked on the right. */
-  .prompt-grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: var(--vds-dialog-gap); align-items: start; }
+  .prompt-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: var(--vds-dialog-gap); align-items: start; }
   @media (max-width: 1100px) { .prompt-grid { grid-template-columns: 1fr; } }
   .prompt-col { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); min-width: 0; }
   .prompt-card { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
@@ -592,8 +592,10 @@
   .prompt-read-text { white-space: pre-wrap; }
   .prompt-avail-line { display: flex; align-items: center; justify-content: space-between; gap: var(--vds-dialog-gap); }
   .proto-readonly-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
-  .prompt-meta { display: flex; flex-direction: column; gap: var(--vds-button-gap); }
-  .prompt-meta-line { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vds-dialog-gap); align-items: center; }
+  /* One shared column pair, so every value starts 24px past the longest label. */
+  .prompt-meta { display: grid; grid-template-columns: max-content minmax(0, 1fr);
+    column-gap: 24px; row-gap: var(--vds-button-gap); align-items: center; }
+  .prompt-meta-line { display: contents; }
   .prompt-meta-line > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .prompt-meta-value { font-weight: 500; }
   .cfg-card { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); }
