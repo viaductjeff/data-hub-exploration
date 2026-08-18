@@ -621,6 +621,12 @@
   .prompt-meta-value { font-weight: 500; }
   .cfg-card { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); }
   .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); }
+  /* What the table is, beside where it comes from. */
+  .cfg-split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vds-dialog-gap); align-items: start; }
+  .cfg-split > .cfg-card + .cfg-card { margin-top: 0; }
+  .cfg-split + .cfg-card { margin-top: var(--vds-dialog-gap); }
+  @media (max-width: 1100px) { .cfg-split { grid-template-columns: 1fr; }
+    .cfg-split > .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); } }
   /* A card spaces its contents with its own gap; a trailing field margin just
      leaves dead space at the bottom. */
   .prompt-card > :last-child { margin-bottom: 0; }
@@ -4447,6 +4453,7 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
         </div>
       </div>
 
+      <div className="cfg-split">
       <div className="vds-card prompt-card cfg-card">
         <h5 className="prompt-card__title">Table details</h5>
         <div className="field-row">
@@ -4472,26 +4479,6 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
             <span className="vds-b3 proto-muted">Used by the ViaDuck agent to decide when to access this table</span>
           </div>
           <textarea className="vds-textarea" value={desc} onChange={(e)=>setDesc(e.target.value)} />
-        </div>
-      </div>
-
-      <div className="vds-card prompt-card cfg-card">
-        <h5 className="prompt-card__title">Display</h5>
-        <div className="vds-b2 proto-muted">Sometimes the UI has to refer to the type of object that is represented by a row in this table.</div>
-        <div className="field-row">
-          {/* The spacer label drops this line to the inputs' own text. */}
-          <div className="field">
-            <label className="vds-label" aria-hidden="true">&nbsp;</label>
-            <div className="vds-b2 display-row__label">Object type name</div>
-          </div>
-          <div className="field">
-            <label className="vds-label">Singular form</label>
-            <input className="vds-input narrow-input" value={singular} onChange={(e)=>setSingular(e.target.value)} />
-          </div>
-          <div className="field">
-            <label className="vds-label">Plural form</label>
-            <input className="vds-input narrow-input" value={plural} onChange={(e)=>setPlural(e.target.value)} />
-          </div>
         </div>
       </div>
 
@@ -4524,6 +4511,27 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
           <div className="field">
             <label className="vds-label">Last imported</label>
             <div className="vds-b2 cfg-readonly">{source.lastSynced || "Not imported yet"}</div>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <div className="vds-card prompt-card cfg-card">
+        <h5 className="prompt-card__title">Display</h5>
+        <div className="vds-b2 proto-muted">Sometimes the UI has to refer to the type of object that is represented by a row in this table.</div>
+        <div className="field-row">
+          {/* The spacer label drops this line to the inputs' own text. */}
+          <div className="field">
+            <label className="vds-label" aria-hidden="true">&nbsp;</label>
+            <div className="vds-b2 display-row__label">Object type name</div>
+          </div>
+          <div className="field">
+            <label className="vds-label">Singular form</label>
+            <input className="vds-input narrow-input" value={singular} onChange={(e)=>setSingular(e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="vds-label">Plural form</label>
+            <input className="vds-input narrow-input" value={plural} onChange={(e)=>setPlural(e.target.value)} />
           </div>
         </div>
       </div>
