@@ -595,6 +595,7 @@
   /* One shared column pair, so every value starts 24px past the longest label. */
   .prompt-meta { display: grid; grid-template-columns: max-content minmax(0, 1fr);
     column-gap: 24px; row-gap: var(--vds-button-gap); align-items: center; }
+  .prompt-test-row { display: flex; }
   .prompt-meta-line { display: contents; }
   .prompt-meta-line > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .prompt-meta-value { font-weight: 500; }
@@ -9877,7 +9878,6 @@ function PromptNameCard({ prompt, readOnly = false, nameTaken = false, onName, o
       <h5 className="prompt-card__title">How it appears in ViaDuck</h5>
       <div className="prompt-chat-row">
         <span className="vds-chip prompt-slash">{slashOf(prompt.name)}</span>
-        <RunInViaDuckButton prompt={prompt} withLabel label="Test in ViaDuck" gate={false} />
       </div>
     </div>
   );
@@ -9896,6 +9896,9 @@ function PromptPromptCard({ prompt, readOnly = false, onInstructions, onInsertTo
         <textarea className="vds-textarea prompt-textarea" rows={7} value={prompt.instructions} disabled={readOnly}
           aria-label="Prompt instructions" placeholder="Describe what this directive should do"
           onChange={(e)=>onInstructions && onInstructions(e.target.value)} />
+      </div>
+      <div className="prompt-test-row">
+        <RunInViaDuckButton prompt={prompt} withLabel label="Test in ViaDuck" gate={false} />
       </div>
     </div>
   );
