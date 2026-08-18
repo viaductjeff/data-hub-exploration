@@ -9667,7 +9667,7 @@ function AutomationView({ automation, initialTab, noun = AUTOMATION_NOUN, onBack
         </div>
       </div>
 
-      <div className="vds-tabs" style={{margin:"0 0 16px"}}>
+      <div className="vds-tabs vds-tabs--sm" style={{margin:"0 0 16px"}}>
         <button className={"vds-tab" + (tab==="steps" ? " vds-tab--selected" : "")} onClick={()=>setTab("steps")}>Steps</button>
         <button className={"vds-tab" + (tab==="history" ? " vds-tab--selected" : "")} onClick={()=>setTab("history")}>History</button>
       </div>
@@ -10359,7 +10359,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, no
         {nameTaken && <div className="vds-helper-text vds-helper-text--error">This name is already used. Names must be unique.</div>}
       </div>
 
-      <div className="vds-tabs" style={{margin:"0 0 16px"}}>
+      <div className="vds-tabs vds-tabs--sm" style={{margin:"0 0 16px"}}>
         <button className={"vds-tab" + (tab==="steps" ? " vds-tab--selected" : "")} onClick={()=>setTab("steps")}>Steps</button>
         <button className={"vds-tab" + (tab==="history" ? " vds-tab--selected" : "")} onClick={()=>setTab("history")}>History</button>
       </div>
