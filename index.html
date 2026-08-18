@@ -1191,7 +1191,7 @@ const HUB_PAGE = {
   schedules:{ key:"schedules", title:"Schedules", icon:"clock", newLabel:"New Schedule",
     sub:"Run your connectors, directives and data transformations on a trigger you define.",
     noun:"schedules", filter:"Filter schedules...", hidden:"Show paused schedules",
-    cols:["Name","Steps","Trigger","Next scheduled run","History","Last run","Creator","Actions"],
+    cols:["Name","Type","Schedule","Next scheduled run","History","Last run","Creator","Actions"],
     emptyTitle:"No schedules yet", emptyBody:"A schedule runs a sequence of steps on a trigger. Build one here, or schedule a connector or data transformation from its wizard and it will appear in this list.", cta:"New schedule" },
   directives:{ key:"directives", title:"Directives", icon:"terminal", newLabel:"New Directive",
     sub:"Named prompts you can reuse — in an automation, or to clean, map and route incoming records.",
@@ -1554,16 +1554,17 @@ function ConnectDataButton({ onPick, compact, connectors = [], label = "Connect 
   );
 }
 
-function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete, onOpenSource, onRunNow, onImport, onConfigure, onConnectData, onViewRelations, lookupSource, records=[], tabsNode, allConnectors=[] }){
+function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete, onOpenSource, onRunNow, onImport, onConfigure, onConnectData, onViewRelations, lookupSource, records=[], tabsNode, allConnectors=[], prompts=[] }){
   const isDS = cfg.key === "datasources";
   const isConn = cfg.key === "dataconnectors";
   /* Schedules is the same list as Automations, under its own nav path. */
-  const isAuto = cfg.key === "automations" || cfg.key === "schedules";
+  const isSched = cfg.key === "schedules";
+  const isAuto = cfg.key === "automations" || isSched;
   const isPipe = cfg.key === "datapipelines";
   const isPrompt = cfg.key === "directives";
-  const tmpl = isConn ? "1.5fr 1.1fr 1fr 1fr 1fr 0.9fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 130px 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : (isPrompt ? "1.9fr 0.85fr 0.9fr 0.9fr 1.1fr 0.9fr 1.1fr 0.95fr"
+  const tmpl = isConn ? "1.5fr 1.1fr 1fr 1fr 1fr 0.9fr" : (isSched ? "1.5fr 1.1fr 1.3fr 1.25fr 130px 0.9fr 0.9fr 0.8fr" : (isAuto ? "1.5fr 0.5fr 1.3fr 1.25fr 130px 0.9fr 0.9fr 0.8fr" : (isPipe ? "1.7fr 1.1fr 1.4fr 0.9fr 1fr 0.8fr" : (isPrompt ? "1.9fr 0.85fr 0.9fr 0.9fr 1.1fr 0.9fr 1.1fr 0.95fr"
     : (isDS ? `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}210px`
-    : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`))));
+    : `1.7fr ${"1fr ".repeat(Math.max(cfg.cols.length-2,0))}0.9fr`)))));
   const fire = onNew || (() => {});
   const open = onOpen || (() => {});
   /* Automations open read-only from the row and editable from the pencil. */
@@ -1677,8 +1678,10 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
               <div className="trow clickable-row" style={{gridTemplateColumns:tmpl}} key={r.id}
                 onClick={()=>open(r.id)} role="button" tabIndex={0}
                 onKeyDown={(e)=>{ if (e.key === "Enter" || e.key === " "){ e.preventDefault(); open(r.id); } }}>
-                <div className="td td-name">{r.name || ("Unnamed " + cfg.noun.replace(/s$/, ""))}</div>
-                <div className="td" style={{textAlign:"center"}}>{(r.steps || []).length}</div>
+                <div className="td td-name">{isSched ? scheduledName(r, prompts) : (r.name || ("Unnamed " + cfg.noun.replace(/s$/, "")))}</div>
+                {isSched
+                  ? <div className="td">{scheduledKind(r)}</div>
+                  : <div className="td" style={{textAlign:"center"}}>{(r.steps || []).length}</div>}
                 <div className="td">{automationTriggerText(r)}</div>
                 <div className="td">{automationNextRun(r)}</div>
                 <div className="td right-mid"><RunStrip runs={r.runList} onOpen={()=>openHistory(r.id)} /></div>
@@ -2536,6 +2539,20 @@ function triggerSummary(trigger){
   return parts.length ? parts.join(" + ") : "Manually run";
 }
 const automationTriggerText = (a) => a && a.steps && a.steps[0] ? triggerSummary(a.steps[0].trigger) : "—";
+/* A schedule is listed by the thing it runs, not by the automation wrapped around it. */
+const SCHEDULED_KINDS = { prompt:"Directive", pipeline:"Data transformation", import_table:"Table upload" };
+const scheduledAction = (a) => ((a && a.steps || []).flatMap(st => st.actions || []))
+  .find(act => SCHEDULED_KINDS[act.type]) || null;
+const scheduledKind = (a) => { const act = scheduledAction(a); return act ? SCHEDULED_KINDS[act.type] : "—"; };
+const scheduledName = (a, prompts) => {
+  const act = scheduledAction(a);
+  if (!act) return a.name;
+  if (act.type === "prompt"){
+    const hit = (prompts || []).find(p => p.name && String(act.prompt || "").includes(slashOf(p.name)));
+    return hit ? hit.name : (act.refName || a.name);
+  }
+  return act.refName || a.name;
+};
 /* Soonest upcoming occurrence across the step's schedule entries. Manual-only and
    event-only triggers have no next run. Computed in the tenant's local time, which
    is what the editor shows beside each time picker. */
@@ -10918,7 +10935,7 @@ function App(){
           onOpen={(id) => { setViewingSchedTab("steps"); setViewingSchedId(id); }}
           onEdit={(id) => setEditingSchedId(id)}
           onOpenHistory={(id) => { setViewingSchedTab("history"); setViewingSchedId(id); }}
-          onDelete={deleteSchedule} onRunNow={runSchedule} records={schedules} />;
+          onDelete={deleteSchedule} onRunNow={runSchedule} records={schedules} prompts={savedPrompts} />;
   } else if (activeId === "tablerelations"){
     page = <RelatedTablesPage sources={sources} onUpdate={updateSource} />;
   } else if (activeId === "directives"){
