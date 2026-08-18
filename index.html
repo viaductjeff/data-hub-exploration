@@ -2322,7 +2322,7 @@ const AUTO_ACTION_FILTERS = [
 ];
 const AUTO_PROMPT_FILTERS = [
   "Summarize Warranty Claims", "Flag Outlier Vendors", "Detect Duplicate Work Orders",
-  "Compare Repair Costs By Region", "Draft Recall Notification Brief",
+  "Compare Repair Costs By Region", "Draft Recall Notification Brief", "Assess Fault Severity",
   "Compare Fuel Efficiency", "Flag Late Deliveries", "Summarize Driver Coaching",
 ];
 const AUTO_TABLE_FILTERS = ["drivers", "faults", "trips", "vehicles", "work_orders"];
@@ -2400,7 +2400,7 @@ function seedAutomations(){
     mk("Critical fault escalation", "2026-04-14", "amy@viaduct.ai", "event", 11, [
       { id:autoId("step"), name:"Detect critical fault",
         trigger:{ type:"multi", schedules:[], events:[seedEvent("inserted","faults")], delayEnabled:false, delayValue:"5", delayUnit:"minutes" },
-        actions:[{ ...newAutomationAction("prompt"), prompt:"Summarise the fault and decide whether it needs immediate escalation." }] },
+        actions:[{ ...newAutomationAction("prompt"), prompt:"/assess_fault_severity Escalate anything critical." }] },
       { id:autoId("step"), name:"Escalate if unresolved",
         trigger:{ type:"after_previous", schedules:[], events:[], delayEnabled:true, delayValue:"30", delayUnit:"minutes" },
         actions:[newAutomationAction("notification")] },
@@ -2472,10 +2472,11 @@ function newSavedPrompt(){
 }
 function seedSavedPrompts(){
   return [
-    { id:"sp1", name:"Summarize Warranty Claims", toUsers:false, toViaduck:false,
+    { id:"sp1", name:"Summarize Warranty Claims", toUsers:true, toSchedule:true, toViaduck:false,
       runList:seedRuns("schedule", 12), lastRunBy:"amy@viaduct.ai", lastRunAt:"2026-08-16T09:12",
       createdAt:"2026-07-28", updatedAt:"2026-08-03", createdBy:"bora@viaduct.ai", updatedBy:"abel@viaduct.ai",
-      instructions:"", clues:"" },
+      instructions:"Summarize the warranty claims filed in the last 30 days. Group them by platform and failure code, and call out any code whose claim count is more than double its trailing six-month average. Return a table of code, platform, claim count, total cost, and the change against that average.",
+      clues:"" },
     { id:"sp2", name:"Flag Outlier Vendors", toUsers:true, toSchedule:true, toViaduck:false,
       runList:seedRuns("schedule", 9), lastRunBy:"jeff@viaduct.ai", lastRunAt:"2026-08-17T07:40",
       createdAt:"2026-08-04", updatedAt:"2026-08-04", createdBy:"jan@viaduct.ai", updatedBy:"abel@viaduct.ai",
@@ -2484,14 +2485,23 @@ function seedSavedPrompts(){
     { id:"sp3", name:"Detect Duplicate Work Orders", toUsers:true, toSchedule:true, toViaduck:true,
       runList:seedRuns("schedule", 14), lastRunBy:"priya@viaduct.ai", lastRunAt:"2026-08-15T18:05",
       createdAt:"2026-08-05", updatedAt:"2026-08-05", createdBy:"abel@viaduct.ai", updatedBy:"abel@viaduct.ai",
-      instructions:"", clues:"" },
+      instructions:"Find work orders that look like duplicates of one another: the same vehicle, a matching or near-matching complaint, and an open date within 14 days. Rank each pair by how confident you are, and return vehicle, both work order numbers, the dates, and the reason you paired them.",
+      clues:"When someone asks whether a repair has already been written up, or mentions double billing on a vehicle." },
     { id:"sp4", name:"Compare Repair Costs By Region", toUsers:true, toSchedule:false, toViaduck:false,
       runList:seedRuns("schedule", 7), lastRunBy:"marcus@viaduct.ai", lastRunAt:"2026-08-14T11:30",
       createdAt:"2026-08-03", updatedAt:"2026-08-04", createdBy:"abel@viaduct.ai", updatedBy:"jernej@viaduct.ai",
-      instructions:"", clues:"" },
-    { id:"sp5", name:"Draft Recall Notification Brief", toUsers:false, toViaduck:false,
+      instructions:"Compare repair spend by region for the last two quarters. Break the total into parts and labour, normalize by vehicles in service, and name the three regions that moved most quarter over quarter.",
+      clues:"" },
+    { id:"sp5", name:"Draft Recall Notification Brief", toUsers:true, toSchedule:true, toViaduck:false,
+      runList:seedRuns("event", 3), lastRunBy:"jeff@viaduct.ai", lastRunAt:"2026-08-12T14:20",
       createdAt:"2026-08-03", updatedAt:"2026-08-03", createdBy:"abel@viaduct.ai", updatedBy:"abel@viaduct.ai",
-      instructions:"", clues:"" },
+      instructions:"Draft a one-page brief for a new recall: the affected platforms and build dates, how many vehicles in our fleet match, where they are, and the parts needed. Keep it to plain language a service manager can hand to a customer.",
+      clues:"" },
+    { id:"sp6", name:"Assess Fault Severity", toUsers:true, toSchedule:true, toViaduck:true,
+      runList:seedRuns("event", 11), lastRunBy:"amy@viaduct.ai", lastRunAt:"2026-08-17T16:45",
+      createdAt:"2026-04-14", updatedAt:"2026-06-02", createdBy:"amy@viaduct.ai", updatedBy:"diego@viaduct.ai",
+      instructions:"Read the fault event and decide whether it needs immediate escalation. Weigh the diagnostic code's severity, whether the same code has repeated on this vehicle in the last 30 days, and whether the vehicle is currently in service. Answer with a severity, a one-line reason, and the escalation you recommend.",
+      clues:"When someone asks how serious a fault is, or whether a vehicle should be pulled from service." },
   ];
 }
 /* The agent tools a directive can call. Reference only — nothing to configure. */
