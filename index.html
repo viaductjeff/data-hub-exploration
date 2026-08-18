@@ -553,7 +553,7 @@
 
   /* Directives. Two columns while there's room: the definition on the left, taking
      two thirds, and everything about how it's used stacked on the right. */
-  .prompt-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--vds-dialog-gap); align-items: start; }
+  .prompt-grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: var(--vds-dialog-gap); align-items: start; }
   @media (max-width: 1100px) { .prompt-grid { grid-template-columns: 1fr; } }
   .prompt-col { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); min-width: 0; }
   .prompt-card { display: flex; flex-direction: column; gap: var(--vds-form-gap); }
