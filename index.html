@@ -621,14 +621,16 @@
   .prompt-meta-value { font-weight: 500; }
   .cfg-card { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); }
   .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); }
-  /* What the table is, beside where it comes from. */
-  .cfg-split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vds-dialog-gap); align-items: start;
-    margin-top: var(--vds-dialog-gap); }
+  /* What the table is, beside where it comes from and how it is named. The left
+     card stretches to the height of the pair beside it. */
+  .cfg-split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vds-dialog-gap);
+    align-items: stretch; margin-top: var(--vds-dialog-gap); }
   .cfg-desc { height: auto; }
-  .cfg-split > .cfg-card + .cfg-card { margin-top: 0; }
+  .cfg-split__col { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); min-width: 0; }
+  .cfg-split__col > .cfg-card + .cfg-card { margin-top: 0; }
   .cfg-split + .cfg-card { margin-top: var(--vds-dialog-gap); }
   @media (max-width: 1100px) { .cfg-split { grid-template-columns: 1fr; }
-    .cfg-split > .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); } }
+    .cfg-split > * + * { margin-top: var(--vds-dialog-gap); } }
   /* A card spaces its contents with its own gap; a trailing field margin just
      leaves dead space at the bottom. */
   .prompt-card > :last-child { margin-bottom: 0; }
@@ -1044,6 +1046,12 @@ function pluralizeWord(w){
   if (/[^aeiou]y$/i.test(w)) return w.slice(0,-1) + "ies";
   if (/(s|x|z|ch|sh)$/i.test(w)) return w + "es";
   return w + "s";
+}
+/* The plainest of several candidate names: fewest words, then shortest. */
+function simplestDisplayNames(...names){
+  const rank = (dn) => [dn.singular.split(" ").length, dn.singular.length];
+  return names.filter(Boolean).map(displayNamesFromName).filter(dn => dn.singular)
+    .sort((a,b) => rank(a)[0] - rank(b)[0] || rank(a)[1] - rank(b)[1])[0] || { singular:"", plural:"" };
 }
 function displayNamesFromName(name){
   const human = humanizeName(name);
@@ -2299,7 +2307,7 @@ function connectorDataSourceRecord(connName, src, opts){
   const parsedCols = src.cols.map(c => c[0]);
   const typeByCol = {}; src.cols.forEach(([n,t]) => { typeByCol[n] = t; });
   const dsName = dsNameForSource(src, opts.connId || connName, !!opts.rawPrefix);
-  const dn = displayNamesFromName(dsName);
+  const dn = simplestDisplayNames(src.name, dsName);
   return {
     id: "ds_" + Math.random().toString(36).slice(2,10),
     name: dsName,
@@ -4063,7 +4071,7 @@ function MapImportStep({ parsed, origin, onCancel, onBack, onCreate }){
 function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = false, originalTableName = null, onCancel, onSave, lockedKeys = [], stepper = null, extraSection = null, afterNameSection = null, lockName = false, allowAddColumns = false, noRenameRemove = false, lockColType = false, forceNameEditable = false, enableFilter = true, writeModeLocked = false, writeModeReadOnly = "", initialOpenFilterCol = null, showRelationsTab = true, originalNameLabel = null }){
   const p = source.parsed || { columns:[], typeByCol:{}, rows:[] };
   const [name, setName] = useState(source.name || "");
-  const initNames = displayNamesFromName(source.name || "");
+  const initNames = simplestDisplayNames(originalTableName, source.name || "");
   const [singular, setSingular] = useState(source.singular || initNames.singular);
   const [plural, setPlural] = useState(source.plural || initNames.plural);
   const [namesEdited, setNamesEdited] = useState(!!(source.singular || source.plural));
@@ -4086,8 +4094,8 @@ function ConfigureSource({ source, title, sub, submitLabel, submitAdvance = fals
   const previewRows = filteredRows.slice(0,100);
   const previewCols = cols.filter(c => c.imp !== false).map(c => ({ key:c.name, label:c.display || c.name }));
   React.useEffect(() => {
-    if (!namesEdited){ const dn = displayNamesFromName(name); setSingular(dn.singular); setPlural(dn.plural); }
-  }, [name, namesEdited]);
+    if (!namesEdited){ const dn = simplestDisplayNames(originalTableName, name); setSingular(dn.singular); setPlural(dn.plural); }
+  }, [name, namesEdited, originalTableName]);
   const save = () => {
     const patch = {
       name: name || source.name, singular, plural, description: desc, type, published, writeMode,
@@ -4484,6 +4492,7 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
         </div>
       </div>
 
+      <div className="cfg-split__col">
       <div className="vds-card prompt-card cfg-card">
         <div className="prompt-card__head prompt-card__head--center">
           <h5 className="prompt-card__title">Data source</h5>
@@ -4516,7 +4525,6 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
           </div>
         </div>
       </div>
-      </div>
 
       <div className="vds-card prompt-card cfg-card">
         <h5 className="prompt-card__title">Display</h5>
@@ -4537,9 +4545,11 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
           </div>
         </div>
       </div>
+      </div>
+      </div>
 
       <div className="vds-card prompt-card cfg-card">
-        <h5 className="prompt-card__title">Column mappings</h5>
+        <h5 className="prompt-card__title">Column definition</h5>
         <div className="vds-table-container">
           <table className="vds-table cols-table">
             <thead><tr>
