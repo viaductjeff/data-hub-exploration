@@ -9898,7 +9898,7 @@ function PromptPromptCard({ prompt, readOnly = false, onInstructions, onInsertTo
           onChange={(e)=>onInstructions && onInstructions(e.target.value)} />
       </div>
       <div className="prompt-test-row">
-        <RunInViaDuckButton prompt={prompt} withLabel label="Test in ViaDuck" gate={false} />
+        <RunInViaDuckButton prompt={prompt} withLabel label="Test in ViaDuck with no side effects" gate={false} />
       </div>
     </div>
   );
