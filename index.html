@@ -2319,7 +2319,7 @@ const EVERY_DAY = { sun:true, mon:true, tue:true, wed:true, thu:true, fri:true, 
 const autoId = (p) => p + "_" + Math.random().toString(36).slice(2,10);
 const SCHED_FREQS = ["Hourly","Daily","Weekly","Monthly"];
 const NTH_OPTIONS = ["first","second","third","fourth","last"];
-const TENANT_TZ = "PT (tenant)";
+const TENANT_TZ = "PT";
 function newScheduleEntry(days, time, freq){
   return { id:autoId("sch"), freq:freq || "Weekly", days:{ ...(days || WEEKDAY_DEFAULT) },
            time:time || "09:00", nth:"first", weekday:"Monday" };
