@@ -9864,7 +9864,6 @@ function PromptAutomationsCard({ trigger, setTrigger, sources = [], readOnly = f
   return (
     <div className="vds-card prompt-card">
       <h5 className="prompt-card__title">Schedules</h5>
-      <div className="vds-b2 proto-muted">Directives can always be manually run, even if scheduled.</div>
       {readOnly ? <fieldset className="proto-readonly-fields" disabled>{fields}</fieldset> : fields}
     </div>
   );
@@ -10351,7 +10350,6 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
 
         <div className="vds-card prompt-card cfg-card">
           <h5 className="prompt-card__title">Schedules</h5>
-          <div className="vds-b2 proto-muted">Actions can always be manually run, even if scheduled.</div>
           {readOnly
             ? <fieldset className="proto-readonly-fields" disabled>
                 <AutomateTriggerFields trigger={step.trigger} setTrigger={()=>{}}
