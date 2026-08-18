@@ -630,9 +630,13 @@
   /* Matches .schedule-entry's gap so the leading text lines up with the frequency picker. */
   .trigger-event-line { display: flex; align-items: flex-start; gap: var(--vds-dialog-gap); }
   /* The controls wrap within this box, so a second line starts after the icon
-     rather than under it — the icon reads as an outdent. */
-  .trigger-row-body { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap;
-    row-gap: var(--vds-button-gap); column-gap: var(--vds-dialog-gap); }
+     rather than under it — the icon reads as an outdent. The box is only as wide as
+     it needs to be, so a row that fits reads left to right as usual; once it has to
+     wrap, the leftover controls sit against the right edge by the remove button. */
+  .trigger-row-body { flex: 0 1 auto; min-width: 0; display: flex; align-items: center; flex-wrap: wrap;
+    justify-content: flex-end; row-gap: var(--vds-button-gap); column-gap: var(--vds-dialog-gap); }
+  /* Keeps the first control against the icon; only what wraps moves right. */
+  .trigger-row-body > :first-child { margin-right: auto; }
   .trigger-event-line .field { margin-bottom: 0; }
   .trigger-event-line__action { width: 130px; }
   .trigger-event-line__table { width: 220px; }
