@@ -9486,7 +9486,7 @@ function AutomationRunHistory({ automation, noun = AUTOMATION_NOUN }){
         {shown.length === 0 ? (
           <div className="runh-empty vds-b2 proto-muted">
             {runs.length === 0
-              ? "This automation hasn't run yet, so it has no run history. Runs appear here once it's triggered — by its schedule, or with Run now from the automations list."
+              ? "This " + noun.one + " hasn't run yet, so it has no run history. Runs appear here once it's triggered — by its schedule, or with Run now from the " + noun.many + " list."
               : "No runs match this filter."}
           </div>
         ) : (
@@ -9636,6 +9636,7 @@ function actionSentence(act){
 /* The automation pages serve two nav paths — Automations and Schedules — so their
    wording comes from the noun the caller passes in. */
 const AUTOMATION_NOUN = { one:"automation", One:"Automation", many:"automations", Many:"Automations" };
+const DIRECTIVE_NOUN = { one:"directive", One:"Directive", many:"directives", Many:"Directives" };
 const SCHEDULE_NOUN = { one:"schedule", One:"Schedule", many:"schedules", Many:"Schedules" };
 
 function AutomationView({ automation, initialTab, noun = AUTOMATION_NOUN, onBack, onEdit, onRun, onDelete }){
@@ -9793,6 +9794,7 @@ function PromptTabs({ tab, setTab }){
   return (
     <div className="vds-tabs vds-tabs--sm" style={{margin:"0 0 16px"}}>
       <button className={"vds-tab" + (tab==="details" ? " vds-tab--selected" : "")} onClick={()=>setTab("details")}>Definition</button>
+      <button className={"vds-tab" + (tab==="history" ? " vds-tab--selected" : "")} onClick={()=>setTab("history")}>History</button>
       <button className="vds-tab" disabled title="Not built yet">Evals</button>
     </div>
   );
@@ -10055,6 +10057,7 @@ function SavedPromptView({ prompt, automations, sources = [], onBack, onEdit, on
       </div>
 
       <PromptTabs tab={tab} setTab={setTab} />
+      {tab === "history" ? <AutomationRunHistory automation={prompt} noun={DIRECTIVE_NOUN} /> : (
       <div className="prompt-grid">
         <div className="prompt-col">
           <PromptNameCard prompt={prompt} readOnly />
@@ -10068,6 +10071,7 @@ function SavedPromptView({ prompt, automations, sources = [], onBack, onEdit, on
           <PromptHistoryCard prompt={prompt} />
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -10122,6 +10126,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, sources = [], on
       </div>
 
       <PromptTabs tab={tab} setTab={setTab} />
+      {tab === "history" ? <AutomationRunHistory automation={draft} noun={DIRECTIVE_NOUN} /> : (
       <div className="prompt-grid">
         <div className="prompt-col">
           <PromptNameCard prompt={draft} nameTaken={nameTaken}
@@ -10138,6 +10143,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, sources = [], on
           <PromptHistoryCard prompt={draft} />
         </div>
       </div>
+      )}
       {toolPicker && (
         <ToolPickerDialog onClose={()=>setToolPicker(false)}
           onInsert={(names)=>{
