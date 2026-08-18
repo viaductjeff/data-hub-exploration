@@ -642,6 +642,9 @@
   .schedule-entry__days { display: flex; gap: var(--vds-form-gap); }
   .schedule-entry__time { width: 120px; }
   .trigger-row-icon { display: flex; align-items: center; flex: none; height: 36px; color: var(--vds-gray-400); }
+  /* Sits outside the wrapping controls, so it holds the row's right edge on the
+     first line however many times the controls wrap. */
+  .trigger-row-x { display: flex; align-items: center; flex: none; height: 36px; margin-left: auto; }
   .schedule-entry__freq { width: 120px; }
   .schedule-entry__nth { width: 110px; }
   .schedule-entry__weekday { width: 140px; }
@@ -9513,10 +9516,12 @@ function TriggerRows({ trigger, onChange, tables = [] }){
                 </div>
                 {timeField}
               </>)}
-              <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule" title="Remove schedule"
-                onClick={()=>onChange({ schedules: schedules.filter(x => x.id !== sch.id) })}>
-                <Icon name="x" size={16} /></button>
               </div>
+              <span className="trigger-row-x">
+                <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule" title="Remove schedule"
+                  onClick={()=>onChange({ schedules: schedules.filter(x => x.id !== sch.id) })}>
+                  <Icon name="x" size={16} /></button>
+              </span>
             </div>
           );
         })}
@@ -9539,10 +9544,12 @@ function TriggerRows({ trigger, onChange, tables = [] }){
                 {tables.map(n => <option key={n} value={n}>{n}</option>)}
               </select>
             </div>
-            <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove table event" title="Remove table event"
-              onClick={()=>onChange({ events: events.filter(x => x.id !== ev.id) })}>
-              <Icon name="x" size={16} /></button>
             </div>
+            <span className="trigger-row-x">
+              <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove table event" title="Remove table event"
+                onClick={()=>onChange({ events: events.filter(x => x.id !== ev.id) })}>
+                <Icon name="x" size={16} /></button>
+            </span>
           </div>
         ))}
       </div>}
