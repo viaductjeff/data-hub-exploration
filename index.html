@@ -9754,8 +9754,7 @@ function AutomationView({ automation, initialTab, noun = AUTOMATION_NOUN, onBack
             onClick={()=>onRun && onRun(automation.id)}><Icon name="play" size={16} />Run</button>
           <button className="vds-btn vds-btn--start-icon" onClick={()=>onEdit(automation.id)}>
             <Icon name="pencil" size={17} />Edit</button>
-          <button className="vds-btn vds-btn--start-icon proto-btn--danger-quiet" onClick={()=>onDelete(automation.id)}>
-            <Icon name="trash" size={17} />Delete</button>
+          <EditActionsMenu noun={noun.one} onDelete={()=>onDelete(automation.id)} />
         </div>
         </div>
       </div>
@@ -10141,8 +10140,7 @@ function SavedPromptView({ prompt, automations, sources = [], onBack, onEdit, on
           <RunInViaDuckButton prompt={prompt} withLabel />
           <button className="vds-btn vds-btn--start-icon" onClick={()=>onEdit(prompt.id)}>
             <Icon name="pencil" size={17} />Edit</button>
-          <button className="vds-btn vds-btn--start-icon proto-btn--danger-quiet" onClick={()=>onDelete(prompt.id)}>
-            <Icon name="trash" size={17} />Delete</button>
+          <EditActionsMenu noun="directive" onDelete={()=>onDelete(prompt.id)} />
         </div>
         </div>
       </div>
@@ -10325,8 +10323,7 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
                 <Icon name="play" size={16} />Run</button>
               <button className="vds-btn vds-btn--start-icon" onClick={()=>onEdit && onEdit(schedule.id)}>
                 <Icon name="pencil" size={17} />Edit</button>
-              <button className="vds-btn vds-btn--start-icon proto-btn--danger-quiet" onClick={()=>onDelete && onDelete(schedule.id)}>
-                <Icon name="trash" size={17} />Delete</button>
+              <EditActionsMenu noun="schedule" onDelete={()=>onDelete && onDelete(schedule.id)} />
             </>) : (<>
               <button className="vds-btn" onClick={onCancel}>Cancel</button>
               <button className="vds-btn vds-btn--primary" disabled={!canSave}
