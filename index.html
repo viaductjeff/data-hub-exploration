@@ -2443,21 +2443,26 @@ const automationsUsingPrompt = (automations, prompt) => {
 };
 function newSavedPrompt(){
   return { id:autoId("sp"), name:"", instructions:"", clues:"", toUsers:false, toSchedule:false, toViaduck:false,
+           lastRunBy:"", lastRunAt:"",
            createdAt:todayISO(), updatedAt:todayISO(), createdBy:CURRENT_USER_EMAIL, updatedBy:CURRENT_USER_EMAIL };
 }
 function seedSavedPrompts(){
   return [
     { id:"sp1", name:"Summarize Warranty Claims", toUsers:false, toViaduck:false,
+      lastRunBy:"Amy Chen", lastRunAt:"2026-08-16T09:12",
       createdAt:"2026-07-28", updatedAt:"2026-08-03", createdBy:"bora@viaduct.ai", updatedBy:"abel@viaduct.ai",
       instructions:"", clues:"" },
     { id:"sp2", name:"Flag Outlier Vendors", toUsers:true, toSchedule:true, toViaduck:false,
+      lastRunBy:"Jeff Kroll", lastRunAt:"2026-08-17T07:40",
       createdAt:"2026-08-04", updatedAt:"2026-08-04", createdBy:"jan@viaduct.ai", updatedBy:"abel@viaduct.ai",
       instructions:"Summarize non-approved work order verifications across the fleet from the last 180 days grouped by vendor. Flag any vendor whose average cost per work order is more than 25% above the fleet average. Return the result as a table.",
       clues:"" },
     { id:"sp3", name:"Detect Duplicate Work Orders", toUsers:true, toSchedule:true, toViaduck:true,
+      lastRunBy:"Priya Patel", lastRunAt:"2026-08-15T18:05",
       createdAt:"2026-08-05", updatedAt:"2026-08-05", createdBy:"abel@viaduct.ai", updatedBy:"abel@viaduct.ai",
       instructions:"", clues:"" },
     { id:"sp4", name:"Compare Repair Costs By Region", toUsers:true, toSchedule:false, toViaduck:false,
+      lastRunBy:"Marcus Webb", lastRunAt:"2026-08-14T11:30",
       createdAt:"2026-08-03", updatedAt:"2026-08-04", createdBy:"abel@viaduct.ai", updatedBy:"jernej@viaduct.ai",
       instructions:"", clues:"" },
     { id:"sp5", name:"Draft Recall Notification Brief", toUsers:false, toViaduck:false,
@@ -9944,13 +9949,27 @@ function PromptAvailabilityCard({ prompt, readOnly = false, onToUsers, onPatch }
   );
 }
 
+/* "2026-08-16T09:12" reads as "8/16/2026, 9:12 AM". */
+const stampDateTime = (iso) => {
+  if (!iso) return "";
+  const [date, time] = String(iso).split("T");
+  if (!time) return slashDate(date);
+  const [h, m] = time.split(":").map(Number);
+  const ap = h >= 12 ? "PM" : "AM";
+  return slashDate(date) + ", " + (((h + 11) % 12) + 1) + ":" + String(m).padStart(2, "0") + " " + ap;
+};
 const slashDate = (iso) => {
   if (!iso) return "—";
   const [y, m, d] = String(iso).split("-").map(Number);
   return m + "/" + d + "/" + y;
 };
-function PromptHistoryCard({ prompt }){
+function PromptHistoryCard({ prompt, automations = [] }){
+  /* The runs belong to the automation that calls the directive. */
+  const runs = (promptScheduleAutomation(automations, prompt) || {}).runList;
   const rows = [
+    ["Run by", prompt.lastRunBy],
+    ["Run", stampDateTime(prompt.lastRunAt)],
+    ["History", (runs || []).length ? <RunStrip runs={runs} /> : ""],
     ["Updated by", prompt.updatedBy],
     ["Updated", slashDate(prompt.updatedAt)],
     ["Created by", prompt.createdBy],
@@ -10004,7 +10023,7 @@ function SavedPromptView({ prompt, automations, sources = [], onBack, onEdit, on
 
         <div className="prompt-col">
           <PromptAvailabilityCard prompt={prompt} readOnly />
-          <PromptHistoryCard prompt={prompt} />
+          <PromptHistoryCard prompt={prompt} automations={automations} />
         </div>
       </div>
     </div>
@@ -10074,7 +10093,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, sources = [], on
 
         <div className="prompt-col">
           <PromptAvailabilityCard prompt={draft} onToUsers={setToUsers} onPatch={patch} />
-          <PromptHistoryCard prompt={draft} />
+          <PromptHistoryCard prompt={draft} automations={automations} />
         </div>
       </div>
       {toolPicker && (
