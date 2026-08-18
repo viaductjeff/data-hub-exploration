@@ -604,6 +604,9 @@
   .prompt-meta-value { font-weight: 500; }
   .cfg-card { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); }
   .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); }
+  /* A card spaces its contents with its own gap; a trailing field margin just
+     leaves dead space at the bottom. */
+  .prompt-card > :last-child { margin-bottom: 0; }
   .cfg-readonly { padding-top: 6px; }
   .cfg-card__head { cursor: pointer; }
   .vds-table.rel-table :is(th, td) { text-align: left; }
