@@ -5910,13 +5910,13 @@ function S3ConnectorFlow({ conn, tmpl, editing, editInstance, existingSources=[]
 }
 /* The Automate step's trigger picker — the same model the automation editor
    uses, so whatever a wizard captures here becomes the automation's first step. */
-function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = null, showLede = true, hideEvents = false, lockLast = false, hideAdd = false }){
+function AutomateTriggerFields({ trigger, setTrigger, tables = [], lockedNote = null, showLede = true, hideEvents = false, lockLast = false, hideAdd = false, hideRemove = false }){
   const set = (patch) => setTrigger(t => ({ ...t, ...patch }));
   if (lockedNote) return <div className="vds-alert vds-alert--info proto-note">{lockedNote}</div>;
   return (
     <div>
       {showLede && <div className="vds-b2 proto-muted proto-section-note automate-lede">Automations can always be manually run, even when triggered on a schedule or by a table event.</div>}
-      <TriggerRows trigger={trigger} onChange={set} tables={tables} hideEvents={hideEvents} lockLast={lockLast} hideAdd={hideAdd} />
+      <TriggerRows trigger={trigger} onChange={set} tables={tables} hideEvents={hideEvents} lockLast={lockLast} hideAdd={hideAdd} hideRemove={hideRemove} />
     </div>
   );
 }
@@ -9519,7 +9519,7 @@ function AutomationRunHistory({ automation, noun = AUTOMATION_NOUN }){
 /* The schedule and table-event rows of a trigger. Shared by the automation
    editor's first step and every wizard's Automate step, so the two never drift.
    onChange takes a patch to merge into the trigger. */
-function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockLast = false, hideAdd = false }){
+function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockLast = false, hideAdd = false, hideRemove = false }){
   const schedules = trigger.schedules || [];
   const events = trigger.events || [];
   return (
@@ -9574,13 +9574,13 @@ function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockL
                 {timeField}
               </>)}
               </div>
-              <span className="trigger-row-x">
+              {!hideRemove && <span className="trigger-row-x">
                 <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule"
                   disabled={lockLast && schedules.length <= 1}
                   title={(lockLast && schedules.length <= 1) ? "A schedule needs at least one row" : "Remove schedule"}
                   onClick={()=>onChange({ schedules: schedules.filter(x => x.id !== sch.id) })}>
                   <Icon name="x" size={16} /></button>
-              </span>
+              </span>}
             </div>
           );
         })}
@@ -9604,11 +9604,11 @@ function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockL
               </select>
             </div>
             </div>
-            <span className="trigger-row-x">
+            {!hideRemove && <span className="trigger-row-x">
               <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove table event" title="Remove table event"
                 onClick={()=>onChange({ events: events.filter(x => x.id !== ev.id) })}>
                 <Icon name="x" size={16} /></button>
-            </span>
+            </span>}
           </div>
         ))}
       </div>}
@@ -9814,8 +9814,8 @@ function PromptTabs({ tab, setTab }){
    Automations list, so the two read the same way. */
 /* The directive's schedule, edited with the same rows an automation step uses. */
 function PromptAutomationsCard({ trigger, setTrigger, sources = [], readOnly = false }){
-  const fields = <AutomateTriggerFields trigger={trigger} setTrigger={setTrigger}
-    tables={allTableNames(sources)} showLede={false} />;
+  const fields = <AutomateTriggerFields trigger={trigger} setTrigger={readOnly ? ()=>{} : setTrigger}
+    tables={allTableNames(sources)} showLede={false} hideAdd={readOnly} hideRemove={readOnly} />;
   return (
     <div className="vds-card prompt-card">
       <h5 className="prompt-card__title">Schedules</h5>
@@ -10291,7 +10291,7 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
           {readOnly
             ? <fieldset className="proto-readonly-fields" disabled>
                 <AutomateTriggerFields trigger={step.trigger} setTrigger={()=>{}}
-                  tables={allTableNames(sources)} showLede={false} hideEvents hideAdd />
+                  tables={allTableNames(sources)} showLede={false} hideEvents hideAdd hideRemove />
               </fieldset>
             : <AutomateTriggerFields trigger={step.trigger} setTrigger={setTrigger}
                 tables={allTableNames(sources)} showLede={false} hideEvents lockLast />}
