@@ -1196,7 +1196,7 @@ const HUB_PAGE = {
   directives:{ key:"directives", title:"Directives", icon:"terminal", newLabel:"New Directive",
     sub:"Named prompts you can reuse — in an automation, or to clean, map and route incoming records.",
     noun:"directives", filter:"Filter directives...", hidden:"Show archived directives",
-    cols:["Name","For users","For ViaDuck","Updated","Updated by","Created","Created by","Actions"],
+    cols:["Name","In chat","Auto-run","Updated","Updated by","Created","Created by","Actions"],
     emptyTitle:"No directives yet", emptyBody:"Add a directive to transform or route records the moment they arrive.", cta:"Create your first directive" },
 };
 
@@ -1670,8 +1670,6 @@ function HubPage({ cfg, onNew, onOpen, onEdit, onOpenHistory, onUpdate, onDelete
                   {/* Stops a click on an action from also opening the row. */}
                   <div className="row-actions" onClick={(e)=>e.stopPropagation()}>
                     <RunInViaDuckButton prompt={r} />
-                    <button className="vds-icon-btn vds-icon-btn--sm" title="Edit" aria-label="Edit" onClick={()=>edit(r.id)}><Icon name="pencil" size={17} /></button>
-                    <DeleteButton onDelete={()=>del(r.id)} />
                   </div>
                 </div>
               </div>
@@ -9713,7 +9711,7 @@ function RunInViaDuckButton({ prompt, withLabel = false, label = "Run in ViaDuck
   /* Testing your own draft shouldn't wait on publishing it, so the test variant
      skips the availability check. */
   const enabled = !gate || !!prompt.toUsers;
-  const why = enabled ? label : 'Turn on "Available to users" to run this in ViaDuck';
+  const why = enabled ? label : 'Turn on "Available in ViaDuck chat" to run this';
   const instructions = (prompt.instructions || "").trim();
   return (<>
     {withLabel ? (
