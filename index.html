@@ -10103,10 +10103,6 @@ function SavedPromptEditor({ prompt, prompts = [], automations, sources = [], on
   const nameIsTaken = (v) => prompts.some(p => p.id !== prompt.id
     && (p.name || "").trim().toLowerCase() === v.trim().toLowerCase());
   const isSaved = prompts.some(p => p.id === prompt.id);
-  const canSave = !!draft.name.trim() && !nameTaken;
-  useUnsavedGuard(JSON.stringify(draft) !== JSON.stringify(prompt)
-    || JSON.stringify(sched) !== JSON.stringify(promptTrigger(prompt, automations)),
-    () => { if (canSave) save(); });
   const patch = (p) => setDraft(d => ({ ...d, ...p }));
   /* ViaDuck can only reach a prompt users can reach, so turning users off turns
      ViaDuck off with it. */
@@ -10117,6 +10113,10 @@ function SavedPromptEditor({ prompt, prompts = [], automations, sources = [], on
     onSave(draft);
     if (onSaveSchedule) onSaveSchedule(scheduleAuto ? scheduleAuto.id : null, sched, draft);
   };
+  const dirty = JSON.stringify(draft) !== JSON.stringify(prompt)
+    || JSON.stringify(sched) !== JSON.stringify(promptTrigger(prompt, automations));
+  const canSave = !!draft.name.trim() && !nameTaken && dirty;
+  useUnsavedGuard(dirty, () => { if (canSave) save(); });
   /* The heading names the directive as it stands saved — it isn't a preview of the field. */
   const savedTitle = prompt.name || (isSaved ? "Directive" : "New directive");
 
@@ -10133,7 +10133,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, sources = [], on
           <div className="auto-editor-actions">
             <button className="vds-btn" onClick={onCancel}>Cancel</button>
             <button className="vds-btn vds-btn--primary" disabled={!canSave}
-              title={canSave ? undefined : "Enter a unique name to save"}
+              title={canSave ? undefined : (dirty ? "Enter a unique name to save" : "No changes to save")}
               onClick={save}>Save directive</button>
             <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Delete directive"
               disabled={!isSaved} title={isSaved ? "Delete directive" : "This directive hasn't been saved yet"}
@@ -10197,8 +10197,9 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
     steps: draft.steps.map((st,i) => i===0 ? { ...st, name: itemName ? ("Run " + itemName) : st.name } : st) });
   /* A schedule has no name of its own: it is titled by the thing it runs. */
   const pageTitle = itemName || (isSaved ? "Schedule" : "New schedule");
-  const canSave = !!kind && !!itemName;
-  useUnsavedGuard(!readOnly && JSON.stringify(draft) !== JSON.stringify(schedule), () => { if (canSave) commit(); });
+  const dirty = JSON.stringify(draft) !== JSON.stringify(schedule);
+  const canSave = !!kind && !!itemName && dirty;
+  useUnsavedGuard(!readOnly && dirty, () => { if (canSave) commit(); });
 
   /* Every item of the chosen kind. Data tables are grouped by the connection they
      come from, and the group headings are not selectable. */
@@ -10239,7 +10240,7 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
             </>) : (<>
               <button className="vds-btn" onClick={onCancel}>Cancel</button>
               <button className="vds-btn vds-btn--primary" disabled={!canSave}
-                title={canSave ? undefined : "Pick what this schedule runs"}
+                title={canSave ? undefined : (dirty ? "Pick what this schedule runs" : "No changes to save")}
                 onClick={commit}>Save schedule</button>
               <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Delete schedule"
                 disabled={!isSaved} title={isSaved ? "Delete schedule" : "This schedule hasn't been saved yet"}
