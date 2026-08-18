@@ -9525,9 +9525,10 @@ function AutomationRunHistory({ automation, noun = AUTOMATION_NOUN }){
 function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockLast = false, hideAdd = false, hideRemove = false }){
   const schedules = trigger.schedules || [];
   const events = trigger.events || [];
-  /* lockLast: a schedule has to keep one row, whichever kind it is, so the row
-     offers no remove until there is a second one to fall back on. */
-  const showRemove = !hideRemove && !(lockLast && (schedules.length + events.length) <= 1);
+  /* lockLast: a schedule has to keep one row, whichever kind it is, so its remove
+     sits disabled until there is a second one to fall back on. */
+  const onlyRow = lockLast && (schedules.length + events.length) <= 1;
+  const lockNote = "A schedule keeps at least one trigger row";
   return (
     <div>
       {(schedules.length + events.length) > 0 && <div className="schedule-list">
@@ -9580,8 +9581,9 @@ function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockL
                 {timeField}
               </>)}
               </div>
-              {showRemove && <span className="trigger-row-x">
-                <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule" title="Remove schedule"
+              {!hideRemove && <span className="trigger-row-x">
+                <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove schedule"
+                  disabled={onlyRow} title={onlyRow ? lockNote : "Remove schedule"}
                   onClick={()=>onChange({ schedules: schedules.filter(x => x.id !== sch.id) })}>
                   <Icon name="x" size={16} /></button>
               </span>}
@@ -9608,8 +9610,9 @@ function TriggerRows({ trigger, onChange, tables = [], hideEvents = false, lockL
               </select>
             </div>
             </div>
-            {showRemove && <span className="trigger-row-x">
-              <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove table event" title="Remove table event"
+            {!hideRemove && <span className="trigger-row-x">
+              <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Remove table event"
+                disabled={onlyRow} title={onlyRow ? lockNote : "Remove table event"}
                 onClick={()=>onChange({ events: events.filter(x => x.id !== ev.id) })}>
                 <Icon name="x" size={16} /></button>
             </span>}
