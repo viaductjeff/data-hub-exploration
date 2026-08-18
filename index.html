@@ -128,8 +128,14 @@
   .menu-confirm { padding: 8px 16px 4px; font: 700 14px/20px var(--vds-font-sans); }
   .menu-confirm-actions { display: flex; gap: var(--vds-button-gap); padding: 4px 8px 4px; }
   .menu-confirm-actions .vds-btn { flex: 1; }
+  /* A menu item rendered as a button still carries the browser's chrome, and the
+     VDS rule doesn't reset it. */
+  button.vds-menu-item { width: 100%; border: none; background: none; font: inherit;
+    font-size: 14px; text-align: left; padding: var(--vds-button-gap) var(--vds-dialog-gap); }
+  .vds-menu-item:active { background: var(--vds-slate-200); }
   .vds-menu-item.danger { color: var(--vds-alert-error-icon); }
   .vds-menu-item.danger:hover { background: var(--vds-alert-error-bg); }
+  .vds-menu-item.danger:active { background: var(--vds-alert-error-border); }
   .connect-data-wrap { position: relative; display: inline-flex; }
   .connect-data-empty { padding: 8px 16px; max-width: 220px; color: var(--vds-text-secondary); }
   .rowmenu { position: relative; display: inline-block; }
