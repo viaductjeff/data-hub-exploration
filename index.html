@@ -9791,7 +9791,7 @@ function RunInViaDuckButton({ prompt, withLabel = false, label = "Run in ViaDuck
 /* Tabs shared by both directive pages. Evals is coming, not built. */
 function PromptTabs({ tab, setTab }){
   return (
-    <div className="vds-tabs" style={{margin:"0 0 16px"}}>
+    <div className="vds-tabs vds-tabs--sm" style={{margin:"0 0 16px"}}>
       <button className={"vds-tab" + (tab==="details" ? " vds-tab--selected" : "")} onClick={()=>setTab("details")}>Definition</button>
       <button className="vds-tab" disabled title="Not built yet">Evals</button>
     </div>
@@ -10224,7 +10224,7 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
         </div>
       </div>
 
-      <div className="vds-tabs" style={{margin:"0 0 16px"}}>
+      <div className="vds-tabs vds-tabs--sm" style={{margin:"0 0 16px"}}>
         <button className={"vds-tab" + (tab==="definition" ? " vds-tab--selected" : "")} onClick={()=>setTab("definition")}>Definition</button>
         <button className={"vds-tab" + (tab==="history" ? " vds-tab--selected" : "")} onClick={()=>setTab("history")}>History</button>
       </div>
