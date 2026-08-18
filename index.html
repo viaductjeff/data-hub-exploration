@@ -9989,12 +9989,12 @@ function PromptAvailabilityCard({ prompt, readOnly = false, onToUsers, onPatch }
         <span className="vds-b2">Available in ViaDuck chat</span>
       </label>
       <label className="vds-choice">
-        <input type="checkbox" className="vds-checkbox" checked={!!prompt.toSchedule} disabled={readOnly || !prompt.toUsers}
+        <input type="checkbox" className="vds-checkbox" checked={!!prompt.toSchedule} disabled={readOnly}
           onChange={(e)=>onPatch && onPatch({ toSchedule:e.target.checked })} />
         <span className="vds-b2">Allow scheduling</span>
       </label>
       <label className="vds-choice">
-        <input type="checkbox" className="vds-checkbox" checked={!!prompt.toViaduck} disabled={readOnly || !prompt.toUsers}
+        <input type="checkbox" className="vds-checkbox" checked={!!prompt.toViaduck} disabled={readOnly}
           onChange={(e)=>onPatch && onPatch({ toViaduck:e.target.checked })} />
         <span className="vds-b2">Auto-run when appropriate</span>
       </label>
@@ -10104,9 +10104,9 @@ function SavedPromptEditor({ prompt, prompts = [], automations, sources = [], on
     && (p.name || "").trim().toLowerCase() === v.trim().toLowerCase());
   const isSaved = prompts.some(p => p.id === prompt.id);
   const patch = (p) => setDraft(d => ({ ...d, ...p }));
-  /* ViaDuck can only reach a prompt users can reach, so turning users off turns
-     ViaDuck off with it. */
-  const setToUsers = (on) => patch(on ? { toUsers:true } : { toUsers:false, toSchedule:false, toViaduck:false });
+  /* The three availability settings stand alone; only the context clues depend on
+     auto-run, since that is what they feed. */
+  const setToUsers = (on) => patch({ toUsers:on });
   const scheduleAuto = promptScheduleAutomation(automations, prompt);
   const [sched, setSched] = useState(() => promptTrigger(prompt, automations));
   const save = () => {
