@@ -622,7 +622,9 @@
   .cfg-card { display: flex; flex-direction: column; gap: var(--vds-dialog-gap); }
   .cfg-card + .cfg-card { margin-top: var(--vds-dialog-gap); }
   /* What the table is, beside where it comes from. */
-  .cfg-split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vds-dialog-gap); align-items: start; }
+  .cfg-split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--vds-dialog-gap); align-items: start;
+    margin-top: var(--vds-dialog-gap); }
+  .cfg-desc { height: auto; }
   .cfg-split > .cfg-card + .cfg-card { margin-top: 0; }
   .cfg-split + .cfg-card { margin-top: var(--vds-dialog-gap); }
   @media (max-width: 1100px) { .cfg-split { grid-template-columns: 1fr; }
@@ -4478,7 +4480,7 @@ function DataTableConfigPage({ source, allSources = [], connectors = [], automat
             <label className="vds-label">Description</label>
             <span className="vds-b3 proto-muted">Used by the ViaDuck agent to decide when to access this table</span>
           </div>
-          <textarea className="vds-textarea" value={desc} onChange={(e)=>setDesc(e.target.value)} />
+          <textarea className="vds-textarea cfg-desc" rows={5} value={desc} onChange={(e)=>setDesc(e.target.value)} />
         </div>
       </div>
 
