@@ -134,6 +134,7 @@
   .connect-data-empty { padding: 8px 16px; max-width: 220px; color: var(--vds-text-secondary); }
   .rowmenu { position: relative; display: inline-block; }
   .rowmenu__pop { position: fixed; z-index: 50; min-width: 200px; text-align: left; }
+  .edit-actions__copied { position: absolute; right: 0; top: 100%; margin-top: 4px; white-space: nowrap; }
 
   /* ---------- chips / status ---------- */
   .proto-status-pill { background: var(--vds-alert-success-bg); }
@@ -917,6 +918,7 @@ function Icon({ name, size = 19, className }){
     trash:(<><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></>),
     swap:(<><path d="M4 8h13"/><path d="m14 5 3 3-3 3"/><path d="M20 16H7"/><path d="m10 13-3 3 3 3"/></>),
     chevronDown:(<path d="m6 9 6 6 6-6"/>),
+    dotsH:(<><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></>),
     dots:(<><circle cx="12" cy="5" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.4" fill="currentColor" stroke="none"/></>),
     gear:(<><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9.4a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></>),
     chevronUp:(<path d="m6 15 6-6 6 6"/>),
@@ -1346,6 +1348,45 @@ function RunStrip({ runs, onOpen }){
           : <span key={r.id || i} className={cls} title={text} aria-label={text} />;
       })}
     </span>
+  );
+}
+
+/* Header overflow menu on an editor: share the page, or delete the record. Disabled
+   until the record exists, as the delete button it replaces was. */
+function EditActionsMenu({ noun = "record", enabled = true, onDelete }){
+  const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [pos, setPos] = useState(null);
+  const btnRef = React.useRef(null);
+  const toggle = () => {
+    if (open){ setOpen(false); return; }
+    const r = btnRef.current.getBoundingClientRect();
+    setPos({ top: r.bottom + 4, right: window.innerWidth - r.right });
+    setOpen(true);
+  };
+  const copyLink = () => {
+    if (navigator.clipboard) navigator.clipboard.writeText(location.href).catch(()=>{});
+    setCopied(true); setOpen(false);
+    setTimeout(()=>setCopied(false), 1600);
+  };
+  return (
+    <div className="rowmenu">
+      <button className="vds-icon-btn vds-icon-btn--sm" ref={btnRef} aria-label="More actions"
+        aria-expanded={open} disabled={!enabled}
+        title={enabled ? "More actions" : "This " + noun + " hasn't been saved yet"}
+        onClick={toggle}><Icon name="dotsH" size={17} /></button>
+      {open && (<>
+        <div className="menu-overlay" onClick={()=>setOpen(false)}></div>
+        <div className="vds-menu rowmenu__pop" style={{ top: pos.top, right: pos.right }}>
+          <button className="vds-menu-item" onClick={copyLink}>
+            <Icon name="copy" size={16} />Copy link to share</button>
+          <hr className="vds-menu-divider" />
+          <button className="vds-menu-item danger" onClick={()=>{ setOpen(false); onDelete && onDelete(); }}>
+            <Icon name="trash" size={16} />Delete</button>
+        </div>
+      </>)}
+      {copied && <span className="vds-b3 proto-muted edit-actions__copied">Link copied</span>}
+    </div>
   );
 }
 
@@ -10175,9 +10216,7 @@ function SavedPromptEditor({ prompt, prompts = [], automations, sources = [], on
             <button className="vds-btn vds-btn--primary" disabled={!canSave}
               title={canSave ? undefined : (dirty ? "Enter a unique name to save" : "No changes to save")}
               onClick={save}>Save directive</button>
-            <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Delete directive"
-              disabled={!isSaved} title={isSaved ? "Delete directive" : "This directive hasn't been saved yet"}
-              onClick={()=>onDelete && onDelete(prompt.id)}><Icon name="trash" size={17} /></button>
+            <EditActionsMenu noun="directive" enabled={isSaved} onDelete={()=>onDelete && onDelete(prompt.id)} />
           </div>
         </div>
       </div>
@@ -10293,9 +10332,7 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
               <button className="vds-btn vds-btn--primary" disabled={!canSave}
                 title={canSave ? undefined : (dirty ? "Pick what this schedule runs" : "No changes to save")}
                 onClick={commit}>Save schedule</button>
-              <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label="Delete schedule"
-                disabled={!isSaved} title={isSaved ? "Delete schedule" : "This schedule hasn't been saved yet"}
-                onClick={()=>onDelete && onDelete(schedule.id)}><Icon name="trash" size={17} /></button>
+              <EditActionsMenu noun="schedule" enabled={isSaved} onDelete={()=>onDelete && onDelete(schedule.id)} />
             </>)}
           </div>
         </div>
@@ -10435,9 +10472,7 @@ function AutomationEditor({ automation, automations = [], sources, pipelines, no
           <button className="vds-btn vds-btn--primary" disabled={!canSave}
             title={canSave ? undefined : "Enter a unique name to save"}
             onClick={()=>onSave(draft)}>{"Save " + noun.one}</button>
-          <button className="vds-icon-btn vds-icon-btn--sm proto-icon-btn--danger" aria-label={"Delete " + noun.one}
-            disabled={!isSaved} title={isSaved ? "Delete " + noun.one : "This " + noun.one + " hasn't been saved yet"}
-            onClick={()=>onDelete && onDelete(automation.id)}><Icon name="trash" size={17} /></button>
+          <EditActionsMenu noun={noun.one} enabled={isSaved} onDelete={()=>onDelete && onDelete(automation.id)} />
           </div>
         </div>
         {nameTaken && <div className="vds-helper-text vds-helper-text--error">This name is already used. Names must be unique.</div>}
