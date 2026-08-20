@@ -575,16 +575,12 @@
   .prompt-clues { margin-left: 26px; }
   /* Tool picker: a fixed-height dialog so the list scrolls under a pinned action row. */
   /* Beats the 460px cap .proto-modal-card sets on every dialog. */
-  .proto-modal-card.qc-dialog { max-width: min(560px, 94vw); }
-  .proto-modal-card.qc-dialog--wide { max-width: min(1040px, 96vw); }
-  .qc-dialog { display: flex; flex-direction: column; max-height: min(84vh, 760px); padding: 0; }
-  .qc-dialog .vds-dialog__title { flex: none; }
-  .qc-dialog__body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column;
-    gap: var(--vds-form-gap); padding: var(--vds-card-pad-v) var(--vds-card-pad-h); }
-  .qc-dialog__filter { width: 320px; }
-  .qc-dialog__tables { max-height: 46vh; overflow: auto; }
-  .qc-dialog__actions { flex: none; display: flex; justify-content: flex-end; gap: var(--vds-button-gap);
-    padding: var(--vds-form-gap) var(--vds-card-pad-h) var(--vds-card-pad-v); }
+  .qc-page { display: flex; flex-direction: column; gap: var(--vds-main-gap); max-width: 1040px; }
+  .qc-page .field { margin-bottom: 0; }
+  .qc-key { max-width: 420px; }
+  .qc-test-row { display: flex; }
+  .qc-filter { width: 320px; }
+  .qc-tables { max-height: 46vh; overflow: auto; }
   .proto-modal-card.tool-dialog { max-width: min(690px, 94vw); }
   .tool-dialog { display: flex; flex-direction: column; max-height: min(80vh, 720px); padding: 0; }
   .tool-dialog__lede { margin: 0; }
@@ -9966,9 +9962,10 @@ function PromptAutomationsCard({ trigger, setTrigger, sources = [], readOnly = f
    be selected to drop into the instructions. */
 /* Samsara 2 sets up in one dialog: the API key, then the source tables to create.
    The other connectors do this over wizard steps. */
-function QuickConnectDialog({ conn, existing, sources = [], onClose, onCreate }){
+/* The Samsara 2 path is a page rather than a dialog: the connection is set up in the
+   first card, and the source tables it offers are picked in the second. */
+function QuickConnectPage({ conn, existing, sources = [], onCancel, onCreate }){
   const tmpl = CONNECTOR_TEMPLATES[conn.id] || {};
-  const [step, setStep] = useState(existing ? "tables" : "auth");
   const [apiKey, setApiKey] = useState(existing ? ((existing.creds && existing.creds.apiKey) || "") : "");
   const [testing, setTesting] = useState(false);
   const [tested, setTested] = useState(!!existing);
@@ -9997,31 +9994,50 @@ function QuickConnectDialog({ conn, existing, sources = [], onClose, onCreate })
   };
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className={"vds-dialog proto-modal-card qc-dialog" + (step === "tables" ? " qc-dialog--wide" : "")}
-        onClick={(e)=>e.stopPropagation()}>
-        <div className="vds-dialog__title">
-          <span>{step === "auth" ? ("Set up " + conn.name + " connection") : ("Select " + conn.name + " source table(s)")}</span>
-          <button className="vds-icon-btn vds-icon-btn--sm" aria-label="Close" title="Close" onClick={onClose}>
-            <Icon name="x" size={17} /></button>
+    <div className="vds-content">
+      <div className="proto-sticky-head">
+        <nav className="vds-breadcrumbs">
+          <a href="#" onClick={(e)=>{e.preventDefault(); onCancel();}}>Data Tables</a>
+          <span className="vds-breadcrumbs__sep">/</span>
+          <span>{conn.name} Connection</span>
+        </nav>
+        <div className="proto-detail-head">
+          <div><h1 className="vds-page-title">{conn.name} Connection</h1></div>
+          <div className="auto-editor-actions">
+            <button className="vds-btn" onClick={onCancel}>Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="qc-page">
+        <div className="vds-card prompt-card">
+          <h5 className="prompt-card__title">{(tmpl.auth && tmpl.auth.title) || "Connection"}</h5>
+          {tmpl.auth && tmpl.auth.note && <div className="vds-b2 proto-muted">{tmpl.auth.note}</div>}
+          <div className="field qc-key">
+            <label className="vds-label" htmlFor="qc-api-key">API key</label>
+            <input id="qc-api-key" className="vds-input" placeholder="Paste your API key" value={apiKey}
+              onChange={(e)=>{ setTested(false); setApiKey(e.target.value); }} />
+          </div>
+          <div className="qc-test-row">
+            {tested
+              ? <button className="vds-btn vds-btn--start-icon proto-btn--tested" disabled>
+                  <Icon name="check" size={17} />Test connection</button>
+              : <button className="vds-btn" disabled={!apiKey.trim() || testing}
+                  onClick={()=>{ setTesting(true); setTimeout(()=>{ setTesting(false); setTested(true); }, 700); }}>
+                  {testing ? "Testing connection…" : "Test connection"}</button>}
+          </div>
         </div>
 
-        <div className="vds-dialog__content qc-dialog__body">
-          {step === "auth" ? (<>
-            <div className="vds-h5">{tmpl.auth && tmpl.auth.title}</div>
-            <div className="vds-b2 proto-muted">{tmpl.auth && tmpl.auth.note}</div>
-            <div className="field">
-              <input className="vds-input" placeholder="Paste your API key" aria-label="API key" value={apiKey}
-                onChange={(e)=>{ setTested(false); setApiKey(e.target.value); }} />
-            </div>
-          </>) : (<>
+        {tested && (
+          <div className="vds-card prompt-card">
+            <h5 className="prompt-card__title">Source tables</h5>
             <div className="vds-b2 proto-muted">Pick the {conn.name} tables to create, and name each Viaduct data table.</div>
-            <div className="filter qc-dialog__filter">
+            <div className="filter qc-filter">
               <span className="s-icon"><Icon name="search" size={16} /></span>
               <input className="vds-input" placeholder="Filter tables..." aria-label="Filter tables"
                 value={query} onChange={(e)=>setQuery(e.target.value)} />
             </div>
-            <div className="vds-table-container qc-dialog__tables">
+            <div className="vds-table-container qc-tables">
               <table className="vds-table">
                 <thead><tr>
                   <th style={{width:40}}></th>
@@ -10056,27 +10072,13 @@ function QuickConnectDialog({ conn, existing, sources = [], onClose, onCreate })
               </table>
             </div>
             {dupe && <div className="vds-helper-text vds-helper-text--error">A data table named “{pickOf(dupe).name.trim()}” already exists.</div>}
-          </>)}
-        </div>
-
-        <div className="vds-dialog__actions qc-dialog__actions">
-          <button className="vds-btn" onClick={onClose}>Cancel</button>
-          {step === "auth" ? (<>
-            {tested
-              ? <button className="vds-btn vds-btn--start-icon proto-btn--tested" disabled>
-                  <Icon name="check" size={17} />Test connection</button>
-              : <button className="vds-btn" disabled={!apiKey.trim() || testing}
-                  onClick={()=>{ setTesting(true); setTimeout(()=>{ setTesting(false); setTested(true); }, 700); }}>
-                  {testing ? "Testing connection…" : "Test connection"}</button>}
-            <button className="vds-btn vds-btn--primary" disabled={!tested}
-              title={tested ? undefined : "Test the connection first"}
-              onClick={()=>setStep("tables")}>Select source table</button>
-          </>) : (
-            <button className="vds-btn vds-btn--primary" disabled={!chosen.length || !named || !!dupe}
-              title={chosen.length ? (named ? (dupe ? "Choose a name that is not taken" : undefined) : "Name every checked table") : "Check a table first"}
-              onClick={create}>Create Table</button>
-          )}
-        </div>
+            <div className="qc-test-row">
+              <button className="vds-btn vds-btn--primary" disabled={!chosen.length || !named || !!dupe}
+                title={chosen.length ? (named ? (dupe ? "Choose a name that is not taken" : undefined) : "Name every checked table") : "Check a table first"}
+                onClick={create}>Create Table</button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -11195,7 +11197,25 @@ function App(){
     ? "datasources" : activeId;
 
   let page;
-  if (connectDataFor){
+  if (quickConnId){
+    const qcConn = CONNECTORS.find(c => c.id === quickConnId);
+    const qcExisting = existingInstanceFor(connectors, quickConnId);
+    page = <QuickConnectPage conn={qcConn} existing={qcExisting} sources={sources}
+      onCancel={()=>setQuickConnId(null)}
+      onCreate={({ apiKey, records }) => {
+        const instId = qcExisting ? qcExisting.id : ("conn_" + Math.random().toString(36).slice(2,10));
+        const withConn = records.map(r => ({ ...r, connectorInstanceId: instId }));
+        setSources(ss => [...withConn, ...ss]);
+        setConnectors(cs => qcExisting
+          ? cs.map(c => c.id === instId
+              ? { ...c, updatedAt: todayStr(), dataSourceIds:[...(c.dataSourceIds || []), ...withConn.map(r => r.id)] } : c)
+          : [{ id:instId, name:qcConn.name, connectorId:qcConn.id, connectorName:qcConn.name, group:qcConn.group,
+               creds:{ apiKey }, noSchedule:true, status:"Ready", lastChecked:"Just now",
+               createdAt:todayStr(), updatedAt:todayStr(), lastRun:"Never",
+               dataSourceIds: withConn.map(r => r.id) }, ...cs]);
+        setQuickConnId(null); setActiveId("datasources");
+      }} />;
+  } else if (connectDataFor){
     const reuseInstance = connectDataFor.instanceId ? connectors.find(c => c.id === connectDataFor.instanceId) : null;
     page = <NewConnector existingSources={sources} existingConnectors={connectors}
       editInstance={reuseInstance}
@@ -11468,25 +11488,6 @@ function App(){
         <TopBar />
         <main className="main" style={{flex:"1 1 auto",display:"flex",minWidth:0,minHeight:0}}>{page}</main>
       </div>
-      {quickConnId && (() => {
-        const conn = CONNECTORS.find(c => c.id === quickConnId);
-        const existing = existingInstanceFor(connectors, quickConnId);
-        return <QuickConnectDialog conn={conn} existing={existing} sources={sources}
-          onClose={()=>setQuickConnId(null)}
-          onCreate={({ apiKey, records }) => {
-            const instId = existing ? existing.id : ("conn_" + Math.random().toString(36).slice(2,10));
-            const withConn = records.map(r => ({ ...r, connectorInstanceId: instId }));
-            setSources(ss => [...withConn, ...ss]);
-            setConnectors(cs => existing
-              ? cs.map(c => c.id === instId
-                  ? { ...c, updatedAt: todayStr(), dataSourceIds:[...(c.dataSourceIds || []), ...withConn.map(r => r.id)] } : c)
-              : [{ id:instId, name:conn.name, connectorId:conn.id, connectorName:conn.name, group:conn.group,
-                   creds:{ apiKey }, noSchedule:true, status:"Ready", lastChecked:"Just now",
-                   createdAt:todayStr(), updatedAt:todayStr(), lastRun:"Never",
-                   dataSourceIds: withConn.map(r => r.id) }, ...cs]);
-            setQuickConnId(null); setActiveId("datasources");
-          }} />;
-      })()}
       {pendingNav && (
         <ConfirmDialog title="Save changes?"
           body="You have made changes that will be lost if you do not save before leaving this page."
