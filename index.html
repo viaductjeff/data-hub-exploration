@@ -10258,6 +10258,12 @@ function PromptAvailabilityCard({ prompt, readOnly = false, onToUsers, onToSched
   );
 }
 
+/* A run's timestamp as "2026-08-16T09:12", in local time: toISOString would shift
+   the hour into UTC. */
+const localStamp = (ms) => {
+  const d = new Date(ms), p = (n) => String(n).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate()) + "T" + p(d.getHours()) + ":" + p(d.getMinutes());
+};
 /* "2026-08-16T09:12" reads as "8/16/2026, 9:12 AM". */
 const stampDateTime = (iso) => {
   if (!iso) return "";
@@ -10272,12 +10278,17 @@ const slashDate = (iso) => {
   const [y, m, d] = String(iso).split("-").map(Number);
   return m + "/" + d + "/" + y;
 };
-function PromptHistoryCard({ prompt }){
+function PromptHistoryCard({ prompt, nextRun }){
   /* The card reports the directive's own runs, so it agrees with the Run rows above. */
   const runs = prompt.runList;
+  /* Some objects store the last run as a date only; the run itself knows the time. */
+  const lastRunAt = (prompt.lastRunAt && prompt.lastRunAt.indexOf("T") > -1)
+    ? prompt.lastRunAt
+    : ((runs && runs[0]) ? localStamp(runs[0].at) : prompt.lastRunAt);
   const rows = [
+    ...(nextRun ? [["Next run", nextRun]] : []),
     ["Last run by", prompt.lastRunBy],
-    ["Last run", stampDateTime(prompt.lastRunAt)],
+    ["Last run", stampDateTime(lastRunAt)],
     ["Run history", (runs || []).length ? <RunStrip runs={runs} /> : ""],
     ["Updated by", prompt.updatedBy || prompt.createdBy],
     ["Updated", slashDate(prompt.updatedAt || prompt.createdAt)],
@@ -10566,7 +10577,7 @@ function SchedulePage({ schedule, schedules = [], sources = [], pipelines = [], 
         </div>
 
         <div className="prompt-col">
-          <PromptHistoryCard prompt={draft} />
+          <PromptHistoryCard prompt={draft} nextRun={nextRunFromTrigger(step.trigger)} />
         </div>
       </div>
       )}
